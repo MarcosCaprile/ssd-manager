@@ -86,6 +86,8 @@ On the MacBook, Homebrew OpenJDK 17 and Android Command-line Tools are configure
 
 The production deployment target is a dedicated SSD Manager project in the owner's existing Railway workspace. Deploy the PHP API and Railway MySQL in the same EU region; do not modify the separate StudyConnect Railway project. Railway secrets belong in service variables and must not be written into the repository.
 
+The live Railway API healthcheck is `https://ssd-api-production.up.railway.app/api/v1/health`. Railway's runtime enabled `mpm_event` in addition to PHP Apache's required `mpm_prefork`; keep the Bookworm image pin and the runtime MPM enforcement in `backend/docker/railway-entrypoint.sh`. The first successful deployment containing this fix was uploaded from the local checkout, so ensure these changes are committed before relying on GitHub autodeploys.
+
 ## Working Rules
 
 - Do not commit secrets or local environment files. Keep `backend/.env`, Firebase config files, service-account JSON files, signing keys, and local build output out of Git.

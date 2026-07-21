@@ -19,6 +19,11 @@ Das Repository enthält dafür:
 - `backend/scripts/migrate.php` für die idempotente initiale Migration
 - `GET /api/v1/health` als datenbankgestützten Deployment-Healthcheck
 
+Der Container ist auf `php:8.4-apache-bookworm` festgelegt. Railway aktiviert
+zur Laufzeit zusätzlich `mpm_event`; der Entrypoint deaktiviert deshalb direkt
+vor dem Apache-Start alle alternativen MPMs und erzwingt das für mod_php
+erforderliche `mpm_prefork`.
+
 ## Voraussetzungen
 
 - PHP 8.2+ mit PDO MySQL, OpenSSL und cURL
@@ -75,6 +80,12 @@ php scripts/create_teacher.php Lena Muster lehrer lena.muster@example.edu "SehrS
 
 Die ausgegebene Schul-ID muss mit `DEFAULT_SCHOOL_ID` übereinstimmen. Keine
 Demo-Seeds und keine echten Zugangsdaten in Git einchecken.
+
+Aktuelle Railway-Domain:
+
+```text
+https://ssd-api-production.up.railway.app
+```
 
 ## Railway-Cronjob
 

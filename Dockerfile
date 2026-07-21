@@ -1,9 +1,10 @@
-FROM php:8.4-apache
+FROM php:8.4-apache-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libcurl4-openssl-dev libonig-dev \
     && docker-php-ext-install -j"$(nproc)" curl mbstring pdo_mysql \
-    && a2enmod rewrite \
+    && a2dismod -f mpm_event mpm_worker \
+    && a2enmod mpm_prefork rewrite \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www/html
