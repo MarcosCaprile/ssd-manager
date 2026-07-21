@@ -4,6 +4,16 @@ Stand: 2026-07-21
 
 This document preserves important project context from earlier local Codex chats. Those chats existed only on the original Windows PC, so this file should travel with the repository through GitHub and be used as durable context on the MacBook or in future Codex chats.
 
+## Portable Memory Rule
+
+Important project knowledge must be written into repository documentation, not left only in local Codex chats. Future Codex work should update:
+
+- `AGENTS.md` for durable agent instructions.
+- `docs/PROJECT_CONTEXT.md` for current status, gaps, setup notes, and broad project context.
+- `docs/DECISIONS.md` for product, architecture, workflow, deployment, privacy, tooling, or release decisions.
+
+Do not store secrets, credentials, tokens, signing keys, real student data, or private account details in these documents.
+
 ## Current Status
 
 SSD Manager is a solid MVP/V1 prototype, but it is not production-ready yet. The repository already contains the Flutter app, PHP backend, database schema, seed data, cron job, documentation, and first tests.
