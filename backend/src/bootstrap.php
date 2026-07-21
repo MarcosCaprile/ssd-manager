@@ -31,5 +31,9 @@ date_default_timezone_set(Config::env('SCHOOL_TIMEZONE', 'Europe/Berlin'));
 
 set_exception_handler(function (Throwable $exception): void {
     error_log($exception->getMessage());
+    if (PHP_SAPI === 'cli') {
+        fwrite(STDERR, "Command failed. See the error log for details.\n");
+        exit(1);
+    }
     \App\Core\Response::error('Ein unerwarteter Serverfehler ist aufgetreten.', 500);
 });

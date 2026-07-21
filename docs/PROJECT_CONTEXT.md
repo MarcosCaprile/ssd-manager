@@ -26,6 +26,34 @@ Verified on the original Windows development machine:
 - PHP was not available in `PATH`, so backend/PHP tests could not be run there.
 - Backend code was inspected structurally, but not end-to-end tested against a live database in that session.
 
+Verified on the MacBook on 2026-07-21:
+
+- Flutter 3.44.7 and Dart 3.12.2 are available.
+- `flutter pub get` completed successfully.
+- `flutter test` passed with 5 tests.
+- `flutter analyze` completes cleanly after generated `build/**` sources were excluded in `analysis_options.yaml`.
+- PHP 8.4.23 and MySQL 8.4.10 are installed through the versioned Homebrew formulas `php@8.4` and `mysql@8.4`; MySQL runs as a Homebrew service.
+- A local ignored `backend/.env`, the `ssd_manager` development database, the initial migration, and the demo seed data are set up.
+- `php backend/tests/run.php` passed with 4 tests, and all backend PHP files passed `php -l` syntax checks.
+- A native-PDO login failure caused by reusing the named placeholder `:identifier` was fixed by using separate placeholders for email and username lookup.
+- `php backend/tests/api_smoke.php` now verifies unauthenticated rejection, login by username and email, authenticated session lookup, own profile, upcoming duties, duty history, announcements, user list, token refresh, logout, and rejection of the revoked session against the local database.
+- `php backend/tests/api_write_smoke.php` verifies local write operations and role boundaries for account creation and roles, announcements, self/admin duty assignment, duplicate prevention, regular cancellation, sick reporting, password changes, device management, deactivation, reactivation, deletion marking, and session revocation.
+- `php backend/tests/api_security_smoke.php` verifies school isolation plus negative validation and conflict responses.
+- `php backend/tests/api_concurrency_smoke.php` uses two local backend processes to verify that concurrent requests cannot exceed the three-person duty capacity.
+- The API tests are restricted to a local API/database and remove their uniquely identified test data after each run.
+- Live testing found and fixed four backend defects: concurrent capacity overbooking, invalid calendar dates returning HTTP 500, duplicate accounts returning HTTP 500, and removal of an assignment through a mismatched duty-date URL.
+- The iOS deployment target was raised from 13.0 to 15.0 in all Runner build configurations. An unsigned iOS simulator build then completed successfully and produced `Runner.app`.
+- The repository is inside the macOS Documents/File Provider area. Building iOS into the default local `build/` directory can add extended attributes that make Apple code signing reject generated frameworks. A temporary Flutter build directory under `/private/tmp` avoids this machine-specific problem.
+- Android remains unchanged: its package name is `de.schule.ssdmanager`, and its compile, minimum, and target SDK versions continue to come from Flutter defaults.
+- OpenJDK 17 and the Android SDK Command-line Tools are installed through Homebrew, and Flutter is configured to use them. Android platforms 34-36, Build Tools 36.0.0, Platform Tools, NDK 28.2, and CMake 3.22.1 are installed; `flutter doctor` reports a healthy Android toolchain and all licenses accepted.
+- A universal, debug-signed Android APK was built successfully on the MacBook for package `de.schule.ssdmanager`, minimum SDK 24, and target SDK 36. The APK signature and manifest were verified, and the embedded local backend URL was confirmed in Flutter's build input.
+- Android declares Internet access for all builds. Cleartext HTTP is enabled only in the debug manifest so a physical device can reach the local PHP backend during development; release builds remain intended for HTTPS.
+- The installed iOS 26.5 runtime and iPhone 17 Pro simulator were started successfully. SSD Manager launched, displayed its login screen, received HTTP 200 from the local API for the seeded `noah` demo login, and correctly navigated to the mandatory initial password-change screen.
+- A hosted All-Inkl MySQL/MariaDB database is available. The initial schema migration was imported successfully through phpMyAdmin and all nine expected empty tables were verified; no demo accounts, seeds, credentials, or student data were imported.
+- Railway was selected as the production target instead of combining a Railway API with the All-Inkl database. A dedicated SSD Manager Railway project will contain the PHP API and MySQL in the same EU region; the existing StudyConnect project must remain untouched.
+- The repository now contains a PHP 8.4/Apache `Dockerfile`, Railway configuration, automatic pre-deploy migration, a database-backed `/api/v1/health` endpoint, and CLI bootstrap scripts for the first school and teacher account.
+- CLI bootstrap failures now return a non-zero exit code so Railway cannot accept a failed pre-deploy migration as successful.
+
 ## Implemented Flutter App
 
 The Flutter app currently includes:
@@ -86,13 +114,10 @@ The repository already contains:
 
 Technical gaps:
 
-- PHP 8.2+ must be available locally or on the server for backend tests and local backend runs.
-- MySQL/MariaDB must be created and migrations must be applied.
-- A real `backend/.env` must be created from `backend/.env.example`.
-- The first teacher account must be created with `backend/scripts/create_teacher.php`.
-- Backend/API flows still need end-to-end testing against a real database.
-- Flutter must be tested against the real backend URL.
-- More tests are needed for auth, roles, API error cases, and duty logic.
+- The Railway deployment files are ready locally. Production still needs the separate Railway project and MySQL service, secret-backed service variables, the first successful container build, a public HTTPS domain, and the first real school and teacher account.
+- The Railway container could not be built locally because Docker is not installed on the MacBook. PHP syntax checks, the migration runner, the database-backed healthcheck, and the local API smoke test pass; the first Railway build remains the container verification step.
+- The initial iOS login path is verified, but the authenticated UI journey after the mandatory password change still needs interactive testing. The iOS Simulator and Android build toolchain are working; the Android APK still needs an end-to-end run on the owner's physical phone.
+- Further automated coverage is still useful for cron behavior, notification delivery, and complete Flutter UI-to-API journeys.
 - Firebase project and config files still need final setup.
 - Push notifications must be tested on real Android/iOS devices.
 - Android release signing is not set up.
@@ -115,7 +140,7 @@ The project owner must handle tasks that require external accounts, legal respon
 
 - Create and manage the Firebase project.
 - Provide Firebase Android/iOS config files.
-- Provide server, hosting, domain, and HTTPS access.
+- Authorize and complete account/2FA steps in the existing Railway workspace, including creating the SSD Manager project and linking its GitHub deployment.
 - Decide and provide real database credentials.
 - Clarify school approval and privacy/legal requirements.
 - Handle Apple Developer and Google Play or internal distribution setup.
@@ -132,14 +157,13 @@ Resolve these before production deployment:
 
 1. Should V1 be distributed internally only, through Play Store/App Store, or both?
 2. What final Android package name and iOS Bundle ID should be used?
-3. Where will the backend run: school server, shared hosting, VPS, or another host?
-4. Which roles may send announcements?
-5. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
-6. Is a holiday/vacation/school-free-day admin feature required for V1?
-7. May a normal first-aider see historical duties of other users?
-8. What is the final deletion/anonymization policy?
-9. Is an import flow for existing first-aider lists needed?
-10. Is push notification support mandatory for V1 or optional?
+3. Which roles may send announcements?
+4. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
+5. Is a holiday/vacation/school-free-day admin feature required for V1?
+6. May a normal first-aider see historical duties of other users?
+7. What is the final deletion/anonymization policy?
+8. Is an import flow for existing first-aider lists needed?
+9. Is push notification support mandatory for V1 or optional?
 
 ## MacBook Handoff Notes
 
@@ -167,3 +191,11 @@ git push
 ```
 
 Do not expect old local Codex chats from the Windows PC to appear automatically on the MacBook. Use this file and `AGENTS.md` as the portable project memory.
+
+If an iOS build in the macOS Documents folder fails with `resource fork, Finder information, or similar detritus not allowed`, run the build from this repository with a temporary external output directory and reset the global setting afterwards:
+
+```bash
+flutter config --build-dir=../../../../private/tmp/ssd_manager_flutter_build
+flutter build ios --simulator --dart-define=SSD_API_BASE_URL=http://127.0.0.1:8080/api/v1
+flutter config --build-dir=
+```

@@ -58,11 +58,33 @@ Run backend tests when PHP is available:
 php backend/tests/run.php
 ```
 
+With the local database migrated and seeded, start the backend and run the API smoke test in another terminal:
+
+```bash
+php -S localhost:8080 -t backend/public
+php backend/tests/api_smoke.php
+php backend/tests/api_write_smoke.php
+php backend/tests/api_security_smoke.php
+```
+
+The concurrency smoke test needs two backend processes on ports 8080 and 8081:
+
+```bash
+php -S localhost:8081 -t backend/public
+php backend/tests/api_concurrency_smoke.php
+```
+
 Run the app against an Android emulator backend:
 
 ```bash
 flutter run --dart-define=SSD_API_BASE_URL=http://10.0.2.2:8080/api/v1
 ```
+
+The minimum iOS deployment target is 15.0. On the MacBook, iOS builds inside the Documents/File Provider area may fail because of extended file attributes; use the temporary external build-directory procedure documented in `docs/PROJECT_CONTEXT.md`.
+
+On the MacBook, Homebrew OpenJDK 17 and Android Command-line Tools are configured in Flutter. Android SDK platforms 34-36, Build Tools 36.0.0, Platform Tools, NDK 28.2, and CMake 3.22.1 are installed, and `flutter doctor` reports all Android licenses accepted. Local HTTP is allowed only in Android debug builds; release builds must use HTTPS.
+
+The production deployment target is a dedicated SSD Manager project in the owner's existing Railway workspace. Deploy the PHP API and Railway MySQL in the same EU region; do not modify the separate StudyConnect Railway project. Railway secrets belong in service variables and must not be written into the repository.
 
 ## Working Rules
 

@@ -31,7 +31,14 @@ final class Validation
 
     public static function date(string $value): string
     {
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = \DateTimeImmutable::getLastErrors();
+        if (
+            !preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)
+            || $date === false
+            || $date->format('Y-m-d') !== $value
+            || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
+        ) {
             Response::error('Ungültiges Datum.', 422);
         }
         return $value;
