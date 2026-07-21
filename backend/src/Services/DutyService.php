@@ -170,9 +170,14 @@ final class DutyService
             'SELECT da.*, dd.duty_date, dd.school_id
              FROM duty_assignments da
              JOIN duty_days dd ON dd.id = da.duty_day_id
-             WHERE da.id = :id AND dd.school_id = :school_id AND da.status = "planned"'
+             WHERE da.id = :id AND dd.school_id = :school_id AND dd.duty_date = :date
+               AND da.status = "planned"'
         );
-        $statement->execute(['id' => $assignmentId, 'school_id' => $auth->schoolId()]);
+        $statement->execute([
+            'id' => $assignmentId,
+            'school_id' => $auth->schoolId(),
+            'date' => $date,
+        ]);
         $assignment = $statement->fetch();
         if (!$assignment) {
             Response::error('Eintragung wurde nicht gefunden.', 404);
@@ -321,10 +326,12 @@ final class DutyService
     private function plannedCount(int $dayId): int
     {
         $statement = $this->pdo->prepare(
-            'SELECT COUNT(*) FROM duty_assignments WHERE duty_day_id = :day_id AND status = "planned"'
+            'SELECT id FROM duty_assignments
+             WHERE duty_day_id = :day_id AND status = "planned"
+             FOR UPDATE'
         );
         $statement->execute(['day_id' => $dayId]);
-        return (int) $statement->fetchColumn();
+        return count($statement->fetchAll());
     }
 
     private function hasPlannedAssignment(int $dayId, int $userId): bool

@@ -8,6 +8,7 @@ SSD Manager ist eine mobile App für den Schulsanitätsdienst einer Schule. Die 
 - PHP 8.2+ Backend ohne Composer-Pflicht
 - MySQL/MariaDB mit phpMyAdmin-kompatiblem Schema
 - REST-API unter `/api/v1`
+- Railway-Deployment per Dockerfile mit MySQL im selben Projekt
 - Firebase Cloud Messaging für Push-Benachrichtigungen
 - Sichere lokale Sitzungsspeicherung über `flutter_secure_storage`
 
@@ -44,13 +45,27 @@ Für ein echtes Gerät muss `SSD_API_BASE_URL` auf die erreichbare Backend-URL z
 
 ## Erster Lehreraccount
 
-Nach Migration und `.env`:
+Nach Migration und `.env` zuerst die Schule anlegen:
+
+```bash
+php backend/scripts/create_school.php "Name der Schule" schul-slug
+```
+
+Danach muss `DEFAULT_SCHOOL_ID` auf die ausgegebene ID zeigen. Anschließend den
+ersten Lehreraccount anlegen:
 
 ```bash
 php backend/scripts/create_teacher.php Lena Muster lehrer lena.muster@example.edu "SehrSicheresStartpasswort!"
 ```
 
 Der Account erhält `must_change_password = true` und muss beim ersten Login das Passwort ändern.
+
+## Railway
+
+`Dockerfile` und `railway.json` bereiten die PHP-API für Railway vor. Vor jedem
+Deployment wird das Schema mit `php scripts/migrate.php` angewendet; anschließend
+prüft Railway `/api/v1/health`. Die vollständige Einrichtung und die benötigten
+Variablen stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Firebase
 
@@ -93,11 +108,22 @@ flutter build apk --release --dart-define=SSD_API_BASE_URL=https://example.org/a
 flutter build appbundle --release --dart-define=SSD_API_BASE_URL=https://example.org/api/v1
 ```
 
+Für einen Debug-Test auf einem echten Android-Gerät im gleichen WLAN zuerst das Backend im lokalen Netz starten und anschließend die aktuelle WLAN-IP des Macs einsetzen:
+
+```bash
+php -S 0.0.0.0:8080 -t backend/public
+flutter build apk --debug --dart-define=SSD_API_BASE_URL=http://<MAC-IP>:8080/api/v1
+```
+
+Lokales HTTP ist nur im Android-Debug-Build erlaubt. Release-Builds müssen eine HTTPS-Backend-URL verwenden.
+
 iOS:
 
 ```bash
 flutter build ios --release --dart-define=SSD_API_BASE_URL=https://example.org/api/v1
 ```
+
+Die iOS-Mindestversion ist 15.0. Diese plattformspezifische Vorgabe ändert die Android-Unterstützung der gemeinsamen Flutter-Codebasis nicht.
 
 ## Tests und Checks
 
@@ -105,6 +131,23 @@ flutter build ios --release --dart-define=SSD_API_BASE_URL=https://example.org/a
 flutter analyze
 flutter test
 php backend/tests/run.php
+```
+
+Für den lokalen API-Smoke-Test müssen Migration und Demo-Seeds eingespielt sein. Während das Backend läuft, in einem zweiten Terminal ausführen:
+
+```bash
+php backend/tests/api_smoke.php
+php backend/tests/api_write_smoke.php
+php backend/tests/api_security_smoke.php
+```
+
+Der Write-Smoke-Test ist auf eine lokale API und lokale Datenbank beschränkt. Er erstellt einen eindeutig benannten Testaccount und räumt alle dabei erzeugten Testdaten anschließend wieder auf.
+
+Der Parallelitätstest benötigt zwei gleichzeitig laufende Backendprozesse auf Port 8080 und 8081:
+
+```bash
+php -S localhost:8081 -t backend/public
+php backend/tests/api_concurrency_smoke.php
 ```
 
 Auf diesem Entwicklungsrechner sind Flutter-Analyse und Flutter-Tests lauffähig. PHP ist für lokale PHP-Tests im PATH erforderlich.

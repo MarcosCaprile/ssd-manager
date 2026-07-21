@@ -37,13 +37,15 @@ final class AuthService
 
         $statement = $this->pdo->prepare(
             'SELECT * FROM users
-             WHERE school_id = :school_id AND (LOWER(email) = :identifier OR LOWER(username) = :identifier)
+             WHERE school_id = :school_id
+             AND (LOWER(email) = :email_identifier OR LOWER(username) = :username_identifier)
              AND deleted_at IS NULL
              LIMIT 1'
         );
         $statement->execute([
             'school_id' => Config::int('DEFAULT_SCHOOL_ID', 1),
-            'identifier' => $identifier,
+            'email_identifier' => $identifier,
+            'username_identifier' => $identifier,
         ]);
         $user = $statement->fetch();
         if (!$user || !password_verify($password, (string) $user['password_hash'])) {

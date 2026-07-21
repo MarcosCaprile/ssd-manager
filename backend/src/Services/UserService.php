@@ -77,15 +77,22 @@ final class UserService
              VALUES
              (:school_id, :first_name, :last_name, :username, :email, :password_hash, :role, "active", 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
         );
-        $statement->execute([
-            'school_id' => $auth->schoolId(),
-            'first_name' => trim((string) $data['first_name']),
-            'last_name' => trim((string) $data['last_name']),
-            'username' => trim((string) $data['username']),
-            'email' => mb_strtolower(trim((string) $data['email'])),
-            'password_hash' => PasswordHasher::hash((string) $data['temporary_password']),
-            'role' => $role,
-        ]);
+        try {
+            $statement->execute([
+                'school_id' => $auth->schoolId(),
+                'first_name' => trim((string) $data['first_name']),
+                'last_name' => trim((string) $data['last_name']),
+                'username' => trim((string) $data['username']),
+                'email' => mb_strtolower(trim((string) $data['email'])),
+                'password_hash' => PasswordHasher::hash((string) $data['temporary_password']),
+                'role' => $role,
+            ]);
+        } catch (\PDOException $exception) {
+            if ($exception->getCode() === '23000' || (int) ($exception->errorInfo[1] ?? 0) === 1062) {
+                Response::error('Benutzername oder E-Mail ist bereits vergeben.', 409);
+            }
+            throw $exception;
+        }
         $this->audit->log(
             $auth->schoolId(),
             $auth->userId(),

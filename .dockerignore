@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!backend/
+!backend/**
+
+backend/.env
+backend/firebase-service-account*.json

@@ -34,6 +34,10 @@ $userController = new UserController($userService, $authService);
 
 $router = new Router($authService);
 
+$router->add('GET', 'health', static function (): never {
+    Response::json(['status' => 'ok']);
+}, false);
+
 $router->add('POST', 'auth/login', [$authController, 'login'], false);
 $router->add('POST', 'auth/refresh', [$authController, 'refresh'], false);
 $router->add('POST', 'auth/logout', [$authController, 'logout']);
