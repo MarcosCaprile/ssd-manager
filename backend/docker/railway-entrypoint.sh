@@ -13,6 +13,9 @@ case "$port" in
         ;;
 esac
 
+a2dismod -f mpm_event mpm_worker >/dev/null
+a2enmod mpm_prefork >/dev/null
+
 sed -ri "s/^Listen [0-9]+$/Listen ${port}/" /etc/apache2/ports.conf
 sed -ri "s/<VirtualHost \*:[0-9]+>/<VirtualHost *:${port}>/" /etc/apache2/sites-available/000-default.conf
 

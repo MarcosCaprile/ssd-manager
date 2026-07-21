@@ -1,6 +1,6 @@
 # SSD Manager Project Context
 
-Stand: 2026-07-21
+Stand: 2026-07-22
 
 This document preserves important project context from earlier local Codex chats. Those chats existed only on the original Windows PC, so this file should travel with the repository through GitHub and be used as durable context on the MacBook or in future Codex chats.
 
@@ -53,6 +53,11 @@ Verified on the MacBook on 2026-07-21:
 - Railway was selected as the production target instead of combining a Railway API with the All-Inkl database. A dedicated SSD Manager Railway project will contain the PHP API and MySQL in the same EU region; the existing StudyConnect project must remain untouched.
 - The repository now contains a PHP 8.4/Apache `Dockerfile`, Railway configuration, automatic pre-deploy migration, a database-backed `/api/v1/health` endpoint, and CLI bootstrap scripts for the first school and teacher account.
 - CLI bootstrap failures now return a non-zero exit code so Railway cannot accept a failed pre-deploy migration as successful.
+- A separate Railway project named `SSD Manager` now exists in the owner's existing workspace; the pre-existing StudyConnect project was not changed.
+- Railway MySQL and `ssd-api` run exclusively in `EU West (Amsterdam)`. The initial schema migration completed successfully and the public healthcheck returns HTTP 200 at `https://ssd-api-production.up.railway.app/api/v1/health`.
+- Railway CLI 5.27.2 is installed on the MacBook and the repository is linked locally to the SSD Manager Railway project.
+- Railway enabled Apache `mpm_event` again at container startup even though the official PHP Apache image used `mpm_prefork` during the build. The verified runtime fix pins `php:8.4-apache-bookworm` and disables `mpm_event`/`mpm_worker` immediately before Apache starts.
+- The successful live Railway deployment currently includes that Apache fix from a local CLI upload. The Dockerfile and entrypoint changes must be committed and pushed before relying on GitHub autodeploys again.
 
 ## Implemented Flutter App
 
@@ -114,8 +119,9 @@ The repository already contains:
 
 Technical gaps:
 
-- The Railway deployment files are ready locally. Production still needs the separate Railway project and MySQL service, secret-backed service variables, the first successful container build, a public HTTPS domain, and the first real school and teacher account.
-- The Railway container could not be built locally because Docker is not installed on the MacBook. PHP syntax checks, the migration runner, the database-backed healthcheck, and the local API smoke test pass; the first Railway build remains the container verification step.
+- Railway API, MySQL, automatic migration, secret-backed variables, container build, and public HTTPS healthcheck are operational. Production still needs the first real school and teacher account, a backup schedule, the Railway cron service, and optionally a custom API domain.
+- The verified Apache runtime fix still needs to be committed and pushed so GitHub `main` matches the currently running CLI deployment.
+- The Android test APK still points to the former local Mac backend. A new APK must be built against the Railway HTTPS API after the real teacher account exists.
 - The initial iOS login path is verified, but the authenticated UI journey after the mandatory password change still needs interactive testing. The iOS Simulator and Android build toolchain are working; the Android APK still needs an end-to-end run on the owner's physical phone.
 - Further automated coverage is still useful for cron behavior, notification delivery, and complete Flutter UI-to-API journeys.
 - Firebase project and config files still need final setup.

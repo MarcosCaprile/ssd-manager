@@ -4,6 +4,20 @@ This file records durable project decisions so they are available across local C
 
 Do not store secrets, credentials, tokens, signing keys, real student data, or private account details here.
 
+## 2026-07-22
+
+### Run Railway services in EU West
+
+Decision: The SSD Manager API and MySQL services run exclusively in Railway's `EU West (Amsterdam)` region. The separate StudyConnect Railway project remains unchanged.
+
+Reason: API and database should remain colocated on Railway's private network and use the European region closest to the intended German school users.
+
+### Pin the Railway PHP image and enforce Apache prefork at runtime
+
+Decision: The Railway API uses `php:8.4-apache-bookworm`, disables alternative Apache MPM modules during the image build, and enforces `mpm_prefork` again in the container entrypoint.
+
+Reason: Railway re-enabled `mpm_event` at runtime and Apache refused to start with both event and prefork loaded. Reapplying the official PHP Apache image's prefork requirement immediately before startup produced a successful deployment and HTTP 200 healthcheck.
+
 ## 2026-07-21
 
 ### Use GitHub as the source of truth
