@@ -7,6 +7,7 @@ class AnnouncementAttachment {
     required this.mimeType,
     required this.sizeBytes,
     required this.isImage,
+    required this.isDeleted,
   });
 
   final int id;
@@ -14,6 +15,7 @@ class AnnouncementAttachment {
   final String mimeType;
   final int sizeBytes;
   final bool isImage;
+  final bool isDeleted;
 
   factory AnnouncementAttachment.fromJson(Map<String, dynamic> json) {
     return AnnouncementAttachment(
@@ -22,6 +24,7 @@ class AnnouncementAttachment {
       mimeType: (json['mime_type'] ?? 'application/octet-stream') as String,
       sizeBytes: ((json['size_bytes'] ?? 0) as num).toInt(),
       isImage: json['is_image'] == true || json['is_image'] == 1,
+      isDeleted: json['is_deleted'] == true || json['is_deleted'] == 1,
     );
   }
 }

@@ -84,14 +84,15 @@ function expect_http(array $response, int $expected, string $label): array
 
 function teacher_token(string $baseUrl): string
 {
+    $port = (string) parse_url($baseUrl, PHP_URL_PORT);
     $response = expect_http(http_request($baseUrl, 'POST', 'auth/login', [
         'identifier' => 'lehrer',
         'password' => getenv('SSD_API_TEST_PASSWORD') ?: 'password',
-        'device_name' => 'Backend API concurrency smoke test',
+        'device_name' => 'Backend API concurrency smoke test ' . $port,
         'platform' => 'cli',
         'device_model' => 'local',
         'app_version' => '1.0.0+1',
-    ]), 200, 'teacher login on ' . parse_url($baseUrl, PHP_URL_PORT));
+    ]), 200, 'teacher login on ' . $port);
     $token = $response['body']['data']['access_token'] ?? null;
     if (!is_string($token)) {
         throw new RuntimeException('Teacher login response contains no access token.');
@@ -164,8 +165,8 @@ function cleanup_concurrency_test(
         $pdo->prepare("DELETE FROM audit_logs WHERE target_user_id IN ({$placeholders})")->execute($testUserIds);
         $pdo->prepare("DELETE FROM users WHERE id IN ({$placeholders})")->execute($testUserIds);
     }
-    $pdo->prepare('DELETE FROM user_devices WHERE device_name = :device_name')
-        ->execute(['device_name' => 'Backend API concurrency smoke test']);
+    $pdo->prepare('DELETE FROM user_devices WHERE device_name LIKE :device_name')
+        ->execute(['device_name' => 'Backend API concurrency smoke test%']);
     $identifiers = array_merge(['lehrer'], $testUsernames);
     $identifierPlaceholders = implode(',', array_fill(0, count($identifiers), '?'));
     $pdo->prepare("DELETE FROM login_attempts WHERE id > ? AND identifier IN ({$identifierPlaceholders})")

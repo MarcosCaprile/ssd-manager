@@ -82,15 +82,17 @@ function expect_status(array $response, int $expected, string $label): array
 /**
  * @return array{access_token:string,refresh_token:string}
  */
-function api_login(string $identifier, string $password): array
+function api_login(string $identifier, string $password, string $deviceLabel = ''): array
 {
+    $deviceName = 'Backend API write smoke test' . ($deviceLabel === '' ? '' : ' ' . $deviceLabel);
     $response = expect_status(api_request('POST', 'auth/login', [
         'identifier' => $identifier,
         'password' => $password,
-        'device_name' => 'Backend API write smoke test',
+        'device_name' => $deviceName,
         'platform' => 'cli',
         'device_model' => 'local',
         'app_version' => '1.0.0+1',
+        'device_install_id' => hash('sha256', $deviceName),
     ]), 200, "login with {$identifier}");
 
     $data = $response['body']['data'] ?? null;
@@ -159,13 +161,17 @@ function cleanup(PDO $pdo, ?int $testUserId, ?int $announcementId, int $loginAtt
             ->execute(['actor_id' => $testUserId, 'target_id' => $testUserId]);
         $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $testUserId]);
     }
-    $pdo->prepare('DELETE FROM user_devices WHERE device_name = :device_name')
-        ->execute(['device_name' => 'Backend API write smoke test']);
-    $pdo->prepare('DELETE FROM login_attempts WHERE id > :baseline AND identifier IN (:teacher, :lead, :test_user)')
+    $pdo->prepare('DELETE FROM user_devices WHERE device_name LIKE :device_name')
+        ->execute(['device_name' => 'Backend API write smoke test%']);
+    $pdo->prepare(
+        'DELETE FROM login_attempts
+         WHERE id > :baseline AND identifier IN (:teacher, :lead, :viewer, :test_user)'
+    )
         ->execute([
             'baseline' => $loginAttemptBaseline,
             'teacher' => 'lehrer',
             'lead' => 'leitung',
+            'viewer' => 'noah',
             'test_user' => $testUsername,
         ]);
 }
@@ -239,7 +245,7 @@ try {
         'teacher restores test account role'
     );
 
-    $sanitaeter = api_login($testUsername, $testPassword);
+    $sanitaeter = api_login($testUsername, $testPassword, 'primary');
     expect_status(
         api_request('POST', 'auth/password', [
             'current_password' => 'incorrect-password',
@@ -256,7 +262,7 @@ try {
         422,
         'password change rejects short new password'
     );
-    $oldPasswordSession = api_login($testUsername, $testPassword);
+    $oldPasswordSession = api_login($testUsername, $testPassword, 'old-password');
     expect_status(
         api_request('POST', 'auth/password', [
             'current_password' => $testPassword,
@@ -282,9 +288,9 @@ try {
         'old password is rejected'
     );
 
-    $currentSession = api_login($testUsername, $changedPassword);
-    $revokedByIdSession = api_login($testUsername, $changedPassword);
-    $revokedWithOthersSession = api_login($testUsername, $changedPassword);
+    $currentSession = api_login($testUsername, $changedPassword, 'current');
+    $revokedByIdSession = api_login($testUsername, $changedPassword, 'single-revoke');
+    $revokedWithOthersSession = api_login($testUsername, $changedPassword, 'bulk-revoke');
     $deviceList = expect_status(
         api_request('GET', 'me/devices', accessToken: $revokedByIdSession['access_token']),
         200,
@@ -424,12 +430,84 @@ try {
         401,
         'deactivation revokes account session'
     );
+    $inactiveLogin = expect_status(
+        api_request('POST', 'auth/login', [
+            'identifier' => $testUsername,
+            'password' => $changedPassword,
+            'device_name' => 'Backend API write smoke test inactive-login',
+            'platform' => 'cli',
+        ]),
+        403,
+        'deactivated account cannot log in'
+    );
+    if (!str_contains(
+        (string) ($inactiveLogin['body']['message'] ?? ''),
+        'Account wurde deaktiviert'
+    )) {
+        throw new RuntimeException('Deactivated login does not return the dedicated user guidance.');
+    }
+    echo '[OK] deactivated login explains who the user should contact' . PHP_EOL;
+
+    $managerUsers = expect_status(
+        api_request('GET', 'users', accessToken: $teacher['access_token']),
+        200,
+        'teacher lists inactive accounts'
+    );
+    $managerIds = array_map(
+        static fn (array $user): int => (int) ($user['id'] ?? 0),
+        $managerUsers['body']['data'] ?? []
+    );
+    if (!in_array($testUserId, $managerIds, true)) {
+        throw new RuntimeException('Inactive account is missing from the manager user list.');
+    }
+
+    $viewer = api_login('noah', $seedPassword, 'inactive-viewer');
+    $viewerUsers = expect_status(
+        api_request('GET', 'users', accessToken: $viewer['access_token']),
+        200,
+        'first-aider lists active school accounts'
+    );
+    $viewerIds = array_map(
+        static fn (array $user): int => (int) ($user['id'] ?? 0),
+        $viewerUsers['body']['data'] ?? []
+    );
+    if (in_array($testUserId, $viewerIds, true)) {
+        throw new RuntimeException('Inactive account leaked into the first-aider user list.');
+    }
+    echo '[OK] inactive accounts are visible only to managers' . PHP_EOL;
+    expect_status(
+        api_request('POST', 'auth/logout', accessToken: $viewer['access_token']),
+        200,
+        'inactive-account viewer logout'
+    );
     expect_status(
         api_request('POST', "users/{$testUserId}/reactivate", accessToken: $teacher['access_token']),
         200,
         'teacher reactivates account'
     );
-    $reactivated = api_login($testUsername, $changedPassword);
+    $reactivated = api_login($testUsername, $changedPassword, 'reactivated');
+    $sameDeviceBeforeLogout = api_login($testUsername, $changedPassword, 'same-device');
+    expect_status(
+        api_request('POST', 'auth/logout', accessToken: $sameDeviceBeforeLogout['access_token']),
+        200,
+        'logout revokes current device session'
+    );
+    $sameDeviceAfterLogout = api_login($testUsername, $changedPassword, 'same-device');
+    $sameDeviceList = expect_status(
+        api_request('GET', 'me/devices', accessToken: $sameDeviceAfterLogout['access_token']),
+        200,
+        'same physical device logs in again'
+    );
+    $matchingDevices = array_filter(
+        $sameDeviceList['body']['data'] ?? [],
+        static fn (array $device): bool =>
+            ($device['device_name'] ?? null) === 'Backend API write smoke test same-device'
+    );
+    if (count($matchingDevices) !== 1) {
+        throw new RuntimeException('Re-login left duplicate active sessions for the same device.');
+    }
+    echo '[OK] re-login keeps only one active entry for the same device' . PHP_EOL;
+    $reactivated = $sameDeviceAfterLogout;
     expect_status(
         api_request('POST', "users/{$testUserId}/mark-deletion", accessToken: $teacher['access_token']),
         200,

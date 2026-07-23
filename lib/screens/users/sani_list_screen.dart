@@ -36,7 +36,17 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
     super.dispose();
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool preserveOnError = false}) async {
+    if (preserveOnError) {
+      try {
+        final users = await _load();
+        if (mounted) setState(() => _future = Future.value(users));
+      } catch (_) {
+        // Eine erfolgreiche Änderung bleibt erfolgreich, auch wenn das
+        // anschließende Aktualisieren der Liste kurzzeitig fehlschlägt.
+      }
+      return;
+    }
     final next = _load();
     setState(() => _future = next);
     await next;
@@ -52,12 +62,14 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: () async {
-                await showModalBottomSheet<void>(
+                final changed = await showModalBottomSheet<bool>(
                   context: context,
                   isScrollControlled: true,
                   builder: (context) => const _CreateUserSheet(),
                 );
-                await _refresh();
+                if (changed == true) {
+                  await _refresh(preserveOnError: true);
+                }
               },
               icon: const Icon(Icons.person_add_alt_1),
               label: const Text('Account'),
@@ -94,7 +106,7 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const LoadingView(
+                  return const DelayedLoadingView(
                     message: 'Sani-Liste wird geladen ...',
                   );
                 }
@@ -125,12 +137,16 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
                     message: 'Versuche einen anderen Vor- oder Nachnamen.',
                   );
                 }
-                final sanitary = filtered
+                final active = filtered.where((user) => user.isActive).toList();
+                final sanitary = active
                     .where((user) => user.role.isSanitaryRole)
                     .toList();
-                final staff = filtered
+                final staff = active
                     .where((user) => !user.role.isSanitaryRole)
                     .toList();
+                final inactive = canManage
+                    ? filtered.where((user) => !user.isActive).toList()
+                    : const <User>[];
 
                 return RefreshIndicator(
                   onRefresh: _refresh,
@@ -159,7 +175,7 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
                           _UserTile(
                             user: sanitary[index],
                             canManage: canManage,
-                            onChanged: _refresh,
+                            onChanged: () => _refresh(preserveOnError: true),
                           ),
                           if (index != sanitary.length - 1)
                             const SizedBox(height: 10),
@@ -183,9 +199,37 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
                           _UserTile(
                             user: staff[index],
                             canManage: canManage,
-                            onChanged: _refresh,
+                            onChanged: () => _refresh(preserveOnError: true),
                           ),
                           if (index != staff.length - 1)
+                            const SizedBox(height: 10),
+                        ],
+                      ],
+                      if (inactive.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Deaktivierte Accounts',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Nur Sani-Leitung und Lehreraufsicht können diese Accounts sehen und verwalten.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 10),
+                        for (
+                          var index = 0;
+                          index < inactive.length;
+                          index++
+                        ) ...[
+                          _UserTile(
+                            user: inactive[index],
+                            canManage: canManage,
+                            onChanged: () => _refresh(preserveOnError: true),
+                          ),
+                          if (index != inactive.length - 1)
                             const SizedBox(height: 10),
                         ],
                       ],
@@ -214,32 +258,32 @@ class _UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isSani = user.role == UserRole.sanitaeter;
+    final roleColor = switch (user.role) {
+      UserRole.sanitaeter => const Color(0xFF2563EB),
+      UserRole.saniLeitung => const Color(0xFF16A34A),
+      _ => null,
+    };
     final scheme = Theme.of(context).colorScheme;
     return Card(
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          border: isSani
-              ? const Border(
-                  left: BorderSide(color: Color(0xFF16A34A), width: 5),
-                )
+          border: roleColor != null
+              ? Border(left: BorderSide(color: roleColor, width: 5))
               : null,
         ),
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: isSani
-                ? const Color(0xFF16A34A).withValues(alpha: 0.16)
+            backgroundColor: roleColor != null
+                ? roleColor.withValues(alpha: 0.16)
                 : scheme.secondaryContainer,
-            foregroundColor: isSani
-                ? const Color(0xFF15803D)
-                : scheme.onSecondaryContainer,
+            foregroundColor: roleColor ?? scheme.onSecondaryContainer,
             child: Text(
               user.firstName.isEmpty ? '?' : user.firstName.characters.first,
             ),
           ),
           title: Text(user.fullName),
-          subtitle: Text('${user.role.label} · ${_statusLabel(user.status)}'),
+          subtitle: Text(user.role.label),
           trailing: canManage ? const Icon(Icons.chevron_right) : null,
           onTap: canManage
               ? () async {
@@ -329,7 +373,7 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
             role: _role.toJson(),
             sanitaeterSince: _sanitaeterSince,
           );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -474,10 +518,3 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
   String? _required(String? value) =>
       value == null || value.trim().isEmpty ? 'Pflichtfeld' : null;
 }
-
-String _statusLabel(String status) => switch (status) {
-  'active' => 'aktiv',
-  'inactive' => 'deaktiviert',
-  'pending_deletion' => 'Löschung vorgemerkt',
-  _ => status,
-};

@@ -32,7 +32,17 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     return ref.read(userRepositoryProvider).userProfile(widget.userId);
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool preserveOnError = false}) async {
+    if (preserveOnError) {
+      try {
+        final data = await _load();
+        if (mounted) setState(() => _future = Future.value(data));
+      } catch (_) {
+        // Die vorherige Detailansicht bleibt erhalten, wenn nur das
+        // Nachladen nach einer erfolgreichen Änderung scheitert.
+      }
+      return;
+    }
     final next = _load();
     setState(() => _future = next);
     await next;
@@ -48,7 +58,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingView(message: 'Profil wird geladen ...');
+            return const DelayedLoadingView(message: 'Profil wird geladen ...');
           }
           if (snapshot.hasError) {
             return ErrorView(error: snapshot.error, onRetry: _refresh);
@@ -148,10 +158,18 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref.read(userRepositoryProvider).deactivate(user.id);
-      await _refresh();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(userRepositoryProvider).deactivate(user.id),
+    );
+    if (succeeded) {
+      await _refresh(preserveOnError: true);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account wurde deaktiviert.')),
+        );
+      }
+    }
   }
 
   Future<void> _reactivate(BuildContext context, User user) async {
@@ -162,10 +180,18 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       confirmLabel: 'Reaktivieren',
     );
     if (!confirmed || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref.read(userRepositoryProvider).reactivate(user.id);
-      await _refresh();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(userRepositoryProvider).reactivate(user.id),
+    );
+    if (succeeded) {
+      await _refresh(preserveOnError: true);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account wurde reaktiviert.')),
+        );
+      }
+    }
   }
 
   Future<void> _markDeletion(BuildContext context, User user) async {
@@ -178,10 +204,18 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref.read(userRepositoryProvider).markDeletion(user.id);
-      await _refresh();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(userRepositoryProvider).markDeletion(user.id),
+    );
+    if (succeeded) {
+      await _refresh(preserveOnError: true);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Löschung wurde vorgemerkt.')),
+        );
+      }
+    }
   }
 
   Future<void> _changeRole(BuildContext context, User user) async {
@@ -222,24 +256,34 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       ),
     );
     if (confirmed != true || selected == user.role || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref.read(userRepositoryProvider).changeRole(user.id, selected);
-      await _refresh();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(userRepositoryProvider).changeRole(user.id, selected),
+    );
+    if (succeeded) {
+      await _refresh(preserveOnError: true);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rolle wurde aktualisiert.')),
+        );
+      }
+    }
   }
 
-  Future<void> _runAction(
+  Future<bool> _runAction(
     BuildContext context,
     Future<void> Function() action,
   ) async {
     try {
       await action();
+      return true;
     } catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(userErrorMessage(error))));
       }
+      return false;
     }
   }
 }

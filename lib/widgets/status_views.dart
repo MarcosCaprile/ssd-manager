@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../utils/user_error_message.dart';
@@ -22,6 +24,45 @@ class LoadingView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class DelayedLoadingView extends StatefulWidget {
+  const DelayedLoadingView({
+    super.key,
+    this.message = 'Wird geladen ...',
+    this.delay = const Duration(seconds: 2),
+  });
+
+  final String message;
+  final Duration delay;
+
+  @override
+  State<DelayedLoadingView> createState() => _DelayedLoadingViewState();
+}
+
+class _DelayedLoadingViewState extends State<DelayedLoadingView> {
+  Timer? _timer;
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(widget.delay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.expand();
+    return LoadingView(message: widget.message);
   }
 }
 

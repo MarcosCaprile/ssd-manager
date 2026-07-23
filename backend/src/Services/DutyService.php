@@ -31,6 +31,10 @@ final class DutyService
         for ($i = 0; $i < 14; $i++) {
             $date = $today->modify("+{$i} days")->format('Y-m-d');
             if ($this->rules->isWeekend($date)) {
+                $dayId = $this->findDutyDayId($auth->schoolId(), $date);
+                if ($dayId !== null && $this->isExplicitWeekendDuty($dayId, $auth->schoolId())) {
+                    $days[] = $this->serializeDutyDay($dayId, $auth->schoolId());
+                }
                 continue;
             }
             $dayId = $this->ensureDutyDay($auth->schoolId(), $date);
@@ -49,6 +53,7 @@ final class DutyService
             'SELECT id FROM duty_days
              WHERE school_id = :school_id AND duty_date >= (CURRENT_DATE - INTERVAL 1 YEAR)
                AND duty_date < CURRENT_DATE
+               AND (WEEKDAY(duty_date) < 5 OR title IS NOT NULL OR is_closed = 1)
                ' . $dateFilter . '
              ORDER BY duty_date DESC'
         );
@@ -74,7 +79,6 @@ final class DutyService
         ?string $description,
     ): array {
         $this->requireManager($auth);
-        $this->requireWeekday($date);
         if ($this->findDutyDayId($auth->schoolId(), $date) !== null) {
             Response::error('Für dieses Datum ist bereits ein Diensttag oder Ausfall eingetragen.', 409);
         }
@@ -123,10 +127,12 @@ final class DutyService
         bool $isClosed,
     ): array {
         $this->requireManager($auth);
-        $this->requireWeekday($date);
         $dayId = $this->findDutyDayId($auth->schoolId(), $date);
         if ($dayId === null) {
             Response::error('Diensttag wurde nicht gefunden.', 404);
+        }
+        if ($this->rules->isWeekend($date) && trim((string) $title) === '') {
+            Response::error('Ein Diensttag am Wochenende benötigt einen Namen.', 422);
         }
 
         $this->pdo->beginTransaction();
@@ -279,7 +285,6 @@ final class DutyService
     public function resetDay(AuthContext $auth, string $date): array
     {
         $this->requireManager($auth);
-        $this->requireWeekday($date);
         $dayId = $this->findDutyDayId($auth->schoolId(), $date);
         if ($dayId === null) {
             Response::error('Für dieses Datum gibt es keinen besonderen Eintrag.', 404);
@@ -288,14 +293,51 @@ final class DutyService
         $this->pdo->beginTransaction();
         try {
             $this->lockDutyDay($dayId, $auth->schoolId());
-            $capacity = max(Config::int('DUTY_CAPACITY', 3), $this->plannedCount($dayId));
+            $isWeekend = $this->rules->isWeekend($date);
+            $planned = $this->plannedCount($dayId);
+            if ($isWeekend && $planned > 0) {
+                $this->pdo->rollBack();
+                Response::error(
+                    'Entferne zuerst alle eingetragenen Sanis, bevor du diesen Wochenenddienst löschst.',
+                    409
+                );
+            }
+            if ($isWeekend) {
+                $this->pdo->prepare(
+                    'DELETE FROM duty_days WHERE id = :id AND school_id = :school_id'
+                )->execute([
+                    'id' => $dayId,
+                    'school_id' => $auth->schoolId(),
+                ]);
+                $this->audit->log(
+                    $auth->schoolId(),
+                    $auth->userId(),
+                    'duty.weekend_event_removed',
+                    null,
+                    'duty_day',
+                    $dayId,
+                    ['date' => $date]
+                );
+                $this->pdo->commit();
+                return [
+                    'date' => $date,
+                    'title' => null,
+                    'description' => null,
+                    'capacity' => Config::int('DUTY_CAPACITY', 3),
+                    'is_active' => false,
+                    'is_closed' => false,
+                    'assignments' => [],
+                ];
+            }
+            $capacity = max(Config::int('DUTY_CAPACITY', 3), $planned);
             $this->pdo->prepare(
                 'UPDATE duty_days
                  SET title = NULL, description = NULL, capacity = :capacity,
-                     is_active = 1, is_closed = 0, updated_at = UTC_TIMESTAMP()
+                     is_active = :is_active, is_closed = 0, updated_at = UTC_TIMESTAMP()
                  WHERE id = :id AND school_id = :school_id'
             )->execute([
                 'capacity' => $capacity,
+                'is_active' => 1,
                 'id' => $dayId,
                 'school_id' => $auth->schoolId(),
             ]);
@@ -401,6 +443,10 @@ final class DutyService
     public function details(AuthContext $auth, string $date): array
     {
         if ($this->rules->isWeekend($date)) {
+            $dayId = $this->findDutyDayId($auth->schoolId(), $date);
+            if ($dayId !== null) {
+                return $this->serializeDutyDay($dayId, $auth->schoolId());
+            }
             return [
                 'date' => $date,
                 'title' => null,
@@ -419,7 +465,10 @@ final class DutyService
         if (!$auth->canAssignSelfToDuty()) {
             Response::error('Mit deiner Rolle kannst du dich nicht für einen Sanitätsdienst eintragen.', 403);
         }
-        if (!$this->rules->canBook($date)) {
+        if (
+            !$this->rules->isWithinUpcomingWindow($date)
+            || ($this->rules->isWeekend($date) && !$this->hasActiveWeekendEvent($auth->schoolId(), $date))
+        ) {
             Response::error('Dieser Dienst kann nicht gebucht werden.', 422);
         }
         $this->assign($auth, $date, $auth->userId(), 'self', $auth->userId());
@@ -477,8 +526,8 @@ final class DutyService
         if (!$auth->canManageDuties()) {
             Response::error('Keine Berechtigung.', 403);
         }
-        if ($this->rules->isWeekend($date)) {
-            Response::error('An Wochenenden gibt es keinen Dienst.', 422);
+        if ($this->rules->isWeekend($date) && !$this->hasActiveWeekendEvent($auth->schoolId(), $date)) {
+            Response::error('An diesem Wochenende ist kein Diensttag eingetragen.', 422);
         }
         $target = $this->findActiveAssignableUser($auth->schoolId(), $userId);
         $this->assign($auth, $date, $userId, $auth->role() === 'teacher' ? 'teacher' : 'sani_leitung', $auth->userId());
@@ -811,11 +860,18 @@ final class DutyService
         }
     }
 
-    private function requireWeekday(string $date): void
+    private function hasActiveWeekendEvent(int $schoolId, string $date): bool
     {
-        if ($this->rules->isWeekend($date)) {
-            Response::error('Samstage und Sonntage können nicht als Diensttage angelegt werden.', 422);
-        }
+        $dayId = $this->findDutyDayId($schoolId, $date);
+        return $dayId !== null && $this->isExplicitWeekendDuty($dayId, $schoolId);
+    }
+
+    private function isExplicitWeekendDuty(int $dayId, int $schoolId): bool
+    {
+        $day = $this->locklessDutyDay($dayId, $schoolId);
+        return trim((string) ($day['title'] ?? '')) !== ''
+            && (bool) $day['is_active']
+            && !(bool) $day['is_closed'];
     }
 
     private function findDutyDayId(int $schoolId, string $date): ?int

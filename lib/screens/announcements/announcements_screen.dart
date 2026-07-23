@@ -62,6 +62,18 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     await next;
   }
 
+  Future<void> _refreshPreservingContent() async {
+    try {
+      final items = await _load();
+      if (mounted) {
+        setState(() => _future = Future.value(List.unmodifiable(items)));
+      }
+    } catch (_) {
+      // Bereits sichtbare Ankündigungen bleiben erhalten. Ein späteres
+      // Pull-to-refresh kann die Aktualisierung erneut versuchen.
+    }
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if ((text.isEmpty && _pending.isEmpty) ||
@@ -106,6 +118,9 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(announcementRevisionProvider, (previous, next) {
+      if (previous != next) _refreshPreservingContent();
+    });
     final currentUser = ref.watch(authControllerProvider).user;
     final canSend =
         !_sending &&
@@ -120,7 +135,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
               future: _future,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done) {
-                  return const LoadingView(
+                  return const DelayedLoadingView(
                     message: 'Ankündigungen werden geladen ...',
                   );
                 }
@@ -543,15 +558,18 @@ class _AnnouncementBubble extends StatelessWidget {
             if (announcement.message.isNotEmpty)
               Text(announcement.message, style: const TextStyle(fontSize: 14)),
             const SizedBox(height: 2),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                DateFormatters.chatTimestamp(announcement.createdAt),
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 10.5,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  DateFormatters.chatTimestamp(announcement.createdAt),
+                  style: TextStyle(
+                    color: scheme.onSurfaceVariant,
+                    fontSize: 10.5,
+                  ),
                 ),
-              ),
+              ],
             ),
           ],
         ),

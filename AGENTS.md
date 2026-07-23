@@ -117,10 +117,27 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 ## Working Rules
 
 - Do not commit secrets or local environment files. Keep `backend/.env`, Firebase config files, service-account JSON files, signing keys, and local build output out of Git.
+- After completing and verifying an implementation task, automatically commit
+  and push the task's intended changes to the current branch unless the user
+  explicitly asks not to. Never include unrelated user files. Railway or other
+  production deployments remain separate and require an explicit deployment
+  request.
 - Preserve the role model and school boundary checks. Security-sensitive rules must be enforced server-side, not only in Flutter UI.
 - Never display raw exception, URL, API, SQL, or response-body details to app users. Route errors through the shared safe user-message mapping.
 - Prefer the existing architecture: Riverpod providers and repositories on the Flutter side; controller/service/core separation on the PHP side.
 - Keep V1 scope focused. The shared announcement channel supports explicitly requested photo/file attachments; private chat, open registration, and broad social features remain out of scope unless explicitly requested.
+- Ordinary Saturdays and Sundays stay absent from the duty plan, but managers
+  may create explicitly named weekend events. Manually created duty days always
+  require a title, and duty capacity is limited to 1–50.
+- Deleting a claimed announcement attachment removes its bytes and frees quota,
+  but keeps the announcement and attachment tombstone so the conversation shows
+  that its content was deleted.
+- `device_install_id` is a random installation identifier persisted outside the
+  login session. It must survive logout and is used to replace stale active
+  sessions from the same app installation.
+- A successful mutation must not be reported as failed only because its
+  follow-up refresh failed. Keep already loaded panel content cached, refresh it
+  explicitly when needed, and delay full loading indicators for two seconds.
 
 ## Project Memory Protocol
 

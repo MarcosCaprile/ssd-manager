@@ -43,9 +43,15 @@ Login-Body:
   "platform": "android",
   "device_model": "Google Pixel",
   "app_version": "1.0.0+1",
+  "device_install_id": "64-character-random-installation-id",
   "firebase_token": "optional"
 }
 ```
+
+`device_install_id` ist eine zufällige, pro App-Installation dauerhaft
+gespeicherte Kennung. Bei einem erneuten Login derselben Installation ersetzt
+die neue Sitzung eine noch aktive alte Sitzung. Clients ohne Kennung bleiben
+vorerst kompatibel.
 
 ## Eigener Account
 
@@ -57,16 +63,18 @@ Login-Body:
 | DELETE | `/me/devices/{id}` | Eigenes anderes Gerät abmelden |
 | DELETE | `/me/devices` | Alle anderen eigenen Geräte abmelden |
 | GET | `/me/attachments?sort=date_desc` | Eigene Cloud-Dateien und 100-MB-Nutzung |
-| DELETE | `/me/attachments/{id}` | Eigene Cloud-Datei dauerhaft löschen |
+| DELETE | `/me/attachments/{id}` | Inhalt der eigenen Cloud-Datei löschen und Speicher freigeben |
 
 Für die Dateiliste sind `date_desc`, `date_asc`, `size_desc` und `size_asc`
 zulässig. Die Nutzung umfasst auch noch keiner Nachricht zugeordnete Uploads.
+Bei einem bereits versendeten Anhang bleiben Nachricht und Metadaten erhalten;
+die Dateibytes werden entfernt und der Anhang wird als gelöscht markiert.
 
 ## Dienstplan
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| GET | `/duties/upcoming` | Werktage von heute bis einschließlich Tag 14 |
+| GET | `/duties/upcoming` | Werktage und explizite Wochenend-Events von heute bis einschließlich Tag 14 |
 | GET | `/duties/history?date=YYYY-MM-DD` | Letztes Jahr, optional nach exaktem Datum gefiltert |
 | POST | `/duties` | Lehrer/Leitung: Diensttag anlegen |
 | PATCH | `/duties/{date}` | Lehrer/Leitung: Diensttag oder Ausfall bearbeiten |
@@ -93,8 +101,10 @@ Diensttag anlegen:
 }
 ```
 
-`capacity` liegt zwischen 1 und 20. `title` und `description` sind optional.
-Beim Bearbeiten enthält der Body dieselben Felder plus `is_closed`.
+`capacity` liegt zwischen 1 und 50. `title` ist beim Anlegen immer erforderlich,
+`description` bleibt optional. Explizit benannte Diensttage dürfen auch an
+Samstagen und Sonntagen angelegt werden. Beim Bearbeiten enthält der Body
+dieselben Felder plus `is_closed`; Wochenend-Events müssen ihren Namen behalten.
 
 Ausfall oder Ferien:
 
@@ -112,8 +122,10 @@ werden innerhalb des Zeitraums ausgelassen. Ein Tag mit geplanten Eintragungen
 kann erst geschlossen werden, nachdem diese Eintragungen entfernt wurden.
 
 `POST /duties/{date}/reset` entfernt Titel, Beschreibung und Ausfallmarkierung
-und stellt einen normalen aktiven Diensttag wieder her. Bestehende
-Eintragungen bleiben erhalten. `/duties/closures/reset` erhält
+und stellt an Werktagen einen normalen aktiven Diensttag wieder her. Ein
+unbelegtes Wochenend-Event wird beim Zurücksetzen vollständig entfernt; ein
+belegtes Wochenend-Event muss zuerst geleert werden. Bestehende Eintragungen an
+Werktagen bleiben erhalten. `/duties/closures/reset` erhält
 `start_date`/`end_date` und hebt nur Ausfalltage im gewählten Zeitraum auf.
 
 ## Ankündigungen
@@ -143,6 +155,10 @@ Nutzer derselben Schule einmalig einer Nachricht zugeordnet werden.
 Nicht zugeordnete Uploads werden nach einem Tag durch den Wartungsjob entfernt.
 Downloads benötigen immer eine gültige Sitzung und werden auf die eigene Schule
 begrenzt.
+
+Gelöschte versendete Anhänge bleiben in der Nachricht als Metadatensatz mit
+`is_deleted: true` erhalten. Ihr Download liefert keinen Dateiinhalt mehr; die
+App zeigt stattdessen `Dieser Inhalt wurde gelöscht.` an.
 
 ## Nutzerverwaltung
 
@@ -176,3 +192,9 @@ ein nicht in der Zukunft liegendes Datum erforderlich:
 `sanitaeter`, `sani_leitung`, `teacher` und `sekretariat`. Die normale
 Rollenänderung ist serverseitig ausschließlich auf `sanitaeter` ↔
 `sani_leitung` für bereits bestehende Saniprofile begrenzt.
+
+Deaktivierte Accounts werden nur Lehreraufsicht und Sani-Leitung in einem
+separaten Verwaltungsabschnitt geliefert. Beim Deaktivieren werden alle
+Sitzungen sofort widerrufen. Ein Loginversuch erhält den verständlichen Hinweis,
+dass der Account deaktiviert ist und eine verantwortliche Person der Schule
+kontaktiert werden soll.

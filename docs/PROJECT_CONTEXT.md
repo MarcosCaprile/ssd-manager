@@ -169,6 +169,34 @@ Verified on the MacBook through 2026-07-23:
   the database healthcheck returned HTTP 200. Unauthenticated probes of the
   new storage and closure-reset routes returned HTTP 401, confirming that the
   deployed routes are present and protected.
+- The current continuation allows managers to create named
+  weekend duty events while keeping ordinary weekends hidden. New duty days
+  require a title, capacity is limited to 1–50, and unoccupied weekend events
+  can be removed completely.
+- Migration `005_attachment_tombstones.sql` keeps an announcement visible when
+  its owner deletes the attached file from profile storage: file bytes and
+  quota usage disappear, while an italic deleted-content marker replaces the
+  preview. Migration `006_device_install_identity.sql` adds a persistent random
+  app-installation identity so logout/login no longer leaves duplicate active
+  device rows.
+- The Sani list marks Schulsanitäter blue and Sani-Leitung green, removes
+  public active-status text, and shows inactive accounts only to
+  Sani-Leitung/teachers in a separate bottom section. Account deactivation and
+  deletion marking revoke every session; inactive login returns a safe,
+  actionable explanation.
+- Main navigation panels are loaded lazily and retained after their first
+  visit. Full loading indicators are delayed for two seconds, existing content
+  remains visible during refreshes, and successful mutations are no longer
+  reported as failures merely because a following refresh failed.
+- The profile is now a compact menu whose settings open dedicated appearance,
+  statistics, registered-device, cloud-storage, and password pages. Logout is
+  a confirmed red button at the bottom.
+- Final local verification for this continuation passed `flutter analyze`, 25
+  Flutter tests, syntax checking of every backend PHP file, the four PHP rule
+  tests, and all API smoke suites for general behavior, writes, duties,
+  attachments, secretariat, security, and concurrency. Migrations 001–006 are
+  applied locally and an immediate rerun skipped all six. Smoke-test data was
+  cleaned up. Migrations 005–006 are not yet deployed to Railway.
 
 ## Implemented Flutter App
 
@@ -179,8 +207,10 @@ The Flutter app currently includes:
 - Access-token and refresh-token flow.
 - Forced password change on first login.
 - Duty schedule for upcoming 14 days and history.
-- Weekend-free schedule lists and exact-date calendar search in history.
-- Manager creation/editing of duty days with per-day capacity, title, and description.
+- Weekday schedule lists plus explicitly named weekend events and exact-date
+  calendar search in history.
+- Manager creation/editing of duty days with required title, optional
+  description, and per-day capacity from 1 to 50.
 - Single-day and ranged holiday/school-closure entry with red unavailable cards.
 - Manager reset actions for event metadata and holiday/school-closure ranges.
 - Self sign-up, regular removal, and sick reporting for duties.
@@ -188,14 +218,15 @@ The Flutter app currently includes:
 - Announcement reading and sending.
 - Compact grouped announcement bubbles with authenticated photo/file
   attachments, previews, full-screen image zoom, and system file opening.
-- First-aider list with name search, green Schulsanitäter marking, and a
-  separate teacher/secretariat section at the bottom.
+- First-aider list with name search, blue Schulsanitäter and green
+  Sani-Leitung marking, a separate teacher/secretariat section, and a
+  manager-only inactive-account section at the bottom.
 - User detail view with immutable `Sanitäter seit`, role-appropriate
   statistics, and restricted Sani/Sani-Leitung role management.
 - Account creation, deactivation, reactivation, and delete-marking flows.
-- Own profile with role-appropriate statistics, 100 MB file storage
-  management, appearance settings, password change, device management, and
-  confirmed logout.
+- Own profile menu with dedicated role-appropriate statistics, 100 MB file
+  storage, appearance, password, and device pages plus confirmed red logout at
+  the bottom.
 - Prepared push/deep-link routes.
 
 ## Implemented Backend
@@ -218,9 +249,11 @@ The PHP backend currently includes:
 - Authenticated, school-scoped announcement attachment upload/download,
   allowlisted types, size/count limits, and orphan cleanup.
 - A transactional 100 MB attachment quota per user plus owner-only storage
-  listing and deletion.
+  listing and tombstone deletion that preserves shared messages.
 - Server-enforced secretariat permissions and immutable sanitary start dates.
 - Reversible manager reset endpoints for special duty days and closure ranges.
+- Persistent app-installation identities for active-session deduplication and
+  immediate all-session revocation when an account is deactivated.
 
 Important backend rules already exist server-side:
 
@@ -248,6 +281,13 @@ The repository already contains:
 
 Technical gaps:
 
+- The current continuation and migrations 005–006 are not yet deployed.
+  Railway is still on GitHub commit `4ffb110` and schema 001–004 until a
+  deployment is explicitly requested.
+- The new weekend-event, tombstone, inactive-account, device-session, delayed
+  loading, compact-bubble, and profile-navigation UX still needs an
+  interactive acceptance run in the iOS simulator and on the Android test
+  phone.
 - Railway API, MySQL, automatic migration, secret-backed variables, container build, and public HTTPS healthcheck are operational. Production still needs the first real school and teacher account, a backup schedule, the Railway cron service, and optionally a custom API domain.
 - The corrected Android test APK points to the live Railway HTTPS API, but it still needs an end-to-end run on the owner's physical phone.
 - The authenticated iOS journey for the production test teacher is verified across the main read paths. Mutating duty and account workflows that require a separate student target still need end-to-end testing after additional test accounts exist.

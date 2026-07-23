@@ -43,7 +43,7 @@ final class DutyController
             $auth,
             Validation::date((string) ($data['date'] ?? '')),
             $this->capacity($data),
-            Validation::optionalString($data, 'title', 180),
+            Validation::string($data, 'title', 1, 180),
             Validation::optionalString($data, 'description', 1000),
         ), 201);
     }
@@ -170,8 +170,8 @@ final class DutyController
     private function capacity(array $data): int
     {
         $capacity = filter_var($data['capacity'] ?? null, FILTER_VALIDATE_INT);
-        if ($capacity === false || $capacity < 1 || $capacity > 20) {
-            Response::error('Die Anzahl benötigter Sanis muss zwischen 1 und 20 liegen.', 422);
+        if ($capacity === false || $capacity < 1 || $capacity > 50) {
+            Response::error('Die Anzahl benötigter Sanis muss zwischen 1 und 50 liegen.', 422);
         }
         return $capacity;
     }

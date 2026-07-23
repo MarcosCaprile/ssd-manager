@@ -37,3 +37,9 @@ Serverseitige Regeln:
 - Ankündigungsanhänge sind nur mit gültiger Sitzung innerhalb der eigenen Schule abrufbar.
 - Eigene Anhänge unterliegen einer serverseitigen 100-MB-Quote und können nur
   vom Uploader in dessen Speicherverwaltung gelöscht werden.
+- Aktive Schulsanitäter werden blau und aktive Sani-Leitung grün markiert.
+  Deaktivierte Accounts erscheinen ohne öffentlichen Aktiv-Text ausschließlich
+  für Lehreraufsicht und Sani-Leitung in einem getrennten Abschnitt am
+  Listenende.
+- Das Deaktivieren oder Vormerken zur Löschung widerruft alle aktiven Sitzungen
+  des betroffenen Accounts sofort.

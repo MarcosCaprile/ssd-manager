@@ -33,6 +33,7 @@ void main() {
     expect(announcement.attachments, hasLength(2));
     expect(announcement.attachments.first.fileName, 'einsatzplan.png');
     expect(announcement.attachments.first.isImage, isTrue);
+    expect(announcement.attachments.first.isDeleted, isFalse);
     expect(announcement.attachments.last.mimeType, 'application/pdf');
   });
 
@@ -57,5 +58,28 @@ void main() {
 
     expect(announcement.message, isEmpty);
     expect(announcement.attachments.single.isImage, isTrue);
+  });
+
+  test('parses deleted attachment markers', () {
+    final announcement = Announcement.fromJson({
+      'id': 44,
+      'sender_user_id': 7,
+      'sender_name': 'Thomas Tomate',
+      'sender_role': 'sanitaeter',
+      'message': '',
+      'created_at': '2026-07-23 17:05:00',
+      'attachments': [
+        {
+          'id': 14,
+          'file_name': 'geloescht.pdf',
+          'mime_type': 'application/pdf',
+          'size_bytes': 500,
+          'is_image': false,
+          'is_deleted': true,
+        },
+      ],
+    });
+
+    expect(announcement.attachments.single.isDeleted, isTrue);
   });
 }

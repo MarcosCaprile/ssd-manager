@@ -106,7 +106,7 @@ class _DutyScheduleScreenState extends ConsumerState<DutyScheduleScreen> {
       );
     }
     if (changed) {
-      await _refreshAll();
+      await _refreshAll(preserveOnError: true);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Dienstplan wurde aktualisiert.')),
@@ -115,11 +115,12 @@ class _DutyScheduleScreenState extends ConsumerState<DutyScheduleScreen> {
     }
   }
 
-  Future<void> _refreshAll() async {
+  Future<void> _refreshAll({bool preserveOnError = false}) async {
     await Future.wait([
       if (_upcomingKey.currentState != null)
-        _upcomingKey.currentState!.refresh(),
-      if (_historyKey.currentState != null) _historyKey.currentState!.refresh(),
+        _upcomingKey.currentState!.refresh(preserveOnError: preserveOnError),
+      if (_historyKey.currentState != null)
+        _historyKey.currentState!.refresh(preserveOnError: preserveOnError),
     ]);
   }
 }
@@ -156,10 +157,20 @@ class _DutyListState extends ConsumerState<_DutyList>
     final days = widget.mode == _DutyListMode.upcoming
         ? await repository.upcoming()
         : await repository.history(date: _historyDate);
-    return days.where((day) => !DutyRules.isWeekend(day.date)).toList();
+    return days;
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh({bool preserveOnError = false}) async {
+    if (preserveOnError) {
+      try {
+        final days = await _load();
+        if (mounted) setState(() => _future = Future.value(days));
+      } catch (_) {
+        // Die Speicherung war erfolgreich. Ein fehlgeschlagenes Nachladen
+        // darf nicht nachträglich als fehlgeschlagene Aktion erscheinen.
+      }
+      return;
+    }
     final next = _load();
     setState(() {
       _future = next;
@@ -171,7 +182,7 @@ class _DutyListState extends ConsumerState<_DutyList>
   Widget build(BuildContext context) {
     super.build(context);
     final user = ref.watch(authControllerProvider).user;
-    if (user == null) return const LoadingView();
+    if (user == null) return const DelayedLoadingView();
 
     final list = _buildList(user);
     if (widget.mode == _DutyListMode.upcoming) return list;
@@ -192,7 +203,9 @@ class _DutyListState extends ConsumerState<_DutyList>
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const LoadingView(message: 'Dienstplan wird geladen ...');
+          return const DelayedLoadingView(
+            message: 'Dienstplan wird geladen ...',
+          );
         }
         if (snapshot.hasError) {
           return ErrorView(error: snapshot.error, onRetry: refresh);
@@ -222,7 +235,7 @@ class _DutyListState extends ConsumerState<_DutyList>
               day: days[index],
               currentUser: user,
               readOnly: widget.mode == _DutyListMode.history,
-              onChanged: refresh,
+              onChanged: () => refresh(preserveOnError: true),
             ),
             separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemCount: days.length,
@@ -247,7 +260,6 @@ class _DutyListState extends ConsumerState<_DutyList>
       helpText: 'DATUM IN DER VERGANGENHEIT',
       cancelText: 'ABBRECHEN',
       confirmText: 'SUCHEN',
-      selectableDayPredicate: (date) => !DutyRules.isWeekend(date),
     );
     if (selected == null) return;
     setState(() {
@@ -342,7 +354,7 @@ class _DutyDayCard extends ConsumerWidget {
         !readOnly &&
         day.isActive &&
         !day.isClosed &&
-        DutyRules.canBook(now, day.date) &&
+        DutyRules.isWithinUpcomingWindow(now, day.date) &&
         currentUser.role.canAssignSelf &&
         !day.isFull &&
         selfAssignment == null;
@@ -527,10 +539,11 @@ class _DutyDayCard extends ConsumerWidget {
       confirmLabel: 'Eintragen',
     );
     if (!confirmed || !context.mounted) return;
-    final succeeded = await _runAction(context, () async {
-      await ref.read(dutyRepositoryProvider).selfAssign(day.date);
-      await onChanged();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(dutyRepositoryProvider).selfAssign(day.date),
+    );
+    if (succeeded) await onChanged();
     if (succeeded && context.mounted) {
       ScaffoldMessenger.of(
         context,
@@ -547,10 +560,11 @@ class _DutyDayCard extends ConsumerWidget {
       confirmLabel: 'Austragen',
     );
     if (!confirmed || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref.read(dutyRepositoryProvider).selfCancel(day.date);
-      await onChanged();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(dutyRepositoryProvider).selfCancel(day.date),
+    );
+    if (succeeded) await onChanged();
   }
 
   Future<void> _sickReport(BuildContext context, WidgetRef ref) async {
@@ -563,10 +577,11 @@ class _DutyDayCard extends ConsumerWidget {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref.read(dutyRepositoryProvider).sickReport(day.date);
-      await onChanged();
-    });
+    final succeeded = await _runAction(
+      context,
+      () => ref.read(dutyRepositoryProvider).sickReport(day.date),
+    );
+    if (succeeded) await onChanged();
   }
 
   Future<void> _adminRemove(
@@ -583,16 +598,16 @@ class _DutyDayCard extends ConsumerWidget {
       destructive: true,
     );
     if (!confirmed || !context.mounted) return;
-    await _runAction(context, () async {
-      await ref
-          .read(dutyRepositoryProvider)
-          .adminRemove(day.date, assignment.id);
-      await onChanged();
-    });
+    final succeeded = await _runAction(
+      context,
+      () =>
+          ref.read(dutyRepositoryProvider).adminRemove(day.date, assignment.id),
+    );
+    if (succeeded) await onChanged();
   }
 
   Future<void> _adminAssign(BuildContext context, WidgetRef ref) async {
-    await _runAction(context, () async {
+    final succeeded = await _runAction(context, () async {
       final users = await ref.read(userRepositoryProvider).users();
       final assignedIds = day.assignments.map((item) => item.userId).toSet();
       final candidates = users
@@ -619,8 +634,8 @@ class _DutyDayCard extends ConsumerWidget {
       );
       if (!confirmed) return;
       await ref.read(dutyRepositoryProvider).adminAssign(day.date, selected.id);
-      await onChanged();
     });
+    if (succeeded) await onChanged();
   }
 
   Future<bool> _runAction(

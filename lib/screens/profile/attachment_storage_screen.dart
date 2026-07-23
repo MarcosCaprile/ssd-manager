@@ -31,7 +31,17 @@ class _AttachmentStorageScreenState
     return ref.read(userRepositoryProvider).attachmentStorage(sort: _sort);
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool preserveOnError = false}) async {
+    if (preserveOnError) {
+      try {
+        final storage = await _load();
+        if (mounted) setState(() => _future = Future.value(storage));
+      } catch (_) {
+        // Das Löschen bleibt erfolgreich, auch wenn die aktualisierte
+        // Speicherübersicht erst beim nächsten Öffnen geladen werden kann.
+      }
+      return;
+    }
     final next = _load();
     setState(() => _future = next);
     await next;
@@ -42,14 +52,15 @@ class _AttachmentStorageScreenState
       context,
       title: 'Datei löschen?',
       message:
-          '„${attachment.fileName}“ wird dauerhaft aus der Cloud und aus der Ankündigung entfernt.',
+          '„${attachment.fileName}“ wird dauerhaft aus der Cloud gelöscht. Die Ankündigung bleibt erhalten und zeigt, dass der Inhalt gelöscht wurde.',
       confirmLabel: 'Löschen',
       destructive: true,
     );
     if (!confirmed || !mounted) return;
     try {
       await ref.read(userRepositoryProvider).deleteAttachment(attachment.id);
-      await _refresh();
+      ref.read(announcementRepositoryProvider).evictAttachment(attachment.id);
+      ref.read(announcementRevisionProvider.notifier).bump();
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -61,7 +72,9 @@ class _AttachmentStorageScreenState
           context,
         ).showSnackBar(SnackBar(content: Text(userErrorMessage(error))));
       }
+      return;
     }
+    await _refresh(preserveOnError: true);
   }
 
   @override
@@ -72,7 +85,9 @@ class _AttachmentStorageScreenState
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingView(message: 'Dateien werden geladen ...');
+            return const DelayedLoadingView(
+              message: 'Dateien werden geladen ...',
+            );
           }
           if (snapshot.hasError) {
             return ErrorView(error: snapshot.error, onRetry: _refresh);

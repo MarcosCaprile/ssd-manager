@@ -7,15 +7,22 @@
 - Schulen sind über `school_id` modelliert. Version 1 nutzt eine Schule, bleibt aber mandantenfähig.
 - Diensttage sind lokale Kalendertage in `Europe/Berlin`; Zeitpunkte wie Login, Audit und Notifications werden serverseitig in UTC gespeichert.
 - Dienstplanänderungen laufen transaktionssicher über `SELECT ... FOR UPDATE`.
-- Ein Diensttag trägt Kapazität, optionalen Namen und Beschreibung sowie einen
+- Ein Diensttag trägt Kapazität, Namen und optionale Beschreibung sowie einen
   expliziten Ausfallstatus. Ausfallzeiträume werden als einzelne Werktage
-  gespeichert; Wochenenden existieren nicht als sichtbare Diensttage.
+  gespeichert. Normale Wochenenden bleiben unsichtbar; ausdrücklich benannte,
+  manuell angelegte Wochenend-Events sind eine unterstützte Ausnahme.
 - Ankündigungsanhänge werden für V1 als authentifiziert abrufbare BLOBs in
   MySQL gespeichert. Es entstehen keine öffentlichen Datei-URLs; Schule,
   Uploader, Nachricht, Typ und Größe werden serverseitig geprüft. Pro Uploader
-  gelten transaktionssicher 100 MB.
+  gelten transaktionssicher 100 MB. Beim Löschen eines versendeten Anhangs
+  werden nur die Bytes entfernt; Nachricht und Tombstone bleiben sichtbar.
 - Flutter rendert sichere, nutzerverständliche Fehler statt technischer
   Ausnahmen und unterstützt persistente System-/Hell-/Dunkel-Darstellung.
+  Hauptpanels werden nach dem ersten Öffnen im `IndexedStack` erhalten;
+  Vollbild-Ladeanzeigen erscheinen erst nach zwei Sekunden.
+- Eine zufällige `device_install_id` überlebt den Logout und erlaubt dem
+  Backend, eine alte aktive Sitzung derselben App-Installation beim erneuten
+  Login zu ersetzen.
 - Firebase wird nur für Push-Benachrichtigungen genutzt. Geräteinformationen bleiben datensparsam.
 
 ## Flutter
@@ -29,7 +36,9 @@ Wichtige Module:
 - `core/push`: defensive FCM-Initialisierung
 - `repositories`: API-Zugriffe je Bereich
 - `providers`: Riverpod-Provider und Auth-State
-- `screens`: Login, Passwortwechsel, Dienstplan, Ankündigungen, Sani-Liste, Profil
+- `screens`: Login, Passwortwechsel, Dienstplan, Ankündigungen, Sani-Liste,
+  Profil und getrennte Profil-Unterseiten für Darstellung, Statistik, Geräte
+  und Cloud-Dateien
 - `utils/duty_rules.dart`: testbare 14-Tage-/48-Stunden-Regeln
 
 ## Backend

@@ -6,6 +6,65 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-23
 
+### Automatically commit and push completed Codex work
+
+Decision: After a requested implementation is complete and verified, Codex
+commits and pushes the intended changes automatically unless the owner
+explicitly opts out. Unrelated local files and secrets remain excluded.
+Production deployment is a separate action and is not implied by a Git push.
+
+Reason: The repository is the portable source of truth across devices, so
+completed work should not remain only in an uncommitted MacBook worktree.
+
+### Allow explicitly named weekend duty events
+
+Decision: Ordinary Saturdays and Sundays remain absent from the duty plan.
+Teacher supervision and Sani-Leitung may create an explicitly named weekend
+event, with a required title and capacity from 1 to 50. It is shown and can be
+staffed like an upcoming duty. Reset deletes an unoccupied weekend event;
+occupied events must be emptied first.
+
+Reason: Normal school weekends should not create noise, while real weekend
+school events still need planned first-aid coverage and a safe correction path.
+
+### Preserve messages when attachment content is deleted
+
+Decision: Deleting a claimed file from profile storage removes its BLOB bytes
+and frees quota, but keeps the announcement and an attachment tombstone.
+Readers see an italic deleted-content notice instead of a preview.
+
+Reason: A user's storage cleanup must not remove or structurally damage the
+shared conversation, but the deleted content must no longer be downloadable.
+
+### Identify app installations independently of login sessions
+
+Decision: Each Flutter installation persists a random `device_install_id`
+outside session storage. A new login revokes any previous active session for
+the same user and installation. Logout does not erase the installation ID.
+
+Reason: Device name and model are not unique enough to prevent duplicated
+active-device rows after logout and login.
+
+### Preserve loaded panels and delay loading indicators
+
+Decision: Main navigation panels are loaded lazily once and retained in an
+`IndexedStack`. A full loading indicator is delayed for two seconds. Successful
+mutations and their optional follow-up refreshes are handled separately, so a
+refresh failure cannot turn an already completed action into a false error.
+
+Reason: Sub-second spinners and false post-success failures make the app feel
+unstable even when the underlying operation succeeded.
+
+### Keep inactive account management private
+
+Decision: Ordinary Sanis and secretariat staff see active accounts only.
+Teacher supervision and Sani-Leitung receive a separate inactive-account
+section and may manage it. Deactivation revokes every session immediately, and
+login explains that the account is disabled without exposing technical detail.
+
+Reason: Account status is administrative data, while immediate revocation and
+clear login guidance are necessary for both security and support.
+
 ### Add a read-only Secretariat role
 
 Decision: `sekretariat` can view the duty plan, the school user list, and the
@@ -122,11 +181,16 @@ Decision: Saturdays and Sundays are not returned in upcoming duty lists, are fil
 
 Reason: SSD duties only exist on school days. Omitting weekends gives the mobile list more useful density and avoids presenting inactive pseudo-days.
 
+Status: Superseded by “Allow explicitly named weekend duty events” above.
+
 ### Make duty days editable and model school closures explicitly
 
 Decision: Teacher supervision and lead first-aiders can create and edit weekday duty entries with an optional title, optional description, and a capacity from 1 to 20. They can also create named single-day or multi-day closures; weekends inside a range are skipped, and closures are stored explicitly as `is_closed`, shown in red, and cannot accept assignments.
 
 Reason: Event days need contextual information and variable staffing, while holidays and school-free periods must remain visible and unambiguously unavailable. Existing assignments must be removed before a day can be closed, preventing silent loss of a planned duty.
+
+Status: The weekday-only, optional-title, and 1–20 portions are superseded by
+the newer required-title, explicit-weekend-event, and 1–50 decision above.
 
 ### Track applied database migrations
 

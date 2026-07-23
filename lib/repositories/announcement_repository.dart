@@ -53,4 +53,8 @@ class AnnouncementRepository {
     _attachmentCache[attachmentId] = bytes;
     return bytes;
   }
+
+  void evictAttachment(int attachmentId) {
+    _attachmentCache.remove(attachmentId);
+  }
 }

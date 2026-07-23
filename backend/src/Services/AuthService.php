@@ -54,7 +54,16 @@ final class AuthService
         }
         if ($user['status'] !== 'active') {
             $this->rateLimiter->recordLogin($identifier, $ip, false);
-            Response::error('Dieser Account ist nicht aktiv.', 403);
+            if ($user['status'] === 'inactive') {
+                Response::error(
+                    'Dieser Account wurde deaktiviert. Bitte wende dich an eine verantwortliche Person deiner Schule.',
+                    403
+                );
+            }
+            Response::error(
+                'Dieser Account kann derzeit nicht verwendet werden. Bitte wende dich an eine verantwortliche Person deiner Schule.',
+                403
+            );
         }
 
         $this->rateLimiter->recordLogin($identifier, $ip, true);
@@ -231,20 +240,46 @@ final class AuthService
     {
         $refresh = bin2hex(random_bytes(32));
         $ttlDays = Config::int('REFRESH_TOKEN_TTL_DAYS', 90);
+        $deviceName = mb_substr((string) ($input['device_name'] ?? 'Unbekanntes Gerät'), 0, 120);
+        $platform = mb_substr((string) ($input['platform'] ?? 'unknown'), 0, 32);
+        $deviceModel = mb_substr((string) ($input['device_model'] ?? ''), 0, 120);
+        $appVersion = mb_substr((string) ($input['app_version'] ?? ''), 0, 40);
+        $installId = trim((string) ($input['device_install_id'] ?? ''));
+        if ($installId !== '' && !preg_match('/^[A-Za-z0-9_-]{16,64}$/', $installId)) {
+            Response::error('Die Gerätekennung ist ungültig.', 422);
+        }
+
+        if ($installId !== '') {
+            $this->pdo->prepare(
+                'UPDATE user_devices
+                 SET revoked_at = UTC_TIMESTAMP(), firebase_token = NULL
+                 WHERE user_id = :user_id AND revoked_at IS NULL
+                   AND device_install_id = :device_install_id'
+            )->execute([
+                'user_id' => (int) $user['id'],
+                'device_install_id' => $installId,
+            ]);
+        }
+
         $statement = $this->pdo->prepare(
             'INSERT INTO user_devices
-             (user_id, refresh_token_hash, device_name, platform, device_model, app_version, firebase_token,
+             (user_id, device_install_id, refresh_token_hash, device_name, platform, device_model, app_version, firebase_token,
               created_at, last_active_at, expires_at)
              VALUES
-             (:user_id, :refresh_hash, :device_name, :platform, :device_model, :app_version, :firebase_token,
+             (:user_id, :device_install_id, :refresh_hash, :device_name, :platform, :device_model, :app_version, :firebase_token,
               UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP() + INTERVAL :ttl DAY)'
         );
         $statement->bindValue(':user_id', (int) $user['id'], PDO::PARAM_INT);
+        $statement->bindValue(
+            ':device_install_id',
+            $installId === '' ? null : $installId,
+            $installId === '' ? PDO::PARAM_NULL : PDO::PARAM_STR
+        );
         $statement->bindValue(':refresh_hash', hash('sha256', $refresh));
-        $statement->bindValue(':device_name', mb_substr((string) ($input['device_name'] ?? 'Unbekanntes Gerät'), 0, 120));
-        $statement->bindValue(':platform', mb_substr((string) ($input['platform'] ?? 'unknown'), 0, 32));
-        $statement->bindValue(':device_model', mb_substr((string) ($input['device_model'] ?? ''), 0, 120));
-        $statement->bindValue(':app_version', mb_substr((string) ($input['app_version'] ?? ''), 0, 40));
+        $statement->bindValue(':device_name', $deviceName);
+        $statement->bindValue(':platform', $platform);
+        $statement->bindValue(':device_model', $deviceModel);
+        $statement->bindValue(':app_version', $appVersion);
         $statement->bindValue(':firebase_token', $input['firebase_token'] ?? null);
         $statement->bindValue(':ttl', $ttlDays, PDO::PARAM_INT);
         $statement->execute();

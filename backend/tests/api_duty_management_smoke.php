@@ -137,6 +137,12 @@ try {
     $historyDate = next_weekday($today->modify('-300 days'));
     $closureStart = next_weekday($today->modify('+500 days'));
     $closureEnd = $closureStart->modify('+4 days');
+    $weekend = $today;
+    while (!in_array((int) $weekend->format('N'), [6, 7], true)) {
+        $weekend = $weekend->modify('+1 day');
+    }
+    $unnamedDate = next_weekday($today->modify('+600 days'));
+    $oversizedDate = next_weekday($unnamedDate->modify('+2 days'));
 
     $teacher = duty_login('lehrer', $seedPassword);
     $lead = duty_login('leitung', $seedPassword);
@@ -162,19 +168,90 @@ try {
     expect_duty_status(duty_request('POST', 'duties', [
         'date' => $eventDate->format('Y-m-d'),
         'capacity' => 3,
+        'title' => 'Doppelter Testtag',
     ], $teacher), 409, 'duplicate duty day is rejected');
     expect_duty_status(duty_request('POST', 'duties', [
         'date' => $eventDate->format('Y-m-d'),
         'capacity' => 3,
+        'title' => 'Nicht erlaubt',
     ], $firstAider), 403, 'first-aider cannot create duty day');
-    $weekend = $eventDate;
-    while ((int) $weekend->format('N') !== 6) {
-        $weekend = $weekend->modify('+1 day');
+
+    expect_duty_status(duty_request('POST', 'duties', [
+        'date' => $unnamedDate->format('Y-m-d'),
+        'capacity' => 3,
+    ], $teacher), 422, 'new duty day requires a name');
+    expect_duty_status(duty_request('POST', 'duties', [
+        'date' => $oversizedDate->format('Y-m-d'),
+        'capacity' => 51,
+        'title' => 'Zu große Besetzung',
+    ], $teacher), 422, 'duty capacity above 50 is rejected');
+
+    $weekendEvent = expect_duty_status(duty_request('POST', 'duties', [
+        'date' => $weekend->format('Y-m-d'),
+        'capacity' => 50,
+        'title' => 'Wochenendturnier',
+        'description' => 'Sanitätsdienst am Wochenende.',
+    ], $teacher), 201, 'teacher creates named weekend duty with maximum capacity');
+    if (
+        ($weekendEvent['body']['data']['title'] ?? null) !== 'Wochenendturnier'
+        || (int) ($weekendEvent['body']['data']['capacity'] ?? 0) !== 50
+        || ($weekendEvent['body']['data']['is_active'] ?? false) !== true
+    ) {
+        throw new RuntimeException('Weekend duty did not preserve its event fields.');
+    }
+    remember_test_days($pdo, $testDayIds, [$weekend->format('Y-m-d')]);
+    expect_duty_status(
+        duty_request(
+            'POST',
+            'duties/' . $weekend->format('Y-m-d') . '/self',
+            accessToken: $firstAider
+        ),
+        201,
+        'first-aider can book explicit weekend duty'
+    );
+    expect_duty_status(
+        duty_request(
+            'POST',
+            'duties/' . $weekend->format('Y-m-d') . '/reset',
+            accessToken: $teacher
+        ),
+        409,
+        'occupied weekend event cannot be removed'
+    );
+    $weekendAssignment = $pdo->prepare(
+        'SELECT da.id
+         FROM duty_assignments da
+         JOIN duty_days dd ON dd.id = da.duty_day_id
+         WHERE dd.school_id = 1 AND dd.duty_date = :date
+           AND da.user_id = 3 AND da.status = "planned"
+         LIMIT 1'
+    );
+    $weekendAssignment->execute(['date' => $weekend->format('Y-m-d')]);
+    $weekendAssignmentId = (int) $weekendAssignment->fetchColumn();
+    if ($weekendAssignmentId < 1) {
+        throw new RuntimeException('Weekend test assignment was not stored.');
+    }
+    $pdo->prepare('DELETE FROM duty_assignments WHERE id = :id')
+        ->execute(['id' => $weekendAssignmentId]);
+    $removedWeekend = expect_duty_status(
+        duty_request(
+            'POST',
+            'duties/' . $weekend->format('Y-m-d') . '/reset',
+            accessToken: $lead
+        ),
+        200,
+        'unoccupied weekend event can be removed'
+    );
+    if (($removedWeekend['body']['data']['is_active'] ?? true) !== false) {
+        throw new RuntimeException('Removed weekend event is still active.');
     }
     expect_duty_status(duty_request('POST', 'duties', [
         'date' => $weekend->format('Y-m-d'),
-        'capacity' => 3,
-    ], $teacher), 422, 'weekend duty day is rejected');
+        'capacity' => 50,
+        'title' => 'Wochenendturnier',
+        'description' => 'Sanitätsdienst am Wochenende.',
+    ], $teacher), 201, 'removed weekend event can be recreated');
+    remember_test_days($pdo, $testDayIds, [$weekend->format('Y-m-d')]);
 
     expect_duty_status(duty_request(
         'POST',
@@ -333,13 +410,23 @@ try {
         200,
         'upcoming duty list'
     );
+    $foundWeekendEvent = false;
     foreach (($upcoming['body']['data'] ?? []) as $day) {
         $weekday = (int) (new DateTimeImmutable((string) $day['date']))->format('N');
         if (in_array($weekday, [6, 7], true)) {
-            throw new RuntimeException('Upcoming duty list still contains a weekend.');
+            if (
+                ($day['date'] ?? null) !== $weekend->format('Y-m-d')
+                || ($day['title'] ?? null) !== 'Wochenendturnier'
+            ) {
+                throw new RuntimeException('Upcoming duty list contains an unnamed weekend.');
+            }
+            $foundWeekendEvent = true;
         }
     }
-    echo '[OK] upcoming duty list contains no weekends' . PHP_EOL;
+    if (!$foundWeekendEvent) {
+        throw new RuntimeException('Upcoming duty list omitted the explicit weekend event.');
+    }
+    echo '[OK] upcoming duty list contains only the explicit named weekend event' . PHP_EOL;
 
     expect_duty_status(
         duty_request('POST', 'auth/logout', accessToken: $teacher),

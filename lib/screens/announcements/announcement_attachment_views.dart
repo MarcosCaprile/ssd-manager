@@ -31,13 +31,22 @@ class _AnnouncementAttachmentViewState
   @override
   void initState() {
     super.initState();
-    if (widget.attachment.isImage) {
+    if (widget.attachment.isImage && !widget.attachment.isDeleted) {
       _imageFuture = _loadBytes();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.attachment.isDeleted) {
+      return Text(
+        'Dieser Inhalt wurde gelöscht.',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          fontStyle: FontStyle.italic,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
     if (!widget.attachment.isImage) {
       return _FileAttachment(
         attachment: widget.attachment,

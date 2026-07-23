@@ -109,7 +109,7 @@ class _DutyDayEditorState extends State<_DutyDayEditor> {
             Text(
               _isEditing
                   ? 'Passe den Namen, die Beschreibung und die benötigte Besetzung an.'
-                  : 'Lege einen zusätzlichen Schultag mit allen Dienstplanangaben an.',
+                  : 'Lege einen zusätzlichen Diensttag oder ein Event an – auch am Wochenende.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 20),
@@ -127,12 +127,17 @@ class _DutyDayEditorState extends State<_DutyDayEditor> {
               decoration: InputDecoration(
                 labelText: _isClosed
                     ? 'Name des Ausfalls'
-                    : 'Name des Tages (optional)',
+                    : _isEditing
+                    ? 'Name des Tages'
+                    : 'Name des Events oder Tages',
                 hintText: _isClosed ? 'z. B. Feiertag' : 'z. B. Sportfest',
               ),
               validator: (value) {
-                if (_isClosed && (value == null || value.trim().isEmpty)) {
-                  return 'Bitte gib dem Ausfall einen Namen.';
+                if ((!_isEditing || _isClosed || DutyRules.isWeekend(_date)) &&
+                    (value == null || value.trim().isEmpty)) {
+                  return _isClosed
+                      ? 'Bitte gib dem Ausfall einen Namen.'
+                      : 'Bitte gib dem Diensttag einen Namen.';
                 }
                 return null;
               },
@@ -158,7 +163,7 @@ class _DutyDayEditorState extends State<_DutyDayEditor> {
                 prefixIcon: Icon(Icons.groups_2_outlined),
               ),
               items: [
-                for (var value = 1; value <= 20; value++)
+                for (var value = 1; value <= 50; value++)
                   DropdownMenuItem(value: value, child: Text('$value')),
               ],
               onChanged: _saving
@@ -239,7 +244,6 @@ class _DutyDayEditorState extends State<_DutyDayEditor> {
       helpText: 'DIENSTTAG AUSWÄHLEN',
       cancelText: 'ABBRECHEN',
       confirmText: 'ÜBERNEHMEN',
-      selectableDayPredicate: (date) => !DutyRules.isWeekend(date),
     );
     if (selected != null) setState(() => _date = selected);
   }

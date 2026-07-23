@@ -98,6 +98,13 @@ Pre-Deploy-Schritt hat die versionierten Migrationen `001` bis `004`
 angewendet. Der datenbankgestützte Healthcheck antwortete anschließend mit
 HTTP 200.
 
+Die aktuelle Repository-Weiterentwicklung ergänzt
+`005_attachment_tombstones.sql` und `006_device_install_identity.sql`. Beide
+sind in der lokalen Datenbank angewandt, aber noch nicht auf Railway
+ausgerollt. Beim nächsten ausdrücklich beauftragten Railway-Deployment werden
+sie durch den Pre-Deploy-Schritt eingespielt. Bis dahin erwartet die live
+geschaltete API weiterhin nur das Schema 001–004.
+
 ## Railway-Cronjob
 
 Für `backend/cron/run_due_jobs.php` wird später ein separater Railway-Service

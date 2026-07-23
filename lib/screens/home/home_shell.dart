@@ -16,6 +16,7 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> {
   int _index = 0;
+  final Set<int> _visited = {0};
 
   static const _screens = [
     DutyScheduleScreen(),
@@ -34,7 +35,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         'duty' => 0,
         _ => _index,
       };
-      setState(() => _index = targetIndex);
+      setState(() {
+        _index = targetIndex;
+        _visited.add(targetIndex);
+      });
       ref.read(deepLinkControllerProvider.notifier).consume();
       if (next.route == 'duty' && next.date != null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -44,10 +48,22 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     });
 
     return Scaffold(
-      body: _screens[_index],
+      body: IndexedStack(
+        index: _index,
+        children: [
+          for (var index = 0; index < _screens.length; index++)
+            if (_visited.contains(index))
+              _screens[index]
+            else
+              const SizedBox.shrink(),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
-        onTap: (index) => setState(() => _index = index),
+        onTap: (index) => setState(() {
+          _index = index;
+          _visited.add(index);
+        }),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month_outlined),

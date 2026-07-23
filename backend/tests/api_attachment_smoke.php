@@ -280,10 +280,28 @@ try {
             break;
         }
     }
-    if (!is_array($found) || count($found['attachments'] ?? []) !== 1) {
-        throw new RuntimeException('Announcement list omitted attachment metadata.');
+    if (!is_array($found) || count($found['attachments'] ?? []) !== 2) {
+        throw new RuntimeException('Announcement list omitted attachment metadata or its deletion marker.');
     }
-    echo '[OK] announcement list includes attachment metadata' . PHP_EOL;
+    $deletedAttachment = null;
+    foreach ($found['attachments'] as $attachment) {
+        if ((int) ($attachment['id'] ?? 0) === $textId) {
+            $deletedAttachment = $attachment;
+        }
+    }
+    if (!is_array($deletedAttachment) || ($deletedAttachment['is_deleted'] ?? false) !== true) {
+        throw new RuntimeException('Deleted cloud attachment is not retained as an announcement marker.');
+    }
+    echo '[OK] announcement keeps a marker for deleted cloud content' . PHP_EOL;
+
+    $deletedDownload = attachment_binary_request(
+        "announcements/attachments/{$textId}",
+        $token
+    );
+    if ($deletedDownload['status'] !== 404) {
+        throw new RuntimeException('Deleted attachment content is still downloadable.');
+    }
+    echo '[OK] deleted attachment content is no longer downloadable' . PHP_EOL;
 
     $download = attachment_binary_request("announcements/attachments/{$pngId}", $token);
     if (

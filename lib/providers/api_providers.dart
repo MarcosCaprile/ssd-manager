@@ -38,6 +38,18 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
   return AnnouncementRepository(ref.watch(apiClientProvider));
 });
 
+class AnnouncementRevisionController extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+final announcementRevisionProvider =
+    NotifierProvider<AnnouncementRevisionController, int>(
+      AnnouncementRevisionController.new,
+    );
+
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(ref.watch(apiClientProvider));
 });

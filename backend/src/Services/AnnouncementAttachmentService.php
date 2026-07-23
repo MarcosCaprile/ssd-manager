@@ -181,7 +181,7 @@ final class AnnouncementAttachmentService
         }
         $placeholders = implode(',', array_fill(0, count($announcementIds), '?'));
         $statement = $this->pdo->prepare(
-            "SELECT id, announcement_id, file_name, mime_type, size_bytes
+            "SELECT id, announcement_id, file_name, mime_type, size_bytes, deleted_at
              FROM announcement_attachments
              WHERE school_id = ? AND announcement_id IN ({$placeholders})
              ORDER BY id ASC"
@@ -204,6 +204,7 @@ final class AnnouncementAttachmentService
              FROM announcement_attachments aa
              JOIN announcements a ON a.id = aa.announcement_id
              WHERE aa.id = :id AND aa.school_id = :school_id
+               AND aa.deleted_at IS NULL AND aa.content IS NOT NULL
                AND a.school_id = :school_id_for_announcement AND a.deleted_at IS NULL
              LIMIT 1'
         );
@@ -245,6 +246,7 @@ final class AnnouncementAttachmentService
              FROM announcement_attachments aa
              LEFT JOIN announcements a ON a.id = aa.announcement_id
              WHERE aa.school_id = :school_id AND aa.uploaded_by_user_id = :user_id
+               AND aa.deleted_at IS NULL
                AND (aa.announcement_id IS NULL OR a.deleted_at IS NULL)
              ORDER BY {$orderBy}"
         );
@@ -275,11 +277,12 @@ final class AnnouncementAttachmentService
         $this->pdo->beginTransaction();
         try {
             $statement = $this->pdo->prepare(
-                'SELECT aa.id, aa.announcement_id, a.message
+                'SELECT aa.id, aa.announcement_id
                  FROM announcement_attachments aa
                  LEFT JOIN announcements a ON a.id = aa.announcement_id
                  WHERE aa.id = :id AND aa.school_id = :school_id
                    AND aa.uploaded_by_user_id = :user_id
+                   AND aa.deleted_at IS NULL
                    AND (aa.announcement_id IS NULL OR a.deleted_at IS NULL)
                  FOR UPDATE'
             );
@@ -301,22 +304,11 @@ final class AnnouncementAttachmentService
                     'DELETE FROM announcement_attachments WHERE id = :id'
                 )->execute(['id' => $attachmentId]);
             } else {
-                $count = $this->pdo->prepare(
-                    'SELECT COUNT(*) FROM announcement_attachments WHERE announcement_id = :announcement_id'
-                );
-                $count->execute(['announcement_id' => $row['announcement_id']]);
-                if (trim((string) $row['message']) === '' && (int) $count->fetchColumn() === 1) {
-                    $this->pdo->prepare(
-                        'DELETE FROM announcements WHERE id = :id AND school_id = :school_id'
-                    )->execute([
-                        'id' => $row['announcement_id'],
-                        'school_id' => $auth->schoolId(),
-                    ]);
-                } else {
-                    $this->pdo->prepare(
-                        'DELETE FROM announcement_attachments WHERE id = :id'
-                    )->execute(['id' => $attachmentId]);
-                }
+                $this->pdo->prepare(
+                    'UPDATE announcement_attachments
+                     SET content = NULL, deleted_at = UTC_TIMESTAMP()
+                     WHERE id = :id'
+                )->execute(['id' => $attachmentId]);
             }
             $this->pdo->commit();
         } catch (\Throwable $exception) {
@@ -340,6 +332,7 @@ final class AnnouncementAttachmentService
             'mime_type' => $mimeType,
             'size_bytes' => (int) $row['size_bytes'],
             'is_image' => in_array($mimeType, ['image/jpeg', 'image/png', 'image/webp'], true),
+            'is_deleted' => ($row['deleted_at'] ?? null) !== null,
         ];
     }
 
@@ -364,7 +357,8 @@ final class AnnouncementAttachmentService
         $statement = $this->pdo->prepare(
             'SELECT COALESCE(SUM(size_bytes), 0)
              FROM announcement_attachments
-             WHERE school_id = :school_id AND uploaded_by_user_id = :user_id'
+             WHERE school_id = :school_id AND uploaded_by_user_id = :user_id
+               AND deleted_at IS NULL'
         );
         $statement->execute([
             'school_id' => $auth->schoolId(),
