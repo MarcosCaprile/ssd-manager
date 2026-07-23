@@ -197,6 +197,15 @@ Verified on the MacBook through 2026-07-23:
   attachments, secretariat, security, and concurrency. Migrations 001–006 are
   applied locally and an immediate rerun skipped all six. Smoke-test data was
   cleaned up. Migrations 005–006 are not yet deployed to Railway.
+- Android commit `4cf2a6f` was built as a fresh universal debug APK with the
+  Railway HTTPS API explicitly embedded. The APK uses package
+  `de.schule.ssdmanager`, minSdk 24, targetSdk 36, a valid Android debug
+  signature, and SHA-256
+  `e21a7c1fd2bbfeb63c078a5f5d836cae5945642f672f0c450ae8b27900d759bd`.
+  It was installed successfully over USB on the owner's Samsung test phone
+  without clearing app data; Android reported `MainActivity` visible and
+  top-resumed with a running app process. Features backed by migrations
+  005–006 still require the separate Railway deployment.
 
 ## Implemented Flutter App
 
