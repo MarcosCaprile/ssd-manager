@@ -1,0 +1,4 @@
+ALTER TABLE duty_days
+  ADD COLUMN title VARCHAR(180) NULL AFTER duty_date,
+  ADD COLUMN description VARCHAR(1000) NULL AFTER title,
+  ADD COLUMN is_closed TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active;

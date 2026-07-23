@@ -1,0 +1,61 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ssd_manager/models/announcement.dart';
+
+void main() {
+  test('parses announcement attachment metadata', () {
+    final announcement = Announcement.fromJson({
+      'id': 42,
+      'sender_user_id': 7,
+      'sender_name': 'Thomas Tomate',
+      'sender_role': 'sanitaeter',
+      'message': 'Bitte beachten',
+      'created_at': '2026-07-23 17:05:00',
+      'attachments': [
+        {
+          'id': 11,
+          'file_name': 'einsatzplan.png',
+          'mime_type': 'image/png',
+          'size_bytes': 12345,
+          'is_image': true,
+        },
+        {
+          'id': 12,
+          'file_name': 'hinweis.pdf',
+          'mime_type': 'application/pdf',
+          'size_bytes': 67890,
+          'is_image': false,
+        },
+      ],
+    });
+
+    expect(announcement.id, 42);
+    expect(announcement.senderName, 'Thomas Tomate');
+    expect(announcement.attachments, hasLength(2));
+    expect(announcement.attachments.first.fileName, 'einsatzplan.png');
+    expect(announcement.attachments.first.isImage, isTrue);
+    expect(announcement.attachments.last.mimeType, 'application/pdf');
+  });
+
+  test('supports attachment-only announcements', () {
+    final announcement = Announcement.fromJson({
+      'id': 43,
+      'sender_user_id': 7,
+      'sender_name': 'Thomas Tomate',
+      'sender_role': 'sanitaeter',
+      'message': '',
+      'created_at': '2026-07-23 17:05:00',
+      'attachments': [
+        {
+          'id': 13,
+          'file_name': 'foto.jpg',
+          'mime_type': 'image/jpeg',
+          'size_bytes': 100,
+          'is_image': true,
+        },
+      ],
+    });
+
+    expect(announcement.message, isEmpty);
+    expect(announcement.attachments.single.isImage, isTrue);
+  });
+}

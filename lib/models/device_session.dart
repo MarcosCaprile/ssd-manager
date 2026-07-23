@@ -1,3 +1,5 @@
+import '../utils/json_date_time.dart';
+
 class DeviceSession {
   const DeviceSession({
     required this.id,
@@ -26,8 +28,8 @@ class DeviceSession {
       platform: (json['platform'] ?? '') as String,
       deviceModel: (json['device_model'] ?? '') as String,
       appVersion: (json['app_version'] ?? '') as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      lastActiveAt: DateTime.parse(json['last_active_at'] as String),
+      createdAt: parseUtcDateTime(json['created_at'] as String),
+      lastActiveAt: parseUtcDateTime(json['last_active_at'] as String),
       isCurrent: json['is_current'] == true || json['is_current'] == 1,
     );
   }

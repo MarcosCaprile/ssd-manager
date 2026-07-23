@@ -17,9 +17,8 @@ class StoredSession {
 }
 
 class SessionStorage {
-  SessionStorage({
-    FlutterSecureStorage? storage,
-  }) : _storage = storage ?? const FlutterSecureStorage();
+  SessionStorage({FlutterSecureStorage? storage})
+    : _storage = storage ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _storage;
 
@@ -58,5 +57,9 @@ class SessionStorage {
     await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
   }
 
-  Future<void> clear() => _storage.deleteAll();
+  Future<void> clear() async {
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+    await _storage.delete(key: _userKey);
+  }
 }

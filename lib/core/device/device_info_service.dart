@@ -17,11 +17,11 @@ class DeviceContext {
   final String appVersion;
 
   Map<String, dynamic> toJson() => {
-        'device_name': deviceName,
-        'platform': platform,
-        'device_model': deviceModel,
-        'app_version': appVersion,
-      };
+    'device_name': deviceName,
+    'platform': platform,
+    'device_model': deviceModel,
+    'app_version': appVersion,
+  };
 }
 
 class DeviceInfoService {

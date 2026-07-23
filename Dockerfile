@@ -12,6 +12,7 @@ WORKDIR /var/www/html
 COPY backend/ ./
 COPY backend/docker/apache-site.conf /etc/apache2/sites-available/000-default.conf
 COPY backend/docker/railway-entrypoint.sh /usr/local/bin/railway-entrypoint
+COPY backend/docker/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 RUN chmod +x /usr/local/bin/railway-entrypoint
 

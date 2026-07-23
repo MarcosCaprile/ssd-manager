@@ -67,6 +67,31 @@ function security_request(
     return ['status' => $status, 'body' => $body];
 }
 
+/**
+ * @return array{status:int,body:string}
+ */
+function security_binary_request(string $path, string $accessToken): array
+{
+    global $baseUrl;
+
+    $handle = curl_init($baseUrl . '/' . ltrim($path, '/'));
+    curl_setopt_array($handle, [
+        CURLOPT_HTTPHEADER => [
+            'Accept: */*',
+            'Authorization: Bearer ' . $accessToken,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 10,
+    ]);
+    $body = curl_exec($handle);
+    if ($body === false) {
+        throw new RuntimeException('Binary HTTP request failed: ' . curl_error($handle));
+    }
+    $status = curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+    curl_close($handle);
+    return ['status' => $status, 'body' => $body];
+}
+
 function expect_security_status(array $response, int $expected, string $label): array
 {
     if ($response['status'] !== $expected) {
@@ -170,6 +195,17 @@ try {
         'message' => 'Cross-school announcement ' . $suffix,
     ]);
     $crossSchoolAnnouncementId = (int) $pdo->lastInsertId();
+    $pdo->prepare(
+        'INSERT INTO announcement_attachments
+         (school_id, uploaded_by_user_id, announcement_id, file_name, mime_type, size_bytes, content)
+         VALUES (:school_id, :user_id, :announcement_id, "other-school.txt", "text/plain", 12, :content)'
+    )->execute([
+        'school_id' => $schoolId,
+        'user_id' => $crossSchoolUserId,
+        'announcement_id' => $crossSchoolAnnouncementId,
+        'content' => 'private data',
+    ]);
+    $crossSchoolAttachmentId = (int) $pdo->lastInsertId();
 
     $login = expect_security_status(security_request('POST', 'auth/login', [
         'identifier' => 'lehrer',
@@ -202,6 +238,15 @@ try {
     }
     echo '[OK] announcement list does not leak another school' . PHP_EOL;
 
+    $crossSchoolDownload = security_binary_request(
+        "announcements/attachments/{$crossSchoolAttachmentId}",
+        $teacherToken
+    );
+    if ($crossSchoolDownload['status'] !== 404) {
+        throw new RuntimeException('Attachment download leaked another school.');
+    }
+    echo '[OK] announcement attachment from another school is inaccessible' . PHP_EOL;
+
     $duties = expect_security_status(
         security_request('GET', "duties/{$testDate}", accessToken: $teacherToken),
         200,
@@ -218,7 +263,12 @@ try {
         'other-school profile is inaccessible'
     );
     expect_security_status(
-        security_request('PATCH', "users/{$crossSchoolUserId}/role", ['role' => 'teacher'], $teacherToken),
+        security_request(
+            'PATCH',
+            "users/{$crossSchoolUserId}/role",
+            ['role' => 'sani_leitung'],
+            $teacherToken
+        ),
         404,
         'other-school role cannot be changed'
     );
@@ -280,6 +330,7 @@ try {
         'email' => 'short_' . $suffix . '@example.test',
         'temporary_password' => '123456789',
         'role' => 'sanitaeter',
+        'sanitaeter_since' => '2024-01-01',
     ], $teacherToken), 422, 'short temporary password is rejected');
     expect_security_status(security_request('POST', 'users', [
         'first_name' => 'Invalid',
@@ -296,6 +347,7 @@ try {
         'email' => 'unique_' . $suffix . '@example.test',
         'temporary_password' => 'ValidPassword!2026',
         'role' => 'sanitaeter',
+        'sanitaeter_since' => '2024-01-01',
     ], $teacherToken), 409, 'duplicate username is reported as conflict');
     expect_security_status(security_request('POST', 'users', [
         'first_name' => 'Duplicate',
@@ -304,6 +356,7 @@ try {
         'email' => 'lehrer@example.edu',
         'temporary_password' => 'ValidPassword!2026',
         'role' => 'sanitaeter',
+        'sanitaeter_since' => '2024-01-01',
     ], $teacherToken), 409, 'duplicate email is reported as conflict');
     expect_security_status(
         security_request('POST', "duties/{$testDate}/assignments", ['user_id' => 0], $teacherToken),

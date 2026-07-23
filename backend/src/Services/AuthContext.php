@@ -48,11 +48,11 @@ final class AuthContext
 
     public function canManageRoles(): bool
     {
-        return $this->role() === 'teacher';
+        return in_array($this->role(), ['sani_leitung', 'teacher'], true);
     }
 
     public function canAssignSelfToDuty(): bool
     {
-        return $this->role() !== 'teacher';
+        return in_array($this->role(), ['sanitaeter', 'sani_leitung'], true);
     }
 }

@@ -14,9 +14,10 @@ class ProfileStatistics {
   final List<DateTime> upcomingDates;
 
   factory ProfileStatistics.fromJson(Map<String, dynamic> json) {
-    List<DateTime> parseDates(String key) => ((json[key] ?? []) as List<dynamic>)
-        .map((value) => DateTime.parse(value as String))
-        .toList();
+    List<DateTime> parseDates(String key) =>
+        ((json[key] ?? []) as List<dynamic>)
+            .map((value) => DateTime.parse(value as String))
+            .toList();
 
     return ProfileStatistics(
       completedCount: ((json['completed_count'] ?? 0) as num).toInt(),

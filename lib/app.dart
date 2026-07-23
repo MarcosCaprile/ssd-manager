@@ -1,11 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/api_providers.dart';
 import 'providers/auth_provider.dart';
 import 'providers/deep_link_provider.dart';
+import 'providers/theme_provider.dart';
 import 'screens/auth/change_password_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_shell.dart';
@@ -17,10 +19,15 @@ class SsdManagerApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeControllerProvider);
     return MaterialApp(
       title: 'SSD Manager',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [Locale('de', 'DE')],
       home: const _AuthGate(),
     );
   }
@@ -65,9 +72,10 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     return switch (auth.status) {
       AuthStatus.checking => const SplashScreen(),
       AuthStatus.unauthenticated => const LoginScreen(),
-      AuthStatus.authenticated => auth.user?.mustChangePassword == true
-          ? const ChangePasswordScreen(forceChange: true)
-          : const HomeShell(),
+      AuthStatus.authenticated =>
+        auth.user?.mustChangePassword == true
+            ? const ChangePasswordScreen(forceChange: true)
+            : const HomeShell(),
     };
   }
 }

@@ -6,6 +6,7 @@ import '../../models/user.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/auth_provider.dart';
 import '../../utils/date_formatters.dart';
+import '../../utils/user_error_message.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/status_views.dart';
 
@@ -19,7 +20,7 @@ class UserDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
-  late Future<(User, ProfileStatistics)> _future;
+  late Future<({User user, ProfileStatistics? statistics})> _future;
 
   @override
   void initState() {
@@ -27,16 +28,14 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     _future = _load();
   }
 
-  Future<(User, ProfileStatistics)> _load() async {
-    final repo = ref.read(userRepositoryProvider);
-    final user = await repo.userDetails(widget.userId);
-    final stats = await repo.userStatistics(widget.userId);
-    return (user, stats);
+  Future<({User user, ProfileStatistics? statistics})> _load() {
+    return ref.read(userRepositoryProvider).userProfile(widget.userId);
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final next = _load();
+    setState(() => _future = next);
+    await next;
   }
 
   @override
@@ -44,13 +43,18 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     final currentUser = ref.watch(authControllerProvider).user;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sani-Profil')),
-      body: FutureBuilder<(User, ProfileStatistics)>(
+      appBar: AppBar(title: const Text('Profil')),
+      body: FutureBuilder<({User user, ProfileStatistics? statistics})>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) return const LoadingView();
-          if (snapshot.hasError) return ErrorView(message: snapshot.error.toString(), onRetry: _refresh);
-          final (user, stats) = snapshot.data!;
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const LoadingView(message: 'Profil wird geladen ...');
+          }
+          if (snapshot.hasError) {
+            return ErrorView(error: snapshot.error, onRetry: _refresh);
+          }
+          final data = snapshot.data!;
+          final user = data.user;
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
@@ -62,32 +66,46 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(user.fullName, style: Theme.of(context).textTheme.titleLarge),
+                        Text(
+                          user.fullName,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
                         const SizedBox(height: 8),
                         Text('Benutzername: ${user.username}'),
                         Text('E-Mail: ${user.email}'),
                         Text('Rolle: ${user.role.label}'),
+                        if (user.role.isSanitaryRole)
+                          Text(
+                            'Sanitäter seit: ${user.sanitaeterSince == null ? 'Nicht hinterlegt' : DateFormatters.dutyDate(user.sanitaeterSince!)}',
+                          ),
                         Text('Status: ${user.status}'),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                _StatisticsCard(stats: stats),
-                const SizedBox(height: 12),
-                if (currentUser?.role.canManageUsers == true)
+                if (data.statistics != null) ...[
+                  const SizedBox(height: 12),
+                  _StatisticsCard(stats: data.statistics!),
+                ],
+                if (currentUser?.canManageAccount(user) == true) ...[
+                  const SizedBox(height: 12),
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Text('Verwaltung', style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'Verwaltung',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                           const SizedBox(height: 12),
-                          if (currentUser?.role.canManageRoles == true)
+                          if (currentUser?.canManageRoleOf(user) == true)
                             OutlinedButton.icon(
                               onPressed: () => _changeRole(context, user),
-                              icon: const Icon(Icons.admin_panel_settings_outlined),
+                              icon: const Icon(
+                                Icons.admin_panel_settings_outlined,
+                              ),
                               label: const Text('Rolle verwalten'),
                             ),
                           if (user.status == 'active')
@@ -111,6 +129,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                       ),
                     ),
                   ),
+                ],
               ],
             ),
           );
@@ -123,31 +142,46 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Account deaktivieren?',
-      message: '${user.fullName} kann sich danach nicht mehr anmelden. Aktive Sitzungen werden widerrufen.',
+      message:
+          '${user.fullName} kann sich danach nicht mehr anmelden. Aktive Sitzungen werden widerrufen.',
       confirmLabel: 'Deaktivieren',
       destructive: true,
     );
-    if (!confirmed) return;
-    await ref.read(userRepositoryProvider).deactivate(user.id);
-    await _refresh();
+    if (!confirmed || !context.mounted) return;
+    await _runAction(context, () async {
+      await ref.read(userRepositoryProvider).deactivate(user.id);
+      await _refresh();
+    });
   }
 
   Future<void> _reactivate(BuildContext context, User user) async {
-    await ref.read(userRepositoryProvider).reactivate(user.id);
-    await _refresh();
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Account reaktivieren?',
+      message: '${user.fullName} kann sich danach wieder anmelden.',
+      confirmLabel: 'Reaktivieren',
+    );
+    if (!confirmed || !context.mounted) return;
+    await _runAction(context, () async {
+      await ref.read(userRepositoryProvider).reactivate(user.id);
+      await _refresh();
+    });
   }
 
   Future<void> _markDeletion(BuildContext context, User user) async {
     final confirmed = await showConfirmDialog(
       context,
       title: 'Löschung vormerken?',
-      message: '${user.fullName} wird mit 30 Tagen Frist zur endgültigen Löschung vorgemerkt.',
+      message:
+          '${user.fullName} wird mit 30 Tagen Frist zur endgültigen Löschung vorgemerkt.',
       confirmLabel: 'Vormerken',
       destructive: true,
     );
-    if (!confirmed) return;
-    await ref.read(userRepositoryProvider).markDeletion(user.id);
-    await _refresh();
+    if (!confirmed || !context.mounted) return;
+    await _runAction(context, () async {
+      await ref.read(userRepositoryProvider).markDeletion(user.id);
+      await _refresh();
+    });
   }
 
   Future<void> _changeRole(BuildContext context, User user) async {
@@ -157,26 +191,56 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Rolle verwalten'),
         content: StatefulBuilder(
-          builder: (context, setDialogState) => DropdownButtonFormField<UserRole>(
-            initialValue: selected,
-            decoration: const InputDecoration(labelText: 'Neue Rolle'),
-            items: const [
-              DropdownMenuItem(value: UserRole.sanitaeter, child: Text('Schulsanitäter')),
-              DropdownMenuItem(value: UserRole.saniLeitung, child: Text('Sani-Leitung')),
-              DropdownMenuItem(value: UserRole.teacher, child: Text('Lehreraufsicht')),
-            ],
-            onChanged: (value) => setDialogState(() => selected = value ?? user.role),
-          ),
+          builder: (context, setDialogState) =>
+              DropdownButtonFormField<UserRole>(
+                initialValue: selected,
+                decoration: const InputDecoration(labelText: 'Neue Rolle'),
+                items: const [
+                  DropdownMenuItem(
+                    value: UserRole.sanitaeter,
+                    child: Text('Schulsanitäter'),
+                  ),
+                  DropdownMenuItem(
+                    value: UserRole.saniLeitung,
+                    child: Text('Sani-Leitung'),
+                  ),
+                ],
+                onChanged: (value) =>
+                    setDialogState(() => selected = value ?? user.role),
+              ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Abbrechen')),
-          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Speichern')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Speichern'),
+          ),
         ],
       ),
     );
-    if (confirmed != true || selected == user.role) return;
-    await ref.read(userRepositoryProvider).changeRole(user.id, selected);
-    await _refresh();
+    if (confirmed != true || selected == user.role || !context.mounted) return;
+    await _runAction(context, () async {
+      await ref.read(userRepositoryProvider).changeRole(user.id, selected);
+      await _refresh();
+    });
+  }
+
+  Future<void> _runAction(
+    BuildContext context,
+    Future<void> Function() action,
+  ) async {
+    try {
+      await action();
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(userErrorMessage(error))));
+      }
+    }
   }
 }
 
@@ -193,17 +257,24 @@ class _StatisticsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Dienststatistik', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Dienststatistik',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 10),
             Text('Absolvierte Dienste: ${stats.completedCount}'),
             Text('Geplante Dienste: ${stats.upcomingCount}'),
             Text('Krankmeldungen: ${stats.sickCount}'),
             const SizedBox(height: 12),
-            Text('Absolvierte Tage', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Absolvierte Tage',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             if (stats.completedDates.isEmpty)
               const Text('Keine absolvierten Dienste vorhanden.')
             else
-              for (final date in stats.completedDates) Text(DateFormatters.dutyDate(date)),
+              for (final date in stats.completedDates)
+                Text(DateFormatters.dutyDate(date)),
           ],
         ),
       ),

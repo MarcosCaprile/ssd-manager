@@ -27,10 +27,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    await ref.read(authControllerProvider.notifier).login(
-          _identifier.text.trim(),
-          _password.text,
-        );
+    await ref
+        .read(authControllerProvider.notifier)
+        .login(_identifier.text.trim(), _password.text);
   }
 
   @override
@@ -73,7 +72,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         prefixIcon: Icon(Icons.person_outline),
                       ),
                       validator: (value) =>
-                          value == null || value.trim().isEmpty ? 'Bitte E-Mail oder Benutzername eingeben.' : null,
+                          value == null || value.trim().isEmpty
+                          ? 'Bitte E-Mail oder Benutzername eingeben.'
+                          : null,
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
@@ -85,19 +86,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: 'Passwort',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          tooltip: _obscure ? 'Passwort anzeigen' : 'Passwort ausblenden',
+                          tooltip: _obscure
+                              ? 'Passwort anzeigen'
+                              : 'Passwort ausblenden',
                           onPressed: () => setState(() => _obscure = !_obscure),
-                          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                         ),
                       ),
-                      validator: (value) =>
-                          value == null || value.isEmpty ? 'Bitte Passwort eingeben.' : null,
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Bitte Passwort eingeben.'
+                          : null,
                     ),
                     if (auth.errorMessage != null) ...[
                       const SizedBox(height: 14),
                       Text(
                         auth.errorMessage!,
-                        style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 22),
@@ -107,23 +118,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? const SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Icon(Icons.login),
                       label: const Text('Anmelden'),
                     ),
                     const SizedBox(height: 18),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.lightBlue,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: const Text(
-                        'Accounts werden von der SSD-Leitung oder der Lehreraufsicht erstellt. '
-                        'Es gibt keine offene Registrierung.',
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final scheme = Theme.of(context).colorScheme;
+                        return Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: scheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: scheme.outlineVariant),
+                          ),
+                          child: Text(
+                            'Accounts werden von der SSD-Leitung oder der Lehreraufsicht erstellt. '
+                            'Es gibt keine offene Registrierung.',
+                            style: TextStyle(color: scheme.onPrimaryContainer),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),

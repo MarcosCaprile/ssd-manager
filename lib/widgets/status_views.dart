@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../themes/app_colors.dart';
+import '../utils/user_error_message.dart';
 
 class LoadingView extends StatelessWidget {
   const LoadingView({super.key, this.message = 'Wird geladen ...'});
@@ -45,7 +45,11 @@ class EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 44, color: AppColors.secondaryText),
+            Icon(
+              icon,
+              size: 44,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(height: 12),
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 6),
@@ -62,13 +66,9 @@ class EmptyView extends StatelessWidget {
 }
 
 class ErrorView extends StatelessWidget {
-  const ErrorView({
-    super.key,
-    required this.message,
-    required this.onRetry,
-  });
+  const ErrorView({super.key, required this.error, required this.onRetry});
 
-  final String message;
+  final Object? error;
   final VoidCallback onRetry;
 
   @override
@@ -79,12 +79,19 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_rounded, size: 44, color: AppColors.error),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 44,
+              color: Theme.of(context).colorScheme.error,
+            ),
             const SizedBox(height: 12),
-            Text('Verbindung fehlgeschlagen', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Das hat nicht funktioniert',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 6),
             Text(
-              message,
+              userErrorMessage(error),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),

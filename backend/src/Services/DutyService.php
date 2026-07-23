@@ -31,12 +31,6 @@ final class DutyService
         for ($i = 0; $i < 14; $i++) {
             $date = $today->modify("+{$i} days")->format('Y-m-d');
             if ($this->rules->isWeekend($date)) {
-                $days[] = [
-                    'date' => $date,
-                    'capacity' => Config::int('DUTY_CAPACITY', 3),
-                    'is_active' => false,
-                    'assignments' => [],
-                ];
                 continue;
             }
             $dayId = $this->ensureDutyDay($auth->schoolId(), $date);
@@ -48,19 +42,357 @@ final class DutyService
     /**
      * @return array<int,array<string,mixed>>
      */
-    public function history(AuthContext $auth): array
+    public function history(AuthContext $auth, ?string $date = null): array
     {
+        $dateFilter = $date === null ? '' : ' AND duty_date = :date';
         $statement = $this->pdo->prepare(
             'SELECT id FROM duty_days
              WHERE school_id = :school_id AND duty_date >= (CURRENT_DATE - INTERVAL 1 YEAR)
                AND duty_date < CURRENT_DATE
+               ' . $dateFilter . '
              ORDER BY duty_date DESC'
         );
-        $statement->execute(['school_id' => $auth->schoolId()]);
+        $parameters = ['school_id' => $auth->schoolId()];
+        if ($date !== null) {
+            $parameters['date'] = $date;
+        }
+        $statement->execute($parameters);
         return array_map(
             fn (array $row) => $this->serializeDutyDay((int) $row['id'], $auth->schoolId()),
             $statement->fetchAll()
         );
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    public function createDay(
+        AuthContext $auth,
+        string $date,
+        int $capacity,
+        ?string $title,
+        ?string $description,
+    ): array {
+        $this->requireManager($auth);
+        $this->requireWeekday($date);
+        if ($this->findDutyDayId($auth->schoolId(), $date) !== null) {
+            Response::error('Für dieses Datum ist bereits ein Diensttag oder Ausfall eingetragen.', 409);
+        }
+
+        $statement = $this->pdo->prepare(
+            'INSERT INTO duty_days
+             (school_id, duty_date, title, description, capacity, is_active, is_closed, created_at, updated_at)
+             VALUES (:school_id, :date, :title, :description, :capacity, 1, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
+        );
+        try {
+            $statement->execute([
+                'school_id' => $auth->schoolId(),
+                'date' => $date,
+                'title' => $title,
+                'description' => $description,
+                'capacity' => $capacity,
+            ]);
+        } catch (\PDOException $exception) {
+            if ((string) $exception->getCode() === '23000') {
+                Response::error('Für dieses Datum ist bereits ein Diensttag oder Ausfall eingetragen.', 409);
+            }
+            throw $exception;
+        }
+        $dayId = (int) $this->pdo->lastInsertId();
+        $this->audit->log(
+            $auth->schoolId(),
+            $auth->userId(),
+            'duty.day_created',
+            null,
+            'duty_day',
+            $dayId,
+            ['date' => $date, 'capacity' => $capacity, 'title' => $title]
+        );
+        return $this->serializeDutyDay($dayId, $auth->schoolId());
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    public function updateDay(
+        AuthContext $auth,
+        string $date,
+        int $capacity,
+        ?string $title,
+        ?string $description,
+        bool $isClosed,
+    ): array {
+        $this->requireManager($auth);
+        $this->requireWeekday($date);
+        $dayId = $this->findDutyDayId($auth->schoolId(), $date);
+        if ($dayId === null) {
+            Response::error('Diensttag wurde nicht gefunden.', 404);
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $this->lockDutyDay($dayId, $auth->schoolId());
+            $planned = $this->plannedCount($dayId);
+            if ($isClosed && $planned > 0) {
+                $this->pdo->rollBack();
+                Response::error('Ein Tag mit eingetragenen Sanis kann nicht als Ausfall markiert werden.', 409);
+            }
+            if (!$isClosed && $capacity < $planned) {
+                $this->pdo->rollBack();
+                Response::error("Die benötigte Anzahl kann nicht unter die {$planned} bestehenden Eintragungen gesetzt werden.", 409);
+            }
+
+            $statement = $this->pdo->prepare(
+                'UPDATE duty_days
+                 SET title = :title, description = :description, capacity = :capacity,
+                     is_active = :is_active, is_closed = :is_closed, updated_at = UTC_TIMESTAMP()
+                 WHERE id = :id AND school_id = :school_id'
+            );
+            $statement->execute([
+                'title' => $title,
+                'description' => $description,
+                'capacity' => $capacity,
+                'is_active' => $isClosed ? 0 : 1,
+                'is_closed' => $isClosed ? 1 : 0,
+                'id' => $dayId,
+                'school_id' => $auth->schoolId(),
+            ]);
+            $this->audit->log(
+                $auth->schoolId(),
+                $auth->userId(),
+                'duty.day_updated',
+                null,
+                'duty_day',
+                $dayId,
+                [
+                    'date' => $date,
+                    'capacity' => $capacity,
+                    'title' => $title,
+                    'is_closed' => $isClosed,
+                ]
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+        return $this->serializeDutyDay($dayId, $auth->schoolId());
+    }
+
+    /**
+     * @return array{created_days:int,start_date:string,end_date:string}
+     */
+    public function createClosureRange(
+        AuthContext $auth,
+        string $startDate,
+        string $endDate,
+        string $name,
+        ?string $description,
+    ): array {
+        $this->requireManager($auth);
+        $start = new \DateTimeImmutable($startDate);
+        $end = new \DateTimeImmutable($endDate);
+        if ($end < $start) {
+            Response::error('Das Enddatum darf nicht vor dem Startdatum liegen.', 422);
+        }
+        if ((int) $start->diff($end)->format('%a') > 366) {
+            Response::error('Ein Ausfallzeitraum darf höchstens 366 Tage umfassen.', 422);
+        }
+
+        $dates = [];
+        for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
+            $value = $date->format('Y-m-d');
+            if (!$this->rules->isWeekend($value)) {
+                $dates[] = $value;
+            }
+        }
+        if ($dates === []) {
+            Response::error('Der gewählte Zeitraum enthält keinen Schultag.', 422);
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $dayIds = [];
+            foreach ($dates as $date) {
+                $dayId = $this->ensureDutyDay($auth->schoolId(), $date);
+                $this->lockDutyDay($dayId, $auth->schoolId());
+                $planned = $this->plannedCount($dayId);
+                if ($planned > 0) {
+                    $this->pdo->rollBack();
+                    Response::error(
+                        'Der Ausfall kann nicht gespeichert werden, weil am ' . $this->humanDate($date) . ' bereits Sanis eingetragen sind.',
+                        409
+                    );
+                }
+                $dayIds[] = $dayId;
+            }
+
+            $statement = $this->pdo->prepare(
+                'UPDATE duty_days
+                 SET title = :title, description = :description, is_active = 0, is_closed = 1,
+                     updated_at = UTC_TIMESTAMP()
+                 WHERE id = :id AND school_id = :school_id'
+            );
+            foreach ($dayIds as $dayId) {
+                $statement->execute([
+                    'title' => $name,
+                    'description' => $description,
+                    'id' => $dayId,
+                    'school_id' => $auth->schoolId(),
+                ]);
+            }
+
+            $this->audit->log(
+                $auth->schoolId(),
+                $auth->userId(),
+                'duty.closure_range_created',
+                null,
+                'duty_day',
+                $dayIds[0],
+                [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'name' => $name,
+                    'weekday_count' => count($dayIds),
+                ]
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        return [
+            'created_days' => count($dates),
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>
+     */
+    public function resetDay(AuthContext $auth, string $date): array
+    {
+        $this->requireManager($auth);
+        $this->requireWeekday($date);
+        $dayId = $this->findDutyDayId($auth->schoolId(), $date);
+        if ($dayId === null) {
+            Response::error('Für dieses Datum gibt es keinen besonderen Eintrag.', 404);
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $this->lockDutyDay($dayId, $auth->schoolId());
+            $capacity = max(Config::int('DUTY_CAPACITY', 3), $this->plannedCount($dayId));
+            $this->pdo->prepare(
+                'UPDATE duty_days
+                 SET title = NULL, description = NULL, capacity = :capacity,
+                     is_active = 1, is_closed = 0, updated_at = UTC_TIMESTAMP()
+                 WHERE id = :id AND school_id = :school_id'
+            )->execute([
+                'capacity' => $capacity,
+                'id' => $dayId,
+                'school_id' => $auth->schoolId(),
+            ]);
+            $this->audit->log(
+                $auth->schoolId(),
+                $auth->userId(),
+                'duty.day_reset',
+                null,
+                'duty_day',
+                $dayId,
+                ['date' => $date]
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+        return $this->serializeDutyDay($dayId, $auth->schoolId());
+    }
+
+    /**
+     * @return array{reset_days:int,start_date:string,end_date:string}
+     */
+    public function resetClosureRange(
+        AuthContext $auth,
+        string $startDate,
+        string $endDate,
+    ): array {
+        $this->requireManager($auth);
+        $start = new \DateTimeImmutable($startDate);
+        $end = new \DateTimeImmutable($endDate);
+        if ($end < $start) {
+            Response::error('Das Enddatum darf nicht vor dem Startdatum liegen.', 422);
+        }
+        if ((int) $start->diff($end)->format('%a') > 366) {
+            Response::error('Ein Zeitraum darf höchstens 366 Tage umfassen.', 422);
+        }
+
+        $reset = 0;
+        $this->pdo->beginTransaction();
+        try {
+            for ($date = $start; $date <= $end; $date = $date->modify('+1 day')) {
+                $value = $date->format('Y-m-d');
+                if ($this->rules->isWeekend($value)) {
+                    continue;
+                }
+                $dayId = $this->findDutyDayId($auth->schoolId(), $value);
+                if ($dayId === null) {
+                    continue;
+                }
+                $day = $this->lockDutyDay($dayId, $auth->schoolId());
+                if (!(bool) $day['is_closed']) {
+                    continue;
+                }
+                $capacity = max(Config::int('DUTY_CAPACITY', 3), $this->plannedCount($dayId));
+                $this->pdo->prepare(
+                    'UPDATE duty_days
+                     SET title = NULL, description = NULL, capacity = :capacity,
+                         is_active = 1, is_closed = 0, updated_at = UTC_TIMESTAMP()
+                     WHERE id = :id AND school_id = :school_id'
+                )->execute([
+                    'capacity' => $capacity,
+                    'id' => $dayId,
+                    'school_id' => $auth->schoolId(),
+                ]);
+                $reset++;
+            }
+            $this->audit->log(
+                $auth->schoolId(),
+                $auth->userId(),
+                'duty.closure_range_reset',
+                null,
+                'duty_day',
+                null,
+                [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'weekday_count' => $reset,
+                ]
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+        if ($reset === 0) {
+            Response::error('Im gewählten Zeitraum wurde kein Ausfall gefunden.', 404);
+        }
+        return [
+            'reset_days' => $reset,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ];
     }
 
     /**
@@ -71,8 +403,11 @@ final class DutyService
         if ($this->rules->isWeekend($date)) {
             return [
                 'date' => $date,
+                'title' => null,
+                'description' => null,
                 'capacity' => Config::int('DUTY_CAPACITY', 3),
                 'is_active' => false,
+                'is_closed' => false,
                 'assignments' => [],
             ];
         }
@@ -82,7 +417,7 @@ final class DutyService
     public function selfAssign(AuthContext $auth, string $date): void
     {
         if (!$auth->canAssignSelfToDuty()) {
-            Response::error('Die Lehreraufsicht übernimmt keinen Sanitätsdienst.', 403);
+            Response::error('Mit deiner Rolle kannst du dich nicht für einen Sanitätsdienst eintragen.', 403);
         }
         if (!$this->rules->canBook($date)) {
             Response::error('Dieser Dienst kann nicht gebucht werden.', 422);
@@ -220,6 +555,7 @@ final class DutyService
              FROM duty_days dd
              LEFT JOIN duty_assignments da ON da.duty_day_id = dd.id
              WHERE dd.duty_date BETWEEN CURRENT_DATE + INTERVAL 1 DAY AND CURRENT_DATE + INTERVAL 2 DAY
+               AND dd.is_active = 1 AND dd.is_closed = 0
              GROUP BY dd.id'
         );
         $count = 0;
@@ -251,10 +587,14 @@ final class DutyService
         try {
             $dayId = $this->ensureDutyDay($auth->schoolId(), $date);
             $day = $this->lockDutyDay($dayId, $auth->schoolId());
+            if (!(bool) $day['is_active'] || (bool) $day['is_closed']) {
+                $this->pdo->rollBack();
+                Response::error('Dieser Tag ist als Ausfall markiert und kann nicht belegt werden.', 409);
+            }
             $count = $this->plannedCount($dayId);
             if ($count >= (int) $day['capacity']) {
                 $this->pdo->rollBack();
-                Response::error('Alle drei Plätze sind bereits belegt.', 409);
+                Response::error('Alle benötigten Plätze sind bereits belegt.', 409);
             }
             if ($this->hasPlannedAssignment($dayId, $userId)) {
                 $this->pdo->rollBack();
@@ -383,8 +723,11 @@ final class DutyService
         $statement->execute(['day_id' => $dayId]);
         return [
             'date' => $day['duty_date'],
+            'title' => $day['title'],
+            'description' => $day['description'],
             'capacity' => (int) $day['capacity'],
             'is_active' => (bool) $day['is_active'],
+            'is_closed' => (bool) $day['is_closed'],
             'assignments' => array_map(fn (array $assignment) => [
                 'id' => (int) $assignment['id'],
                 'user_id' => (int) $assignment['user_id'],
@@ -434,7 +777,11 @@ final class DutyService
 
     private function notifyOpenSlot(int $schoolId, int $dayId, string $date, string $reason): void
     {
-        $free = Config::int('DUTY_CAPACITY', 3) - $this->plannedCount($dayId);
+        $day = $this->locklessDutyDay($dayId, $schoolId);
+        if (!(bool) $day['is_active'] || (bool) $day['is_closed']) {
+            return;
+        }
+        $free = (int) $day['capacity'] - $this->plannedCount($dayId);
         if ($free <= 0) {
             return;
         }
@@ -455,5 +802,29 @@ final class DutyService
     private function humanDate(string $date): string
     {
         return (new \DateTimeImmutable($date))->format('d.m.Y');
+    }
+
+    private function requireManager(AuthContext $auth): void
+    {
+        if (!$auth->canManageDuties()) {
+            Response::error('Keine Berechtigung.', 403);
+        }
+    }
+
+    private function requireWeekday(string $date): void
+    {
+        if ($this->rules->isWeekend($date)) {
+            Response::error('Samstage und Sonntage können nicht als Diensttage angelegt werden.', 422);
+        }
+    }
+
+    private function findDutyDayId(int $schoolId, string $date): ?int
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id FROM duty_days WHERE school_id = :school_id AND duty_date = :date LIMIT 1'
+        );
+        $statement->execute(['school_id' => $schoolId, 'date' => $date]);
+        $id = $statement->fetchColumn();
+        return $id === false ? null : (int) $id;
     }
 }

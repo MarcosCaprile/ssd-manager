@@ -196,6 +196,7 @@ try {
         'email' => $testEmail,
         'temporary_password' => $testPassword,
         'role' => 'sanitaeter',
+        'sanitaeter_since' => '2024-01-01',
     ], $teacher['access_token']), 201, 'teacher creates test account');
 
     $findUser = $pdo->prepare('SELECT id FROM users WHERE school_id = 1 AND username = :username');
@@ -219,8 +220,13 @@ try {
     );
     expect_status(
         api_request('PATCH', "users/{$testUserId}/role", ['role' => 'sani_leitung'], $lead['access_token']),
-        403,
-        'lead cannot change roles'
+        200,
+        'lead promotes first-aider to lead'
+    );
+    expect_status(
+        api_request('PATCH', "users/{$testUserId}/role", ['role' => 'sanitaeter'], $lead['access_token']),
+        200,
+        'lead restores first-aider role'
     );
     expect_status(
         api_request('PATCH', "users/{$testUserId}/role", ['role' => 'sani_leitung'], $teacher['access_token']),
@@ -324,6 +330,7 @@ try {
             'email' => 'forbidden_sani_' . $suffix . '@example.test',
             'temporary_password' => $testPassword,
             'role' => 'sanitaeter',
+            'sanitaeter_since' => '2024-01-01',
         ], $sanitaeter['access_token']),
         403,
         'first-aider cannot create accounts'

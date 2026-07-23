@@ -19,13 +19,29 @@ if ($migrationFiles === false || $migrationFiles === []) {
 
 sort($migrationFiles, SORT_STRING);
 $pdo = Database::connection();
+$pdo->exec(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename VARCHAR(255) NOT NULL PRIMARY KEY,
+        applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
+);
 
 foreach ($migrationFiles as $migrationFile) {
+    $filename = basename($migrationFile);
+    $check = $pdo->prepare('SELECT filename FROM schema_migrations WHERE filename = :filename LIMIT 1');
+    $check->execute(['filename' => $filename]);
+    if ($check->fetchColumn()) {
+        echo 'Skipped ' . $filename . PHP_EOL;
+        continue;
+    }
+
     $sql = trim((string) file_get_contents($migrationFile));
     if ($sql === '') {
         continue;
     }
 
     $pdo->exec($sql);
-    echo 'Applied ' . basename($migrationFile) . PHP_EOL;
+    $record = $pdo->prepare('INSERT INTO schema_migrations (filename) VALUES (:filename)');
+    $record->execute(['filename' => $filename]);
+    echo 'Applied ' . $filename . PHP_EOL;
 }

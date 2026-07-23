@@ -7,6 +7,15 @@
 - Schulen sind über `school_id` modelliert. Version 1 nutzt eine Schule, bleibt aber mandantenfähig.
 - Diensttage sind lokale Kalendertage in `Europe/Berlin`; Zeitpunkte wie Login, Audit und Notifications werden serverseitig in UTC gespeichert.
 - Dienstplanänderungen laufen transaktionssicher über `SELECT ... FOR UPDATE`.
+- Ein Diensttag trägt Kapazität, optionalen Namen und Beschreibung sowie einen
+  expliziten Ausfallstatus. Ausfallzeiträume werden als einzelne Werktage
+  gespeichert; Wochenenden existieren nicht als sichtbare Diensttage.
+- Ankündigungsanhänge werden für V1 als authentifiziert abrufbare BLOBs in
+  MySQL gespeichert. Es entstehen keine öffentlichen Datei-URLs; Schule,
+  Uploader, Nachricht, Typ und Größe werden serverseitig geprüft. Pro Uploader
+  gelten transaktionssicher 100 MB.
+- Flutter rendert sichere, nutzerverständliche Fehler statt technischer
+  Ausnahmen und unterstützt persistente System-/Hell-/Dunkel-Darstellung.
 - Firebase wird nur für Push-Benachrichtigungen genutzt. Geräteinformationen bleiben datensparsam.
 
 ## Flutter
@@ -16,6 +25,7 @@ Wichtige Module:
 - `config`: API-URL und App-Konstanten
 - `core/api`: HTTP-Client, Token-Refresh und Fehlerbehandlung
 - `core/security`: sichere lokale Session
+- `core/preferences`: vom Login unabhängige Geräteeinstellungen
 - `core/push`: defensive FCM-Initialisierung
 - `repositories`: API-Zugriffe je Bereich
 - `providers`: Riverpod-Provider und Auth-State
@@ -28,7 +38,7 @@ Wichtige Module:
 
 - `public/index.php`: REST-Routen unter `/api/v1`
 - `Core`: Config, Router, Request, Response, Validation, Database
-- `Services`: Auth, User, Duty, Notifications, Firebase, Audit, Rate Limiting
+- `Services`: Auth, User, Duty, Ankündigungsanhänge, Notifications, Firebase, Audit, Rate Limiting
 - `Controllers`: schlanke REST-Controller
 
 ## Datenmodell
@@ -41,15 +51,21 @@ Tabellen:
 - `duty_days`
 - `duty_assignments`
 - `announcements`
+- `announcement_attachments`
 - `notification_logs`
 - `audit_logs`
 - `login_attempts`
+- `schema_migrations`
 
-Die Migration liegt in `backend/database/migrations/001_initial_schema.sql`.
+Versionierte Migrationen liegen in `backend/database/migrations`. Der
+Migrations-Runner protokolliert angewendete Dateinamen in `schema_migrations`.
 
 ## Bekannte Version-1-Grenzen
 
 - Es gibt genau einen gemeinsamen Ankündigungskanal.
 - Keine offene Registrierung.
-- Keine privaten Chats, Datei-Uploads, Standortdaten oder Telefonnummern.
+- Keine privaten Chats, Standortdaten oder Telefonnummern.
+- Ankündigungen unterstützen höchstens vier Fotos/Dateien mit je 8 MB; bei
+  100 MB Gesamtvolumen je Nutzer. Bei deutlich wachsender Nutzung ist eine Migration von Datenbank-BLOBs zu
+  privatem Objektspeicher zu prüfen.
 - Profilbearbeitung durch Admins ist als API-Stelle vorgesehen, aber in Version 1 bewusst deaktiviert.

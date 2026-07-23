@@ -6,6 +6,7 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Services\AnnouncementAttachmentService;
 use App\Services\AuthContext;
 use App\Services\NotificationService;
 use PDO;
@@ -15,6 +16,7 @@ final class AnnouncementController
     public function __construct(
         private readonly PDO $pdo,
         private readonly NotificationService $notifications,
+        private readonly AnnouncementAttachmentService $attachments,
     ) {
     }
 
@@ -29,18 +31,61 @@ final class AnnouncementController
              FROM announcements a
              JOIN users u ON u.id = a.sender_user_id
              WHERE a.school_id = :school_id AND a.deleted_at IS NULL
-             ORDER BY a.created_at ASC
+             ORDER BY a.created_at DESC, a.id DESC
              LIMIT 100'
         );
         $statement->execute(['school_id' => $auth->schoolId()]);
-        Response::json(array_map(fn (array $row) => [
-            'id' => (int) $row['id'],
-            'sender_user_id' => (int) $row['sender_user_id'],
-            'sender_name' => $row['sender_name'],
-            'sender_role' => $row['sender_role'],
-            'message' => $row['message'],
-            'created_at' => $row['created_at'],
-        ], $statement->fetchAll()));
+        $rows = array_reverse($statement->fetchAll());
+        $attachmentGroups = $this->attachments->groupedForAnnouncements(
+            $auth->schoolId(),
+            array_map(static fn (array $row): int => (int) $row['id'], $rows)
+        );
+        Response::json(array_map(fn (array $row): array => $this->serialize(
+            $row,
+            $attachmentGroups[(int) $row['id']] ?? []
+        ), $rows));
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
+    public function uploadAttachment(Request $request, array $params, AuthContext $auth): never
+    {
+        Response::json(
+            $this->attachments->upload($auth, $request->uploadedFile('attachment')),
+            201
+        );
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
+    public function downloadAttachment(Request $request, array $params, AuthContext $auth): never
+    {
+        $attachmentId = (int) ($params['id'] ?? 0);
+        if ($attachmentId < 1) {
+            Response::error('Anhang wurde nicht gefunden.', 404);
+        }
+        $attachment = $this->attachments->download($auth, $attachmentId);
+        $fileName = (string) $attachment['file_name'];
+        $asciiName = preg_replace('/[^A-Za-z0-9._-]/', '_', $fileName) ?: 'attachment';
+
+        http_response_code(200);
+        header('Content-Type: ' . $attachment['mime_type']);
+        header('Content-Length: ' . (int) $attachment['size_bytes']);
+        header(
+            "Content-Disposition: inline; filename=\"{$asciiName}\"; filename*=UTF-8''" .
+            rawurlencode($fileName)
+        );
+        header('Cache-Control: private, max-age=300');
+        header('X-Content-Type-Options: nosniff');
+        $content = $attachment['content'];
+        if (is_resource($content)) {
+            fpassthru($content);
+        } else {
+            echo (string) $content;
+        }
+        exit;
     }
 
     /**
@@ -50,31 +95,62 @@ final class AnnouncementController
     {
         $data = $request->json();
         $message = trim(strip_tags((string) ($data['message'] ?? '')));
-        if ($message === '' || mb_strlen($message) > 2000) {
-            Response::error('Nachricht muss zwischen 1 und 2000 Zeichen haben.', 422);
+        $attachmentIds = $data['attachment_ids'] ?? [];
+        if (!is_array($attachmentIds)) {
+            Response::error('Ungültige Anhangsliste.', 422);
         }
-        $statement = $this->pdo->prepare(
-            'INSERT INTO announcements (school_id, sender_user_id, message, created_at, updated_at)
-             VALUES (:school_id, :sender_user_id, :message, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
-        );
-        $statement->execute([
-            'school_id' => $auth->schoolId(),
-            'sender_user_id' => $auth->userId(),
-            'message' => $message,
-        ]);
-        $id = (int) $this->pdo->lastInsertId();
-        $this->notifications->notifyUsersByRole(
-            $auth->schoolId(),
-            ['sanitaeter', 'sani_leitung', 'teacher'],
-            'announcement_created',
-            'Neue Ankündigung',
-            $auth->user['first_name'] . ': ' . mb_substr($message, 0, 120),
-            'announcement:' . $id,
-            null,
-            $id,
-            [$auth->userId()],
-            ['route' => 'announcements']
-        );
+        if (mb_strlen($message) > 2000) {
+            Response::error('Nachrichten dürfen höchstens 2000 Zeichen haben.', 422);
+        }
+        if ($message === '' && $attachmentIds === []) {
+            Response::error('Nachricht oder Anhang fehlt.', 422);
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $statement = $this->pdo->prepare(
+                'INSERT INTO announcements (school_id, sender_user_id, message, created_at, updated_at)
+                 VALUES (:school_id, :sender_user_id, :message, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
+            );
+            $statement->execute([
+                'school_id' => $auth->schoolId(),
+                'sender_user_id' => $auth->userId(),
+                'message' => $message,
+            ]);
+            $id = (int) $this->pdo->lastInsertId();
+            $claimedAttachments = $this->attachments->claim(
+                $auth,
+                array_map('intval', $attachmentIds),
+                $id
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+
+        try {
+            $preview = $message === ''
+                ? ' hat einen Anhang gesendet.'
+                : ': ' . mb_substr($message, 0, 120);
+            $this->notifications->notifyUsersByRole(
+                $auth->schoolId(),
+                ['sanitaeter', 'sani_leitung', 'teacher', 'sekretariat'],
+                'announcement_created',
+                'Neue Ankündigung',
+                $auth->user['first_name'] . $preview,
+                'announcement:' . $id,
+                null,
+                $id,
+                [$auth->userId()],
+                ['route' => 'announcements']
+            );
+        } catch (\Throwable $exception) {
+            error_log('Announcement notification failed after successful save: ' . $exception->getMessage());
+        }
+
         Response::json([
             'id' => $id,
             'sender_user_id' => $auth->userId(),
@@ -82,6 +158,25 @@ final class AnnouncementController
             'sender_role' => $auth->role(),
             'message' => $message,
             'created_at' => gmdate('Y-m-d H:i:s'),
+            'attachments' => $claimedAttachments,
         ], 201);
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @param array<int,array<string,mixed>> $attachments
+     * @return array<string,mixed>
+     */
+    private function serialize(array $row, array $attachments): array
+    {
+        return [
+            'id' => (int) $row['id'],
+            'sender_user_id' => (int) $row['sender_user_id'],
+            'sender_name' => $row['sender_name'],
+            'sender_role' => $row['sender_role'],
+            'message' => $row['message'],
+            'created_at' => $row['created_at'],
+            'attachments' => $attachments,
+        ];
     }
 }

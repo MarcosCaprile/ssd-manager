@@ -4,7 +4,7 @@ This file gives Codex durable project context. Keep it short, practical, and in 
 
 ## Project Summary
 
-SSD Manager is a Flutter mobile app plus PHP/MySQL backend for a school first-aid service. It manages duty planning, announcements, first-aider lists, profiles, device sessions, roles, and administration workflows for student first-aiders, lead first-aiders, and teacher supervision.
+SSD Manager is a Flutter mobile app plus PHP/MySQL backend for a school first-aid service. It manages duty planning, announcements, first-aider lists, profiles, device sessions, roles, and administration workflows for student first-aiders, lead first-aiders, teacher supervision, and school secretariat staff.
 
 The current repository is the source of truth. Historical Codex chats are local to the original PC and should not be treated as portable project state. Important decisions from those chats are captured in `docs/PROJECT_CONTEXT.md`.
 
@@ -64,6 +64,9 @@ With the local database migrated and seeded, start the backend and run the API s
 php -S localhost:8080 -t backend/public
 php backend/tests/api_smoke.php
 php backend/tests/api_write_smoke.php
+php backend/tests/api_duty_management_smoke.php
+php backend/tests/api_attachment_smoke.php
+php backend/tests/api_secretariat_smoke.php
 php backend/tests/api_security_smoke.php
 ```
 
@@ -81,19 +84,37 @@ flutter run --dart-define=SSD_API_BASE_URL=http://10.0.2.2:8080/api/v1
 ```
 
 The minimum iOS deployment target is 15.0. On the MacBook, iOS builds inside the Documents/File Provider area may fail because of extended file attributes; use the temporary external build-directory procedure documented in `docs/PROJECT_CONTEXT.md`.
+Keep generated iOS dependency trees (`ios/Flutter/ephemeral/**` and
+`ios/.symlinks/**`) excluded from Dart analysis. Following their package
+symlinks can make the analysis server scan the full generated build tree.
+If Android D8 reports `GeneratedPluginRegistrant 2.dex` beside the normal
+registrant, macOS File Provider duplicated a generated cache file. Run
+`flutter clean`, then `flutter pub get`, and rebuild; do not change Android
+dependencies to work around this generated-output problem.
 
 On the MacBook, Homebrew OpenJDK 17 and Android Command-line Tools are configured in Flutter. Android SDK platforms 34-36, Build Tools 36.0.0, Platform Tools, NDK 28.2, and CMake 3.22.1 are installed, and `flutter doctor` reports all Android licenses accepted. Local HTTP is allowed only in Android debug builds; release builds must use HTTPS.
 
 The production deployment target is a dedicated SSD Manager project in the owner's existing Railway workspace. Deploy the PHP API and Railway MySQL in the same EU region; do not modify the separate StudyConnect Railway project. Railway secrets belong in service variables and must not be written into the repository.
 
-The live Railway API healthcheck is `https://ssd-api-production.up.railway.app/api/v1/health`. Railway's runtime enabled `mpm_event` in addition to PHP Apache's required `mpm_prefork`; keep the Bookworm image pin and the runtime MPM enforcement in `backend/docker/railway-entrypoint.sh`. The first successful deployment containing this fix was uploaded from the local checkout, so ensure these changes are committed before relying on GitHub autodeploys.
+The live Railway API healthcheck is `https://ssd-api-production.up.railway.app/api/v1/health`. Railway's runtime enabled `mpm_event` in addition to PHP Apache's required `mpm_prefork`; keep the Bookworm image pin and the runtime MPM enforcement in `backend/docker/railway-entrypoint.sh`. The fix is on GitHub `main`; Railway associated the merge commit with the service and skipped a redundant rebuild because the identical watched files were already live from the verified CLI deployment.
+
+Every simulator/device build must set `SSD_API_BASE_URL` explicitly and record
+whether it targets local development or Railway. The production test account
+exists only in Railway; a simulator build compiled with
+`http://127.0.0.1:8080/api/v1` will correctly reject those credentials because
+it uses the separate local database. Process environment variables must take
+precedence over `backend/.env`; this is required for `railway run` and deployed
+service variables.
+
+Railway CLI SSH maintenance requires a registered public SSH key. For one-off production bootstrap work, register a dedicated key only for the operation, verify the result through the public API, and remove the key from Railway immediately afterward.
 
 ## Working Rules
 
 - Do not commit secrets or local environment files. Keep `backend/.env`, Firebase config files, service-account JSON files, signing keys, and local build output out of Git.
 - Preserve the role model and school boundary checks. Security-sensitive rules must be enforced server-side, not only in Flutter UI.
+- Never display raw exception, URL, API, SQL, or response-body details to app users. Route errors through the shared safe user-message mapping.
 - Prefer the existing architecture: Riverpod providers and repositories on the Flutter side; controller/service/core separation on the PHP side.
-- Keep V1 scope focused. Chat, uploads, open registration, and broad social features are not part of the current SSD Manager V1 unless explicitly requested.
+- Keep V1 scope focused. The shared announcement channel supports explicitly requested photo/file attachments; private chat, open registration, and broad social features remain out of scope unless explicitly requested.
 
 ## Project Memory Protocol
 

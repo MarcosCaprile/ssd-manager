@@ -6,7 +6,8 @@ class DutyRules {
   static bool isWeekend(DateTime day) =>
       day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
 
-  static DateTime onlyDate(DateTime value) => DateTime(value.year, value.month, value.day);
+  static DateTime onlyDate(DateTime value) =>
+      DateTime(value.year, value.month, value.day);
 
   static bool isWithinUpcomingWindow(DateTime now, DateTime day) {
     final today = onlyDate(now);

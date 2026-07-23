@@ -12,10 +12,10 @@ class AuthRepository {
     required SessionStorage sessionStorage,
     required DeviceInfoService deviceInfoService,
     required PushService pushService,
-  })  : _api = api,
-        _sessionStorage = sessionStorage,
-        _deviceInfoService = deviceInfoService,
-        _pushService = pushService;
+  }) : _api = api,
+       _sessionStorage = sessionStorage,
+       _deviceInfoService = deviceInfoService,
+       _pushService = pushService;
 
   final ApiClient _api;
   final SessionStorage _sessionStorage;
@@ -44,7 +44,8 @@ class AuthRepository {
       ...device.toJson(),
       'firebase_token': firebaseToken,
     };
-    final data = await _api.post('auth/login', body: body) as Map<String, dynamic>;
+    final data =
+        await _api.post('auth/login', body: body) as Map<String, dynamic>;
     final user = User.fromJson(data['user'] as Map<String, dynamic>);
     await _sessionStorage.save(
       accessToken: data['access_token'] as String,
@@ -57,7 +58,10 @@ class AuthRepository {
   Future<void> updatePushToken() async {
     final firebaseToken = await _pushService.readToken();
     if (firebaseToken == null) return;
-    await _api.post('auth/device-token', body: {'firebase_token': firebaseToken});
+    await _api.post(
+      'auth/device-token',
+      body: {'firebase_token': firebaseToken},
+    );
   }
 
   Future<User> changePassword({
@@ -65,14 +69,16 @@ class AuthRepository {
     required String newPassword,
     required bool revokeOtherDevices,
   }) async {
-    final data = await _api.post(
-      'auth/password',
-      body: {
-        'current_password': currentPassword,
-        'new_password': newPassword,
-        'revoke_other_devices': revokeOtherDevices,
-      },
-    ) as Map<String, dynamic>;
+    final data =
+        await _api.post(
+              'auth/password',
+              body: {
+                'current_password': currentPassword,
+                'new_password': newPassword,
+                'revoke_other_devices': revokeOtherDevices,
+              },
+            )
+            as Map<String, dynamic>;
     final session = await _sessionStorage.read();
     final user = User.fromJson(data['user'] as Map<String, dynamic>);
     if (session != null) {

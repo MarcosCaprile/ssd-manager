@@ -23,7 +23,13 @@ if (is_file($envFile)) {
             continue;
         }
         [$key, $value] = explode('=', $line, 2);
-        $_ENV[trim($key)] = trim($value);
+        $key = trim($key);
+        if (
+            (!array_key_exists($key, $_ENV) || $_ENV[$key] === '')
+            && (getenv($key) === false || getenv($key) === '')
+        ) {
+            $_ENV[$key] = trim($value);
+        }
     }
 }
 

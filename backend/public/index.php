@@ -12,6 +12,7 @@ use App\Controllers\UserController;
 use App\Core\Database;
 use App\Core\Response;
 use App\Core\Router;
+use App\Services\AnnouncementAttachmentService;
 use App\Services\AuthService;
 use App\Services\DutyService;
 use App\Services\FirebaseMessagingService;
@@ -25,11 +26,12 @@ $notifications = new NotificationService($pdo, $firebase);
 $authService = new AuthService($pdo, new RateLimiter($pdo));
 $dutyService = new DutyService($pdo, $notifications);
 $userService = new UserService($pdo);
+$attachmentService = new AnnouncementAttachmentService($pdo);
 
 $authController = new AuthController($authService);
-$meController = new MeController($userService, $authService);
+$meController = new MeController($userService, $authService, $attachmentService);
 $dutyController = new DutyController($dutyService);
-$announcementController = new AnnouncementController($pdo, $notifications);
+$announcementController = new AnnouncementController($pdo, $notifications, $attachmentService);
 $userController = new UserController($userService, $authService);
 
 $router = new Router($authService);
@@ -50,9 +52,16 @@ $router->add('GET', 'me/statistics', [$meController, 'statistics']);
 $router->add('GET', 'me/devices', [$meController, 'devices']);
 $router->add('DELETE', 'me/devices', [$meController, 'revokeOtherDevices']);
 $router->add('DELETE', 'me/devices/{id}', [$meController, 'revokeDevice']);
+$router->add('GET', 'me/attachments', [$meController, 'attachments']);
+$router->add('DELETE', 'me/attachments/{id}', [$meController, 'deleteAttachment']);
 
 $router->add('GET', 'duties/upcoming', [$dutyController, 'upcoming']);
 $router->add('GET', 'duties/history', [$dutyController, 'history']);
+$router->add('POST', 'duties', [$dutyController, 'create']);
+$router->add('POST', 'duties/closures', [$dutyController, 'createClosure']);
+$router->add('POST', 'duties/closures/reset', [$dutyController, 'resetClosure']);
+$router->add('PATCH', 'duties/{date}', [$dutyController, 'update']);
+$router->add('POST', 'duties/{date}/reset', [$dutyController, 'reset']);
 $router->add('GET', 'duties/{date}', [$dutyController, 'details']);
 $router->add('POST', 'duties/{date}/self', [$dutyController, 'selfAssign']);
 $router->add('DELETE', 'duties/{date}/self', [$dutyController, 'selfCancel']);
@@ -62,6 +71,8 @@ $router->add('DELETE', 'duties/{date}/assignments/{assignmentId}', [$dutyControl
 
 $router->add('GET', 'announcements', [$announcementController, 'index']);
 $router->add('POST', 'announcements', [$announcementController, 'store']);
+$router->add('POST', 'announcements/attachments', [$announcementController, 'uploadAttachment']);
+$router->add('GET', 'announcements/attachments/{id}', [$announcementController, 'downloadAttachment']);
 
 $router->add('GET', 'users', [$userController, 'index']);
 $router->add('POST', 'users', [$userController, 'store']);

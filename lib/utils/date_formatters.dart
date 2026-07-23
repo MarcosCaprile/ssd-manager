@@ -1,13 +1,40 @@
-import 'package:intl/intl.dart';
-
 class DateFormatters {
   DateFormatters._();
 
-  static final DateFormat weekday = DateFormat.EEEE('de_DE');
-  static final DateFormat date = DateFormat('dd.MM.yyyy', 'de_DE');
-  static final DateFormat dateTime = DateFormat('dd.MM.yyyy HH:mm', 'de_DE');
+  static const _weekdays = <String>[
+    'Montag',
+    'Dienstag',
+    'Mittwoch',
+    'Donnerstag',
+    'Freitag',
+    'Samstag',
+    'Sonntag',
+  ];
 
-  static String dutyDate(DateTime value) => date.format(value);
-  static String dutyWeekday(DateTime value) => weekday.format(value);
-  static String timestamp(DateTime value) => dateTime.format(value.toLocal());
+  static String dutyDate(DateTime value) => _date(value);
+
+  static String dutyWeekday(DateTime value) => _weekdays[value.weekday - 1];
+
+  static String timestamp(DateTime value) {
+    final local = value.toLocal();
+    return '${_date(local)} ${_twoDigits(local.hour)}:${_twoDigits(local.minute)}';
+  }
+
+  static String chatTimestamp(DateTime value, {DateTime? now}) {
+    final local = value.toLocal();
+    final current = (now ?? DateTime.now()).toLocal();
+    final time = '${_twoDigits(local.hour)}:${_twoDigits(local.minute)}';
+    if (local.year == current.year &&
+        local.month == current.month &&
+        local.day == current.day) {
+      return time;
+    }
+    return '${_twoDigits(local.day)}.${_twoDigits(local.month)}. $time';
+  }
+
+  static String _date(DateTime value) {
+    return '${_twoDigits(value.day)}.${_twoDigits(value.month)}.${value.year.toString().padLeft(4, '0')}';
+  }
+
+  static String _twoDigits(int value) => value.toString().padLeft(2, '0');
 }

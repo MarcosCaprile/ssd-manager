@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../themes/app_colors.dart';
-
 class AppLogo extends StatelessWidget {
   const AppLogo({super.key, this.size = 88});
 
@@ -9,27 +7,28 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Semantics(
       label: 'SSD Manager Logo',
       child: Container(
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AppColors.lightBlue,
+          color: scheme.primaryContainer,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: scheme.outlineVariant),
         ),
         child: Center(
           child: Container(
             width: size * 0.58,
             height: size * 0.58,
             decoration: BoxDecoration(
-              color: AppColors.primaryBlue,
+              color: scheme.primary,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               Icons.medical_services_outlined,
-              color: Colors.white,
+              color: scheme.onPrimary,
               size: size * 0.34,
             ),
           ),

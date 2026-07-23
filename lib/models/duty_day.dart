@@ -1,3 +1,5 @@
+import '../utils/json_date_time.dart';
+
 class DutyAssignment {
   const DutyAssignment({
     required this.id,
@@ -27,10 +29,12 @@ class DutyAssignment {
       fullName: (json['full_name'] ?? '') as String,
       status: (json['status'] ?? 'planned') as String,
       assignmentType: (json['assignment_type'] ?? 'self') as String,
-      assignedAt: json['assigned_at'] == null ? null : DateTime.parse(json['assigned_at'] as String),
+      assignedAt: json['assigned_at'] == null
+          ? null
+          : parseUtcDateTime(json['assigned_at'] as String),
       sickReportedAt: json['sick_reported_at'] == null
           ? null
-          : DateTime.parse(json['sick_reported_at'] as String),
+          : parseUtcDateTime(json['sick_reported_at'] as String),
     );
   }
 }
@@ -40,15 +44,22 @@ class DutyDay {
     required this.date,
     required this.capacity,
     required this.isActive,
+    required this.isClosed,
     required this.assignments,
+    this.title,
+    this.description,
   });
 
   final DateTime date;
   final int capacity;
   final bool isActive;
+  final bool isClosed;
+  final String? title;
+  final String? description;
   final List<DutyAssignment> assignments;
 
-  int get occupiedSlots => assignments.where((item) => item.occupiesSlot).length;
+  int get occupiedSlots =>
+      assignments.where((item) => item.occupiesSlot).length;
   int get freeSlots => capacity - occupiedSlots;
   bool get isFull => occupiedSlots >= capacity;
 
@@ -66,9 +77,17 @@ class DutyDay {
       date: DateTime.parse(json['date'] as String),
       capacity: ((json['capacity'] ?? 3) as num).toInt(),
       isActive: json['is_active'] != false && json['is_active'] != 0,
+      isClosed: json['is_closed'] == true || json['is_closed'] == 1,
+      title: _optionalText(json['title']),
+      description: _optionalText(json['description']),
       assignments: ((json['assignments'] ?? []) as List<dynamic>)
           .map((item) => DutyAssignment.fromJson(item as Map<String, dynamic>))
           .toList(),
     );
+  }
+
+  static String? _optionalText(dynamic value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? null : text;
   }
 }

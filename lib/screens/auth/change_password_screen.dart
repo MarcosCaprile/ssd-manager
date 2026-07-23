@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../themes/app_colors.dart';
+import '../../utils/user_error_message.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key, required this.forceChange});
@@ -10,7 +11,8 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
   final bool forceChange;
 
   @override
-  ConsumerState<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
+  ConsumerState<ChangePasswordScreen> createState() =>
+      _ChangePasswordScreenState();
 }
 
 class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
@@ -37,7 +39,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       _error = null;
     });
     try {
-      await ref.read(authControllerProvider.notifier).changePassword(
+      await ref
+          .read(authControllerProvider.notifier)
+          .changePassword(
             currentPassword: _current.text,
             newPassword: _new.text,
             revokeOtherDevices: _revokeOthers,
@@ -51,7 +55,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         );
       }
     } catch (error) {
-      setState(() => _error = error.toString());
+      setState(() => _error = userErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -82,8 +86,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               TextFormField(
                 controller: _current,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Aktuelles Passwort'),
-                validator: (value) => value == null || value.isEmpty ? 'Bitte aktuelles Passwort eingeben.' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Aktuelles Passwort',
+                ),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Bitte aktuelles Passwort eingeben.'
+                    : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -101,14 +109,19 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
               TextFormField(
                 controller: _repeat,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Neues Passwort wiederholen'),
-                validator: (value) => value != _new.text ? 'Die Passwörter stimmen nicht überein.' : null,
+                decoration: const InputDecoration(
+                  labelText: 'Neues Passwort wiederholen',
+                ),
+                validator: (value) => value != _new.text
+                    ? 'Die Passwörter stimmen nicht überein.'
+                    : null,
               ),
               const SizedBox(height: 10),
               CheckboxListTile(
                 value: _revokeOthers,
                 contentPadding: EdgeInsets.zero,
-                onChanged: (value) => setState(() => _revokeOthers = value ?? true),
+                onChanged: (value) =>
+                    setState(() => _revokeOthers = value ?? true),
                 title: const Text('Alle anderen Geräte abmelden'),
               ),
               if (_error != null) ...[
@@ -122,7 +135,10 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Icon(Icons.save_outlined),
                 label: const Text('Passwort speichern'),

@@ -29,7 +29,7 @@ final class AuthService
         $identifier = mb_strtolower(trim((string) ($input['identifier'] ?? '')));
         $password = (string) ($input['password'] ?? '');
         if ($identifier === '' || $password === '') {
-            Response::error('E-Mail oder Passwort ist ungültig.', 422);
+            Response::error('Bitte gib deine E-Mail-Adresse oder deinen Benutzernamen und dein Passwort ein.', 422);
         }
         if ($this->rateLimiter->tooManyLoginAttempts($identifier, $ip)) {
             Response::error('Zu viele fehlgeschlagene Anmeldeversuche. Bitte später erneut versuchen.', 429);
@@ -50,7 +50,7 @@ final class AuthService
         $user = $statement->fetch();
         if (!$user || !password_verify($password, (string) $user['password_hash'])) {
             $this->rateLimiter->recordLogin($identifier, $ip, false);
-            Response::error('E-Mail oder Passwort ist ungültig.', 401);
+            Response::error('E-Mail/Benutzername oder Passwort ist nicht korrekt.', 401);
         }
         if ($user['status'] !== 'active') {
             $this->rateLimiter->recordLogin($identifier, $ip, false);
@@ -74,7 +74,7 @@ final class AuthService
         $hash = hash('sha256', $refreshToken);
         $statement = $this->pdo->prepare(
             'SELECT d.*, u.id AS u_id, u.school_id, u.first_name, u.last_name, u.username, u.email,
-                    u.password_hash, u.role, u.status, u.must_change_password
+                    u.password_hash, u.role, u.sanitaeter_since, u.status, u.must_change_password
              FROM user_devices d
              JOIN users u ON u.id = d.user_id
              WHERE d.refresh_token_hash = :hash
@@ -123,7 +123,7 @@ final class AuthService
                     d.platform, d.device_model, d.app_version, d.firebase_token, d.created_at AS device_created_at,
                     d.last_active_at, d.revoked_at, d.expires_at,
                     u.id AS user_id, u.school_id, u.first_name, u.last_name, u.username, u.email,
-                    u.password_hash, u.role, u.status, u.must_change_password
+                    u.password_hash, u.role, u.sanitaeter_since, u.status, u.must_change_password
              FROM user_devices d
              JOIN users u ON u.id = d.user_id
              WHERE d.id = :device_id AND u.id = :user_id
@@ -284,6 +284,7 @@ final class AuthService
             'username' => (string) $user['username'],
             'email' => (string) $user['email'],
             'role' => (string) $user['role'],
+            'sanitaeter_since' => $user['sanitaeter_since'] ?? null,
             'status' => (string) $user['status'],
             'must_change_password' => (bool) $user['must_change_password'],
         ];
@@ -303,6 +304,7 @@ final class AuthService
             'username' => (string) $row['username'],
             'email' => (string) $row['email'],
             'role' => (string) $row['role'],
+            'sanitaeter_since' => $row['sanitaeter_since'] ?? null,
             'status' => (string) $row['status'],
             'must_change_password' => (bool) $row['must_change_password'],
         ];
@@ -322,6 +324,7 @@ final class AuthService
             'username' => (string) $row['username'],
             'email' => (string) $row['email'],
             'role' => (string) $row['role'],
+            'sanitaeter_since' => $row['sanitaeter_since'] ?? null,
             'status' => (string) $row['status'],
             'must_change_password' => (bool) $row['must_change_password'],
         ];

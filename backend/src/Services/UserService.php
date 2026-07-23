@@ -32,7 +32,6 @@ final class UserService
             $statement = $this->pdo->prepare(
                 "SELECT * FROM users
                  WHERE school_id = :school_id AND status = 'active' AND deleted_at IS NULL
-                   AND role IN ('sanitaeter', 'sani_leitung')
                  ORDER BY last_name, first_name"
             );
             $statement->execute(['school_id' => $auth->schoolId()]);
@@ -49,9 +48,12 @@ final class UserService
             Response::error('Du darfst dieses Profil nicht öffnen.', 403);
         }
         $user = $this->findInSchool($auth->schoolId(), $userId);
+        $statistics = in_array((string) $user['role'], ['sanitaeter', 'sani_leitung'], true)
+            ? $this->statistics($auth, $userId)
+            : null;
         return [
             'user' => $this->authFormatter->publicUser($user),
-            'statistics' => $this->statistics($auth, $userId),
+            'statistics' => $statistics,
         ];
     }
 
@@ -64,18 +66,21 @@ final class UserService
             Response::error('Keine Berechtigung.', 403);
         }
         $role = (string) ($data['role'] ?? 'sanitaeter');
-        if (!in_array($role, ['sanitaeter', 'sani_leitung', 'teacher'], true)) {
+        if (!in_array($role, ['sanitaeter', 'sani_leitung', 'teacher', 'sekretariat'], true)) {
             Response::error('Ungültige Rolle.', 422);
         }
         if ($auth->role() === 'sani_leitung' && $role !== 'sanitaeter') {
-            Response::error('Die Sani-Leitung darf keine Leitungs- oder Lehrerrolle vergeben.', 403);
+            Response::error('Die Sani-Leitung darf neue Konten nur als Schulsanitäter anlegen.', 403);
         }
+        $sanitaeterSince = $this->sanitaeterSinceForRole($role, $data['sanitaeter_since'] ?? null);
 
         $statement = $this->pdo->prepare(
             'INSERT INTO users
-             (school_id, first_name, last_name, username, email, password_hash, role, status, must_change_password, created_at, updated_at)
+             (school_id, first_name, last_name, username, email, password_hash, role, sanitaeter_since,
+              status, must_change_password, created_at, updated_at)
              VALUES
-             (:school_id, :first_name, :last_name, :username, :email, :password_hash, :role, "active", 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
+             (:school_id, :first_name, :last_name, :username, :email, :password_hash, :role, :sanitaeter_since,
+              "active", 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
         );
         try {
             $statement->execute([
@@ -86,6 +91,7 @@ final class UserService
                 'email' => mb_strtolower(trim((string) $data['email'])),
                 'password_hash' => PasswordHasher::hash((string) $data['temporary_password']),
                 'role' => $role,
+                'sanitaeter_since' => $sanitaeterSince,
             ]);
         } catch (\PDOException $exception) {
             if ($exception->getCode() === '23000' || (int) ($exception->errorInfo[1] ?? 0) === 1062) {
@@ -139,15 +145,18 @@ final class UserService
     public function changeRole(AuthContext $auth, int $userId, string $role): void
     {
         if (!$auth->canManageRoles()) {
-            Response::error('Nur die Lehreraufsicht darf Rollen verwalten.', 403);
+            Response::error('Du darfst Rollen nicht verwalten.', 403);
         }
         if ($auth->userId() === $userId) {
             Response::error('Die eigene Rolle kann nicht geändert werden.', 403);
         }
-        if (!in_array($role, ['sanitaeter', 'sani_leitung', 'teacher'], true)) {
-            Response::error('Ungültige Rolle.', 422);
+        if (!in_array($role, ['sanitaeter', 'sani_leitung'], true)) {
+            Response::error('Die Rolle kann nur zwischen Schulsanitäter und Sani-Leitung gewechselt werden.', 422);
         }
-        $this->findInSchool($auth->schoolId(), $userId);
+        $target = $this->findInSchool($auth->schoolId(), $userId);
+        if (!in_array((string) $target['role'], ['sanitaeter', 'sani_leitung'], true)) {
+            Response::error('Die Rolle von Lehreraufsicht und Sekretariat kann hier nicht geändert werden.', 403);
+        }
         $this->pdo->prepare(
             'UPDATE users SET role = :role, updated_at = UTC_TIMESTAMP()
              WHERE id = :id AND school_id = :school_id'
@@ -265,7 +274,32 @@ final class UserService
     {
         $this->pdo->prepare(
             'UPDATE user_devices SET revoked_at = UTC_TIMESTAMP(), firebase_token = NULL
-             WHERE user_id = :user_id AND revoked_at IS NULL'
+            WHERE user_id = :user_id AND revoked_at IS NULL'
         )->execute(['user_id' => $userId]);
+    }
+
+    private function sanitaeterSinceForRole(string $role, mixed $value): ?string
+    {
+        if (!in_array($role, ['sanitaeter', 'sani_leitung'], true)) {
+            return null;
+        }
+        if (!is_string($value) || trim($value) === '') {
+            Response::error('Bitte gib an, seit wann die Person Schulsanitäter ist.', 422);
+        }
+        $value = trim($value);
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        $errors = \DateTimeImmutable::getLastErrors();
+        if (
+            $date === false
+            || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))
+            || $date->format('Y-m-d') !== $value
+        ) {
+            Response::error('Das Datum „Sanitäter seit“ ist ungültig.', 422);
+        }
+        $today = new \DateTimeImmutable('today', new \DateTimeZone('Europe/Berlin'));
+        if ($date > $today) {
+            Response::error('„Sanitäter seit“ darf nicht in der Zukunft liegen.', 422);
+        }
+        return $value;
     }
 }

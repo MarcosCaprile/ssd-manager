@@ -32,6 +32,5 @@ class DeepLinkController extends Notifier<AppDeepLink?> {
   }
 }
 
-final deepLinkControllerProvider = NotifierProvider<DeepLinkController, AppDeepLink?>(
-  DeepLinkController.new,
-);
+final deepLinkControllerProvider =
+    NotifierProvider<DeepLinkController, AppDeepLink?>(DeepLinkController.new);

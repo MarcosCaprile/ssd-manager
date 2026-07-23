@@ -9,8 +9,12 @@ import '../repositories/auth_repository.dart';
 import '../repositories/duty_repository.dart';
 import '../repositories/user_repository.dart';
 
-final sessionStorageProvider = Provider<SessionStorage>((ref) => SessionStorage());
-final deviceInfoServiceProvider = Provider<DeviceInfoService>((ref) => DeviceInfoService());
+final sessionStorageProvider = Provider<SessionStorage>(
+  (ref) => SessionStorage(),
+);
+final deviceInfoServiceProvider = Provider<DeviceInfoService>(
+  (ref) => DeviceInfoService(),
+);
 final pushServiceProvider = Provider<PushService>((ref) => PushService());
 
 final apiClientProvider = Provider<ApiClient>((ref) {

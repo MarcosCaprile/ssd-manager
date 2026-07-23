@@ -16,8 +16,9 @@ Das Repository enthält dafür:
 
 - `Dockerfile` für PHP 8.4 mit Apache, PDO MySQL, cURL und mbstring
 - `railway.json` mit Pre-Deploy-Migration, Healthcheck und Restart-Policy
-- `backend/scripts/migrate.php` für die idempotente initiale Migration
+- `backend/scripts/migrate.php` für versionierte, wiederholbare Migrationen
 - `GET /api/v1/health` als datenbankgestützten Deployment-Healthcheck
+- `backend/docker/uploads.ini` mit 9 MB PHP-Upload- und 10 MB Request-Limit
 
 Der Container ist auf `php:8.4-apache-bookworm` festgelegt. Railway aktiviert
 zur Laufzeit zusätzlich `mpm_event`; der Entrypoint deaktiviert deshalb direkt
@@ -70,6 +71,8 @@ FCM_ENABLED=false
 7. Beim Deployment führt Railway vor dem Start automatisch
    `php scripts/migrate.php` aus. Das Deployment wird nur aktiv, wenn danach
    der Healthcheck inklusive Datenbankverbindung erfolgreich ist.
+   Bereits gesetzte Railway-Prozessvariablen haben Vorrang vor einer eventuell
+   vorhandenen lokalen `.env`-Datei.
 8. Nach dem ersten erfolgreichen Deployment per Railway-SSH zunächst die reale
    Schule und anschließend den ersten Lehreraccount anlegen:
 
@@ -102,10 +105,10 @@ Railway:
 1. Projekt auf den Server kopieren.
 2. Webroot auf `backend/public` setzen.
 3. Datenbank und Datenbanknutzer anlegen.
-4. Migration ausführen:
+4. Alle noch nicht angewendeten Migrationen ausführen:
 
 ```bash
-mysql -u ssd_manager -p ssd_manager < backend/database/migrations/001_initial_schema.sql
+php backend/scripts/migrate.php
 ```
 
 5. `.env` aus `.env.example` erstellen.
@@ -124,7 +127,8 @@ Apache nutzt `backend/public/.htaccess`. Bei Nginx alle nicht existierenden Date
 - Datenbanknutzer nur mit notwendigen Rechten ausstatten.
 - Service-Account-Dateien außerhalb des Webroots speichern.
 - Logs ohne Passwörter, Refresh-Tokens oder Firebase-Tokens führen.
-- Backups für MySQL einrichten.
+- Backups für MySQL einschließlich der Ankündigungsanhänge einrichten und das
+  Datenbankwachstum überwachen.
 - `login_attempts` und technische Logs regelmäßig bereinigen.
 
 ## App-Konfiguration

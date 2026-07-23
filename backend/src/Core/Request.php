@@ -35,6 +35,43 @@ final class Request
         return is_array($decoded) ? $decoded : [];
     }
 
+    public function query(string $key): ?string
+    {
+        if (!array_key_exists($key, $_GET) || is_array($_GET[$key])) {
+            return null;
+        }
+        $value = trim((string) $_GET[$key]);
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * @return array{name:string,tmp_name:string,size:int,error:int}
+     */
+    public function uploadedFile(string $key): array
+    {
+        $file = $_FILES[$key] ?? null;
+        if (!is_array($file) || is_array($file['error'] ?? null)) {
+            Response::error('Es wurde keine Datei übermittelt.', 422);
+        }
+        $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+            Response::error('Die Datei ist zu groß.', 413);
+        }
+        if ($error !== UPLOAD_ERR_OK) {
+            Response::error('Die Datei konnte nicht hochgeladen werden.', 422);
+        }
+        $temporaryPath = (string) ($file['tmp_name'] ?? '');
+        if ($temporaryPath === '' || !is_uploaded_file($temporaryPath)) {
+            Response::error('Die hochgeladene Datei ist ungültig.', 422);
+        }
+        return [
+            'name' => (string) ($file['name'] ?? 'Datei'),
+            'tmp_name' => $temporaryPath,
+            'size' => (int) ($file['size'] ?? 0),
+            'error' => $error,
+        ];
+    }
+
     public function bearerToken(): ?string
     {
         $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';

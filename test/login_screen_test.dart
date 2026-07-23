@@ -8,10 +8,7 @@ void main() {
   testWidgets('login screen renders required fields', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        child: MaterialApp(
-          theme: AppTheme.light,
-          home: const LoginScreen(),
-        ),
+        child: MaterialApp(theme: AppTheme.light, home: const LoginScreen()),
       ),
     );
 

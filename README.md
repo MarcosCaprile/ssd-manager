@@ -1,6 +1,6 @@
 # SSD Manager
 
-SSD Manager ist eine mobile App für den Schulsanitätsdienst einer Schule. Die App digitalisiert den Dienstplan, Ankündigungen, Sani-Liste, Profile, Geräteverwaltung und Verwaltungsfunktionen für Sani-Leitung und Lehreraufsicht.
+SSD Manager ist eine mobile App für den Schulsanitätsdienst einer Schule. Die App digitalisiert den Dienstplan, Ankündigungen, Sani-Liste, Profile, Geräteverwaltung und Verwaltungsfunktionen für Schulsanitäter, Sani-Leitung, Lehreraufsicht und Sekretariat.
 
 ## Stack
 
@@ -25,7 +25,8 @@ SSD Manager ist eine mobile App für den Schulsanitätsdienst einer Schule. Die 
 ## Lokaler Start
 
 1. MySQL-Datenbank erstellen, z. B. `ssd_manager`.
-2. `backend/database/migrations/001_initial_schema.sql` ausführen.
+2. `php backend/scripts/migrate.php` ausführen, damit alle versionierten
+   Migrationen in Reihenfolge angewendet werden.
 3. Optional `backend/database/seeds/seed.sql` ausführen. Testpasswort der Seed-Accounts: `password`.
 4. `backend/.env.example` nach `backend/.env` kopieren und Werte setzen.
 5. Backend starten:
@@ -138,6 +139,9 @@ Für den lokalen API-Smoke-Test müssen Migration und Demo-Seeds eingespielt sei
 ```bash
 php backend/tests/api_smoke.php
 php backend/tests/api_write_smoke.php
+php backend/tests/api_duty_management_smoke.php
+php backend/tests/api_attachment_smoke.php
+php backend/tests/api_secretariat_smoke.php
 php backend/tests/api_security_smoke.php
 ```
 

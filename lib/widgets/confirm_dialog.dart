@@ -19,7 +19,9 @@ Future<bool> showConfirmDialog(
         ),
         FilledButton(
           style: destructive
-              ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error)
+              ? FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                )
               : null,
           onPressed: () => Navigator.of(context).pop(true),
           child: Text(confirmLabel),

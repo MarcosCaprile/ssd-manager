@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/user.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/auth_provider.dart';
-import '../../themes/app_colors.dart';
+import '../../utils/date_formatters.dart';
+import '../../utils/user_error_message.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/status_views.dart';
 import 'user_detail_screen.dart';
 
@@ -17,6 +19,8 @@ class SaniListScreen extends ConsumerStatefulWidget {
 
 class _SaniListScreenState extends ConsumerState<SaniListScreen> {
   late Future<List<User>> _future;
+  final _searchController = TextEditingController();
+  String _query = '';
 
   @override
   void initState() {
@@ -26,9 +30,16 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
 
   Future<List<User>> _load() => ref.read(userRepositoryProvider).users();
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
-    setState(() => _future = _load());
-    await _future;
+    final next = _load();
+    setState(() => _future = next);
+    await next;
   }
 
   @override
@@ -52,65 +63,198 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
               label: const Text('Account'),
             )
           : null,
-      body: FutureBuilder<List<User>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingView(message: 'Sani-Liste wird geladen ...');
-          }
-          if (snapshot.hasError) {
-            return ErrorView(message: snapshot.error.toString(), onRetry: _refresh);
-          }
-          final users = snapshot.data ?? [];
-          if (users.isEmpty) {
-            return const EmptyView(
-              icon: Icons.groups_outlined,
-              title: 'Keine Sanis gefunden',
-              message: 'Aktive Sanis erscheinen hier, sobald Accounts erstellt wurden.',
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: users.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final user = users[index];
-                return Card(
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.lightBlue,
-                      foregroundColor: AppColors.primaryBlue,
-                      child: Text(user.firstName.isEmpty ? '?' : user.firstName.characters.first),
-                    ),
-                    title: Text(user.fullName),
-                    subtitle: Text('${user.role.label} · ${_statusLabel(user.status)}'),
-                    trailing: canManage ? const Icon(Icons.chevron_right) : null,
-                    onTap: canManage
-                        ? () async {
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => UserDetailScreen(userId: user.id)),
-                            );
-                            await _refresh();
-                          }
-                        : null,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: 'Nach Namen suchen',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Suche löschen',
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+              ),
+              onChanged: (value) {
+                setState(() => _query = value.trim().toLowerCase());
+              },
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<User>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const LoadingView(
+                    message: 'Sani-Liste wird geladen ...',
+                  );
+                }
+                if (snapshot.hasError) {
+                  return ErrorView(error: snapshot.error, onRetry: _refresh);
+                }
+                final users = snapshot.data ?? [];
+                if (users.isEmpty) {
+                  return const EmptyView(
+                    icon: Icons.groups_outlined,
+                    title: 'Noch keine Personen',
+                    message:
+                        'Personen erscheinen hier, sobald Accounts erstellt wurden.',
+                  );
+                }
+                final filtered = _query.isEmpty
+                    ? users
+                    : users
+                          .where(
+                            (user) =>
+                                user.fullName.toLowerCase().contains(_query),
+                          )
+                          .toList();
+                if (filtered.isEmpty) {
+                  return const EmptyView(
+                    icon: Icons.person_search_outlined,
+                    title: 'Kein passender Name',
+                    message: 'Versuche einen anderen Vor- oder Nachnamen.',
+                  );
+                }
+                final sanitary = filtered
+                    .where((user) => user.role.isSanitaryRole)
+                    .toList();
+                final staff = filtered
+                    .where((user) => !user.role.isSanitaryRole)
+                    .toList();
+
+                return RefreshIndicator(
+                  onRefresh: _refresh,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                    children: [
+                      if (sanitary.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Text(
+                            'Keine Schulsanitäter gefunden.',
+                            textAlign: TextAlign.center,
+                          ),
+                        )
+                      else ...[
+                        Text(
+                          'Schulsanitätsdienst',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 10),
+                        for (
+                          var index = 0;
+                          index < sanitary.length;
+                          index++
+                        ) ...[
+                          _UserTile(
+                            user: sanitary[index],
+                            canManage: canManage,
+                            onChanged: _refresh,
+                          ),
+                          if (index != sanitary.length - 1)
+                            const SizedBox(height: 10),
+                        ],
+                      ],
+                      if (staff.isNotEmpty) ...[
+                        const SizedBox(height: 28),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Lehreraufsicht und Sekretariat',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Diese Personen können den SSD einsehen, übernehmen aber keine Dienste.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 10),
+                        for (var index = 0; index < staff.length; index++) ...[
+                          _UserTile(
+                            user: staff[index],
+                            canManage: canManage,
+                            onChanged: _refresh,
+                          ),
+                          if (index != staff.length - 1)
+                            const SizedBox(height: 10),
+                        ],
+                      ],
+                    ],
                   ),
                 );
               },
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
+}
 
-  String _statusLabel(String status) => switch (status) {
-        'active' => 'aktiv',
-        'inactive' => 'deaktiviert',
-        'pending_deletion' => 'Löschung vorgemerkt',
-        _ => status,
-      };
+class _UserTile extends StatelessWidget {
+  const _UserTile({
+    required this.user,
+    required this.canManage,
+    required this.onChanged,
+  });
+
+  final User user;
+  final bool canManage;
+  final Future<void> Function() onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSani = user.role == UserRole.sanitaeter;
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: isSani
+              ? const Border(
+                  left: BorderSide(color: Color(0xFF16A34A), width: 5),
+                )
+              : null,
+        ),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: isSani
+                ? const Color(0xFF16A34A).withValues(alpha: 0.16)
+                : scheme.secondaryContainer,
+            foregroundColor: isSani
+                ? const Color(0xFF15803D)
+                : scheme.onSecondaryContainer,
+            child: Text(
+              user.firstName.isEmpty ? '?' : user.firstName.characters.first,
+            ),
+          ),
+          title: Text(user.fullName),
+          subtitle: Text('${user.role.label} · ${_statusLabel(user.status)}'),
+          trailing: canManage ? const Icon(Icons.chevron_right) : null,
+          onTap: canManage
+              ? () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => UserDetailScreen(userId: user.id),
+                    ),
+                  );
+                  await onChanged();
+                }
+              : null,
+        ),
+      ),
+    );
+  }
 }
 
 class _CreateUserSheet extends ConsumerStatefulWidget {
@@ -128,6 +272,7 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   UserRole _role = UserRole.sanitaeter;
+  DateTime? _sanitaeterSince;
   bool _saving = false;
 
   @override
@@ -140,22 +285,56 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
     super.dispose();
   }
 
+  Future<void> _pickSanitaeterSince() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _sanitaeterSince ?? DateTime.now(),
+      firstDate: DateTime(1970),
+      lastDate: DateTime.now(),
+      helpText: 'Seit wann ist die Person Schulsanitäter?',
+    );
+    if (selected != null) setState(() => _sanitaeterSince = selected);
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_role.isSanitaryRole && _sanitaeterSince == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bitte wähle das Datum „Sanitäter seit“ aus.'),
+        ),
+      );
+      return;
+    }
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Account erstellen?',
+      message:
+          '${_first.text.trim()} ${_last.text.trim()} wird als ${_role.label} angelegt. '
+          'Das Datum „Sanitäter seit“ kann später nicht geändert werden.',
+      confirmLabel: 'Erstellen',
+    );
+    if (!confirmed || !mounted) return;
+
     setState(() => _saving = true);
     try {
-      await ref.read(userRepositoryProvider).createUser(
+      await ref
+          .read(userRepositoryProvider)
+          .createUser(
             firstName: _first.text.trim(),
             lastName: _last.text.trim(),
             username: _username.text.trim(),
             email: _email.text.trim(),
             temporaryPassword: _password.text,
             role: _role.toJson(),
+            sanitaeterSince: _sanitaeterSince,
           );
       if (mounted) Navigator.of(context).pop();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(userErrorMessage(error))));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -165,7 +344,7 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(authControllerProvider).user;
-    final canCreateTeacher = currentUser?.role == UserRole.teacher;
+    final canCreateAllRoles = currentUser?.role == UserRole.teacher;
 
     return SafeArea(
       child: Padding(
@@ -182,7 +361,10 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Account erstellen', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Account erstellen',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _first,
@@ -212,9 +394,12 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
                 TextFormField(
                   controller: _password,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Temporäres Startpasswort'),
-                  validator: (value) =>
-                      value == null || value.length < 10 ? 'Mindestens 10 Zeichen erforderlich.' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Temporäres Startpasswort',
+                  ),
+                  validator: (value) => value == null || value.length < 10
+                      ? 'Mindestens 10 Zeichen erforderlich.'
+                      : null,
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<UserRole>(
@@ -225,24 +410,58 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
                       value: UserRole.sanitaeter,
                       child: Text('Schulsanitäter'),
                     ),
-                    if (canCreateTeacher)
+                    if (canCreateAllRoles)
                       const DropdownMenuItem(
                         value: UserRole.saniLeitung,
                         child: Text('Sani-Leitung'),
                       ),
-                    if (canCreateTeacher)
+                    if (canCreateAllRoles)
                       const DropdownMenuItem(
                         value: UserRole.teacher,
                         child: Text('Lehreraufsicht'),
                       ),
+                    if (canCreateAllRoles)
+                      const DropdownMenuItem(
+                        value: UserRole.sekretariat,
+                        child: Text('Sekretariat'),
+                      ),
                   ],
-                  onChanged: (value) => setState(() => _role = value ?? UserRole.sanitaeter),
+                  onChanged: (value) {
+                    setState(() {
+                      _role = value ?? UserRole.sanitaeter;
+                      if (!_role.isSanitaryRole) _sanitaeterSince = null;
+                    });
+                  },
                 ),
+                if (_role.isSanitaryRole) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _pickSanitaeterSince,
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(
+                      _sanitaeterSince == null
+                          ? 'Sanitäter seit auswählen'
+                          : 'Sanitäter seit ${DateFormatters.dutyDate(_sanitaeterSince!)}',
+                    ),
+                  ),
+                  Text(
+                    'Dieses Datum wird beim Erstellen fest gespeichert und kann später nicht geändert werden.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 const SizedBox(height: 18),
                 ElevatedButton.icon(
                   onPressed: _saving ? null : _save,
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('Account erstellen'),
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(
+                    _saving ? 'Account wird erstellt ...' : 'Account erstellen',
+                  ),
                 ),
               ],
             ),
@@ -252,5 +471,13 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
     );
   }
 
-  String? _required(String? value) => value == null || value.trim().isEmpty ? 'Pflichtfeld' : null;
+  String? _required(String? value) =>
+      value == null || value.trim().isEmpty ? 'Pflichtfeld' : null;
 }
+
+String _statusLabel(String status) => switch (status) {
+  'active' => 'aktiv',
+  'inactive' => 'deaktiviert',
+  'pending_deletion' => 'Löschung vorgemerkt',
+  _ => status,
+};
