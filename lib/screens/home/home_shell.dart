@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/api_providers.dart';
 import '../../providers/deep_link_provider.dart';
 import '../announcements/announcements_screen.dart';
 import '../duties/duty_schedule_screen.dart';
@@ -14,7 +15,8 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell>
+    with WidgetsBindingObserver {
   int _index = 0;
   final Set<int> _visited = {0};
 
@@ -26,25 +28,34 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pending = ref.read(deepLinkControllerProvider);
+      if (pending != null) _openDeepLink(pending);
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshAllData();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     ref.listen<AppDeepLink?>(deepLinkControllerProvider, (previous, next) {
       if (next == null) return;
-      final targetIndex = switch (next.route) {
-        'announcements' => 1,
-        'profile_devices' => 3,
-        'duty' => 0,
-        _ => _index,
-      };
-      setState(() {
-        _index = targetIndex;
-        _visited.add(targetIndex);
-      });
-      ref.read(deepLinkControllerProvider.notifier).consume();
-      if (next.route == 'duty' && next.date != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dienst am ${next.date} geöffnet.')),
-        );
-      }
+      _openDeepLink(next);
     });
 
     return Scaffold(
@@ -60,10 +71,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
-        onTap: (index) => setState(() {
-          _index = index;
-          _visited.add(index);
-        }),
+        onTap: (index) {
+          setState(() {
+            _index = index;
+            _visited.add(index);
+          });
+          _refreshForIndex(index);
+        },
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.calendar_month_outlined),
@@ -88,5 +102,42 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         ],
       ),
     );
+  }
+
+  void _refreshForIndex(int index) {
+    if (index == 0) {
+      ref.read(dutyRevisionProvider.notifier).bump();
+    } else if (index == 1) {
+      ref.read(announcementRevisionProvider.notifier).bump();
+      ref.read(pushServiceProvider).clearAnnouncementNotifications();
+    } else if (index == 2) {
+      ref.read(userRevisionProvider.notifier).bump();
+    }
+  }
+
+  void _refreshAllData() {
+    ref.read(dutyRevisionProvider.notifier).bump();
+    ref.read(announcementRevisionProvider.notifier).bump();
+    ref.read(userRevisionProvider.notifier).bump();
+  }
+
+  void _openDeepLink(AppDeepLink link) {
+    final targetIndex = switch (link.route) {
+      'announcements' => 1,
+      'profile_devices' => 3,
+      'duty' => 0,
+      _ => _index,
+    };
+    setState(() {
+      _index = targetIndex;
+      _visited.add(targetIndex);
+    });
+    _refreshForIndex(targetIndex);
+    ref.read(deepLinkControllerProvider.notifier).consume();
+    if (link.route == 'duty' && link.date != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dienst am ${link.date} geöffnet.')),
+      );
+    }
   }
 }

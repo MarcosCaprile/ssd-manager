@@ -41,7 +41,9 @@ class _AuthGate extends ConsumerStatefulWidget {
 }
 
 class _AuthGateState extends ConsumerState<_AuthGate> {
-  StreamSubscription<dynamic>? _pushSubscription;
+  StreamSubscription<Map<String, dynamic>>? _pushOpenSubscription;
+  StreamSubscription<Map<String, dynamic>>? _pushReceiveSubscription;
+  StreamSubscription<String>? _pushTokenSubscription;
 
   @override
   void initState() {
@@ -49,19 +51,45 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     Future.microtask(() async {
       await ref.read(authControllerProvider.notifier).bootstrap();
       final push = ref.read(pushServiceProvider);
-      final initial = await push.initialMessage();
+      final initial = await push.initialData();
       if (initial != null) {
-        ref.read(deepLinkControllerProvider.notifier).setFromData(initial.data);
+        ref.read(deepLinkControllerProvider.notifier).setFromData(initial);
       }
-      _pushSubscription = push.openedMessages.listen((message) {
-        ref.read(deepLinkControllerProvider.notifier).setFromData(message.data);
+      _pushOpenSubscription = push.openedData.listen((data) {
+        ref.read(deepLinkControllerProvider.notifier).setFromData(data);
+        _refreshForPush(data);
+      });
+      _pushReceiveSubscription = push.receivedData.listen(_refreshForPush);
+      _pushTokenSubscription = push.tokenChanges.listen((_) async {
+        if (ref.read(authControllerProvider).status !=
+            AuthStatus.authenticated) {
+          return;
+        }
+        try {
+          await ref.read(authRepositoryProvider).updatePushToken();
+        } catch (_) {
+          // The next login/bootstrap retries token registration.
+        }
       });
     });
   }
 
+  void _refreshForPush(Map<String, dynamic> data) {
+    switch (data['route']) {
+      case 'announcements':
+        ref.read(announcementRevisionProvider.notifier).bump();
+      case 'duty':
+        ref.read(dutyRevisionProvider.notifier).bump();
+      case 'users':
+        ref.read(userRevisionProvider.notifier).bump();
+    }
+  }
+
   @override
   void dispose() {
-    _pushSubscription?.cancel();
+    _pushOpenSubscription?.cancel();
+    _pushReceiveSubscription?.cancel();
+    _pushTokenSubscription?.cancel();
     super.dispose();
   }
 

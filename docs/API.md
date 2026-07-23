@@ -160,12 +160,20 @@ Gelöschte versendete Anhänge bleiben in der Nachricht als Metadatensatz mit
 `is_deleted: true` erhalten. Ihr Download liefert keinen Dateiinhalt mehr; die
 App zeigt stattdessen `Dieser Inhalt wurde gelöscht.` an.
 
+Jede Nachricht enthält `message_type` (`user` oder `system`) und optional
+`system_type`. Eine Krankmeldung erzeugt `message_type=system` und
+`system_type=duty_sick_reported`; der Text nennt Benutzername, Datum und Anzahl
+der noch geplanten Sanis. Diese Nachricht wird serverseitig erzeugt und nicht
+als frei wählbarer Client-Absender akzeptiert.
+
 ## Nutzerverwaltung
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
 | GET | `/users` | Sani-Liste bzw. Admin-Liste |
 | POST | `/users` | Account erstellen |
+| POST | `/users/bulk/validate` | Manager: bis zu 250 Sani-Aktionen vollständig prüfen |
+| POST | `/users/bulk/apply` | Manager: geprüfte Sani-Aktionen transaktional anwenden |
 | GET | `/users/{id}` | Profil und Statistik |
 | PATCH | `/users/{id}` | Für Version 1 deaktiviert |
 | POST | `/users/{id}/deactivate` | Account deaktivieren |
@@ -174,7 +182,8 @@ App zeigt stattdessen `Dieser Inhalt wurde gelöscht.` an.
 | PATCH | `/users/{id}/role` | Rolle ändern |
 
 Beim Erstellen eines `sanitaeter`- oder `sani_leitung`-Accounts ist zusätzlich
-ein nicht in der Zukunft liegendes Datum erforderlich:
+ein gültiges Datum erforderlich. Es darf in der Vergangenheit oder Zukunft
+liegen:
 
 ```json
 {
@@ -192,6 +201,15 @@ ein nicht in der Zukunft liegendes Datum erforderlich:
 `sanitaeter`, `sani_leitung`, `teacher` und `sekretariat`. Die normale
 Rollenänderung ist serverseitig ausschließlich auf `sanitaeter` ↔
 `sani_leitung` für bereits bestehende Saniprofile begrenzt.
+
+Bulk-Endpunkte erhalten `{"rows": [...]}`. Jede Zeile enthält `row_number`,
+`action`, eine exportierte `id` (außer bei `create`) sowie die
+Accountfelder. Zulässige Aktionen sind `create`, `update`, `deactivate`,
+`reactivate` und `mark_deletion`. Die Antwort enthält pro Zeile
+`valid`/`errors`; `/bulk/apply` speichert nur, wenn alle Zeilen gültig sind.
+Bulk ist auf Sani-/Leitungsaccounts derselben Schule begrenzt, kann den eigenen
+Account nicht verändern, übernimmt kein exportiertes Passwort und ändert ein
+bestehendes `sanitaeter_since` nicht.
 
 Deaktivierte Accounts werden nur Lehreraufsicht und Sani-Leitung in einem
 separaten Verwaltungsabschnitt geliefert. Beim Deaktivieren werden alle

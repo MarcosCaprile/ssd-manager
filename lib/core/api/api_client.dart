@@ -14,13 +14,16 @@ class ApiClient {
     required SessionStorage sessionStorage,
     http.Client? httpClient,
     String? baseUrl,
+    void Function(String method, String path)? onMutationSucceeded,
   }) : _sessionStorage = sessionStorage,
        _httpClient = httpClient ?? http.Client(),
-       _baseUrl = Uri.parse(baseUrl ?? AppConfig.apiBaseUrl);
+       _baseUrl = Uri.parse(baseUrl ?? AppConfig.apiBaseUrl),
+       _onMutationSucceeded = onMutationSucceeded;
 
   final SessionStorage _sessionStorage;
   final http.Client _httpClient;
   final Uri _baseUrl;
+  final void Function(String method, String path)? _onMutationSucceeded;
   bool _refreshing = false;
   static const _timeout = Duration(seconds: 20);
   static const _connectionMessage =
@@ -94,7 +97,11 @@ class ApiClient {
           retryOnUnauthorized: false,
         );
       }
-      return _decodeJsonResponse(response);
+      final decoded = _decodeJsonResponse(response);
+      if (method != 'GET') {
+        _notifyMutationSucceeded(method, path);
+      }
+      return decoded;
     } on ApiException {
       rethrow;
     } catch (_) {
@@ -133,11 +140,22 @@ class ApiClient {
           retryOnUnauthorized: false,
         );
       }
-      return _decodeJsonResponse(response);
+      final decoded = _decodeJsonResponse(response);
+      _notifyMutationSucceeded('POST', path);
+      return decoded;
     } on ApiException {
       rethrow;
     } catch (_) {
       throw const ApiException(_connectionMessage);
+    }
+  }
+
+  void _notifyMutationSucceeded(String method, String path) {
+    try {
+      _onMutationSucceeded?.call(method, path);
+    } catch (_) {
+      // A local refresh signal must never turn a successful API mutation into
+      // a user-visible request failure.
     }
   }
 

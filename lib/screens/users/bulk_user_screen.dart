@@ -1,0 +1,447 @@
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:open_filex/open_filex.dart';
+
+import '../../models/user.dart';
+import '../../models/user_bulk.dart';
+import '../../providers/api_providers.dart';
+import '../../utils/user_error_message.dart';
+import '../../widgets/confirm_dialog.dart';
+import '../../widgets/status_views.dart';
+
+class BulkUserScreen extends ConsumerStatefulWidget {
+  const BulkUserScreen({super.key});
+
+  @override
+  ConsumerState<BulkUserScreen> createState() => _BulkUserScreenState();
+}
+
+class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
+  late Future<List<User>> _usersFuture;
+  List<UserBulkRow> _rows = [];
+  UserBulkValidation? _validation;
+  final Set<int> _selectedUserIds = {};
+  String? _selectedFileName;
+  bool _working = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _usersFuture = _loadUsers();
+  }
+
+  Future<List<User>> _loadUsers() async {
+    final users = await ref.read(userRepositoryProvider).users();
+    return users
+        .where((user) => user.isActive && user.role.isSanitaryRole)
+        .toList();
+  }
+
+  Future<void> _downloadTemplate() async {
+    await _run(() async {
+      final file = await ref
+          .read(bulkUserSpreadsheetServiceProvider)
+          .saveTemplate();
+      await OpenFilex.open(file.path);
+      if (mounted) {
+        _message(
+          'Die Vorlage wurde gespeichert und mit der verfügbaren Excel-App geöffnet.',
+        );
+      }
+    });
+  }
+
+  Future<void> _chooseImport() async {
+    const xlsx = XTypeGroup(
+      label: 'Excel-Arbeitsmappe',
+      extensions: ['xlsx'],
+      uniformTypeIdentifiers: ['org.openxmlformats.spreadsheetml.sheet'],
+    );
+    final file = await openFile(acceptedTypeGroups: const [xlsx]);
+    if (file == null || !mounted) return;
+
+    await _run(() async {
+      final rows = ref
+          .read(bulkUserSpreadsheetServiceProvider)
+          .parse(await file.readAsBytes());
+      final server = await ref.read(userRepositoryProvider).validateBulk(rows);
+      final merged = _mergeLocalErrors(server, rows);
+      if (!mounted) return;
+      setState(() {
+        _rows = rows;
+        _validation = merged;
+        _selectedFileName = file.name;
+      });
+    });
+  }
+
+  Future<void> _applyImport() async {
+    final validation = _validation;
+    if (validation == null || !validation.valid || _rows.isEmpty) return;
+    final confirmed = await showConfirmDialog(
+      context,
+      title: '${_rows.length} Bulk-Aktionen anwenden?',
+      message:
+          'Alle geprüften Zeilen werden gemeinsam angewendet. Wenn sich die Daten inzwischen geändert haben, wird keine Teilmenge gespeichert.',
+      confirmLabel: 'Jetzt anwenden',
+    );
+    if (!confirmed || !mounted) return;
+
+    await _run(() async {
+      final result = await ref.read(userRepositoryProvider).applyBulk(_rows);
+      if (!mounted) return;
+      if (!result.applied) {
+        setState(() => _validation = _mergeLocalErrors(result, _rows));
+        _message('Die Datei enthält noch Fehler und wurde nicht angewendet.');
+        return;
+      }
+      _message('${result.appliedCount} Account-Aktionen wurden angewendet.');
+      Navigator.of(context).pop(true);
+    });
+  }
+
+  Future<void> _exportSelected(List<User> users) async {
+    final selected = users
+        .where((user) => _selectedUserIds.contains(user.id))
+        .toList();
+    if (selected.isEmpty) {
+      _message('Bitte wähle mindestens einen Sani für den Export aus.');
+      return;
+    }
+    await _run(() async {
+      final file = await ref
+          .read(bulkUserSpreadsheetServiceProvider)
+          .exportUsers(selected);
+      await OpenFilex.open(file.path);
+      if (mounted) {
+        _message('${selected.length} Sanis wurden im Importformat exportiert.');
+      }
+    });
+  }
+
+  Future<void> _run(Future<void> Function() action) async {
+    if (_working) return;
+    setState(() => _working = true);
+    try {
+      await action();
+    } catch (error) {
+      if (mounted) {
+        _message(
+          error is FormatException
+              ? error.message
+              : userErrorMessage(
+                  error,
+                  fallback: 'Die Excel-Aktion konnte nicht ausgeführt werden.',
+                ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _working = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Sani-Bulkverwaltung')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '1. Excel-Vorlage',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Lade die geprüfte Vorlage herunter. Sie enthält alle Spalten, erlaubte Aktionen, Rollen und verständliche Hinweise.',
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _working ? null : _downloadTemplate,
+                    icon: const Icon(Icons.download_outlined),
+                    label: const Text('Beispielvorlage öffnen'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '2. Import und Prüfung',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Die Datei wird zuerst in ein Mapping übersetzt und vollständig geprüft. Es werden keine Teiländerungen gespeichert.',
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: _working ? null : _chooseImport,
+                    icon: const Icon(Icons.upload_file_outlined),
+                    label: const Text('Excel-Datei auswählen'),
+                  ),
+                  if (_selectedFileName != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _selectedFileName!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                  if (_validation != null) ...[
+                    const SizedBox(height: 14),
+                    _ValidationSummary(validation: _validation!),
+                    const SizedBox(height: 8),
+                    for (final row in _validation!.rows)
+                      _ValidationRowTile(row: row),
+                    const SizedBox(height: 10),
+                    FilledButton.icon(
+                      onPressed: !_working && _validation!.valid
+                          ? _applyImport
+                          : null,
+                      icon: const Icon(Icons.fact_check_outlined),
+                      label: const Text('Geprüfte Aktionen anwenden'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    '3. Bestehende Sanis exportieren',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Wähle Accounts aus. Der Export nutzt exakt dasselbe Format wie die Importvorlage; Passwörter werden niemals exportiert.',
+                  ),
+                  const SizedBox(height: 10),
+                  FutureBuilder<List<User>>(
+                    future: _usersFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState != ConnectionState.done) {
+                        return const SizedBox(
+                          height: 120,
+                          child: DelayedLoadingView(
+                            message: 'Sanis werden geladen ...',
+                          ),
+                        );
+                      }
+                      if (snapshot.hasError) {
+                        return ErrorView(
+                          error: snapshot.error,
+                          onRetry: () {
+                            setState(() => _usersFuture = _loadUsers());
+                          },
+                        );
+                      }
+                      final users = snapshot.data ?? [];
+                      if (users.isEmpty) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Text('Keine aktiven Sanis für den Export.'),
+                        );
+                      }
+                      final allSelected = users.every(
+                        (user) => _selectedUserIds.contains(user.id),
+                      );
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            value: allSelected,
+                            title: const Text('Alle auswählen'),
+                            onChanged: _working
+                                ? null
+                                : (selected) {
+                                    setState(() {
+                                      if (selected == true) {
+                                        _selectedUserIds.addAll(
+                                          users.map((user) => user.id),
+                                        );
+                                      } else {
+                                        _selectedUserIds.clear();
+                                      }
+                                    });
+                                  },
+                          ),
+                          const Divider(height: 1),
+                          for (final user in users)
+                            CheckboxListTile(
+                              contentPadding: EdgeInsets.zero,
+                              value: _selectedUserIds.contains(user.id),
+                              title: Text(user.fullName),
+                              subtitle: Text(user.role.label),
+                              onChanged: _working
+                                  ? null
+                                  : (selected) {
+                                      setState(() {
+                                        if (selected == true) {
+                                          _selectedUserIds.add(user.id);
+                                        } else {
+                                          _selectedUserIds.remove(user.id);
+                                        }
+                                      });
+                                    },
+                            ),
+                          const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _working
+                                ? null
+                                : () => _exportSelected(users),
+                            icon: const Icon(Icons.file_download_outlined),
+                            label: Text(
+                              '${_selectedUserIds.length} ausgewählte Sanis exportieren',
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_working) ...[
+            const SizedBox(height: 16),
+            const LinearProgressIndicator(),
+          ],
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  UserBulkValidation _mergeLocalErrors(
+    UserBulkValidation server,
+    List<UserBulkRow> rows,
+  ) {
+    final localByNumber = {
+      for (final row in rows) row.rowNumber: row.localErrors,
+    };
+    final mergedRows = [
+      for (final row in server.rows)
+        UserBulkValidationRow(
+          rowNumber: row.rowNumber,
+          action: row.action,
+          targetUserId: row.targetUserId,
+          displayName: row.displayName,
+          valid:
+              row.valid && (localByNumber[row.rowNumber] ?? const []).isEmpty,
+          errors: <String>{
+            ...(localByNumber[row.rowNumber] ?? const []),
+            ...row.errors,
+          }.toList(),
+        ),
+    ];
+    return UserBulkValidation(
+      valid: server.valid && mergedRows.every((row) => row.valid),
+      applied: server.applied,
+      appliedCount: server.appliedCount,
+      rows: mergedRows,
+    );
+  }
+
+  void _message(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _ValidationSummary extends StatelessWidget {
+  const _ValidationSummary({required this.validation});
+
+  final UserBulkValidation validation;
+
+  @override
+  Widget build(BuildContext context) {
+    final validCount = validation.rows.where((row) => row.valid).length;
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: validation.valid
+            ? scheme.primaryContainer
+            : scheme.errorContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        validation.valid
+            ? 'Alle $validCount Zeilen sind gültig.'
+            : '$validCount von ${validation.rows.length} Zeilen sind gültig. Fehlerhafte Zeilen werden nicht angewendet.',
+        style: TextStyle(
+          color: validation.valid
+              ? scheme.onPrimaryContainer
+              : scheme.onErrorContainer,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _ValidationRowTile extends StatelessWidget {
+  const _ValidationRowTile({required this.row});
+
+  final UserBulkValidationRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      leading: Icon(
+        row.valid ? Icons.check_circle_outline : Icons.error_outline,
+        color: row.valid ? Colors.green : scheme.error,
+      ),
+      title: Text(
+        'Zeile ${row.rowNumber}: ${row.action?.label ?? 'Ungültige Aktion'}',
+      ),
+      subtitle: Text(
+        row.displayName.isEmpty ? 'Keine Person erkannt' : row.displayName,
+      ),
+      childrenPadding: const EdgeInsets.only(left: 40, bottom: 10),
+      children: row.errors.isEmpty
+          ? const [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Alle Angaben sind plausibel.'),
+              ),
+            ]
+          : [
+              for (final error in row.errors)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '• $error',
+                      style: TextStyle(color: scheme.error),
+                    ),
+                  ),
+                ),
+            ],
+    );
+  }
+}

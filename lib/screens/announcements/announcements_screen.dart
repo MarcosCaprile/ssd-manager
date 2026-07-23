@@ -165,7 +165,15 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
                           : announcements[originalIndex - 1];
                       final showSender =
                           previous == null ||
+                          previous.isSystem ||
+                          announcement.isSystem ||
                           previous.senderUserId != announcement.senderUserId;
+                      if (announcement.isSystem) {
+                        return _SystemAnnouncementBubble(
+                          key: ValueKey(announcement.id),
+                          announcement: announcement,
+                        );
+                      }
                       return _AnnouncementBubble(
                         key: ValueKey(announcement.id),
                         announcement: announcement,
@@ -585,5 +593,66 @@ class _AnnouncementBubble extends StatelessWidget {
       scheme.error,
     ];
     return colors[id.abs() % colors.length];
+  }
+}
+
+class _SystemAnnouncementBubble extends StatelessWidget {
+  const _SystemAnnouncementBubble({super.key, required this.announcement});
+
+  final Announcement announcement;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: scheme.errorContainer.withValues(alpha: 0.22),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: scheme.error, width: 1.4),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.sick_outlined, color: scheme.error, size: 20),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Systemnachricht',
+                    style: TextStyle(
+                      color: scheme.error,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    announcement.message,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    DateFormatters.chatTimestamp(announcement.createdAt),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

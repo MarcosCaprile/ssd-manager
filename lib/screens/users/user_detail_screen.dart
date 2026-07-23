@@ -50,6 +50,11 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(userRevisionProvider, (previous, next) {
+      if (previous != next) {
+        _refresh(preserveOnError: true);
+      }
+    });
     final currentUser = ref.watch(authControllerProvider).user;
 
     return Scaffold(

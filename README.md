@@ -139,6 +139,7 @@ Für den lokalen API-Smoke-Test müssen Migration und Demo-Seeds eingespielt sei
 ```bash
 php backend/tests/api_smoke.php
 php backend/tests/api_write_smoke.php
+php backend/tests/api_bulk_smoke.php
 php backend/tests/api_duty_management_smoke.php
 php backend/tests/api_attachment_smoke.php
 php backend/tests/api_secretariat_smoke.php

@@ -99,11 +99,12 @@ angewendet. Der datenbankgestützte Healthcheck antwortete anschließend mit
 HTTP 200.
 
 Die aktuelle Repository-Weiterentwicklung ergänzt
-`005_attachment_tombstones.sql` und `006_device_install_identity.sql`. Beide
-sind in der lokalen Datenbank angewandt, aber noch nicht auf Railway
-ausgerollt. Beim nächsten ausdrücklich beauftragten Railway-Deployment werden
-sie durch den Pre-Deploy-Schritt eingespielt. Bis dahin erwartet die live
-geschaltete API weiterhin nur das Schema 001–004.
+`005_attachment_tombstones.sql`, `006_device_install_identity.sql` und
+`007_system_announcements.sql`. Alle drei sind in der lokalen Datenbank
+angewandt, aber noch nicht auf Railway ausgerollt. Beim nächsten ausdrücklich
+beauftragten Railway-Deployment werden sie durch den Pre-Deploy-Schritt
+eingespielt. Bis dahin erwartet die live geschaltete API weiterhin nur das
+Schema 001–004.
 
 ## Railway-Cronjob
 

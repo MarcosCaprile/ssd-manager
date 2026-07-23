@@ -19,11 +19,18 @@
 - Flutter rendert sichere, nutzerverständliche Fehler statt technischer
   Ausnahmen und unterstützt persistente System-/Hell-/Dunkel-Darstellung.
   Hauptpanels werden nach dem ersten Öffnen im `IndexedStack` erhalten;
-  Vollbild-Ladeanzeigen erscheinen erst nach zwei Sekunden.
+  Vollbild-Ladeanzeigen erscheinen erst nach zwei Sekunden. Zentrale
+  Riverpod-Revisionsprovider invalidieren betroffene Daten nach erfolgreichen
+  Mutationen, Tabwechseln und App-Resume, ohne vorhandenen Inhalt zu entfernen.
+- Sani-Bulkdateien werden in Flutter als XLSX in ein explizites Mapping
+  übersetzt, lokal und serverseitig geprüft und vom Backend ausschließlich
+  vollständig innerhalb einer Transaktion angewendet.
 - Eine zufällige `device_install_id` überlebt den Logout und erlaubt dem
   Backend, eine alte aktive Sitzung derselben App-Installation beim erneuten
   Login zu ersetzen.
-- Firebase wird nur für Push-Benachrichtigungen genutzt. Geräteinformationen bleiben datensparsam.
+- Firebase wird nur für Push-Benachrichtigungen genutzt. Android rendert
+  Announcement-Datenpushes lokal als einen Inbox-Stack; iOS gruppiert sie über
+  einen gemeinsamen APNs-Thread. Geräteinformationen bleiben datensparsam.
 
 ## Flutter
 
@@ -33,7 +40,8 @@ Wichtige Module:
 - `core/api`: HTTP-Client, Token-Refresh und Fehlerbehandlung
 - `core/security`: sichere lokale Session
 - `core/preferences`: vom Login unabhängige Geräteeinstellungen
-- `core/push`: defensive FCM-Initialisierung
+- `core/files`: XLSX-Template, Import-Mapping und Export
+- `core/push`: defensive FCM- und lokale Notification-Initialisierung
 - `repositories`: API-Zugriffe je Bereich
 - `providers`: Riverpod-Provider und Auth-State
 - `screens`: Login, Passwortwechsel, Dienstplan, Ankündigungen, Sani-Liste,
@@ -47,7 +55,8 @@ Wichtige Module:
 
 - `public/index.php`: REST-Routen unter `/api/v1`
 - `Core`: Config, Router, Request, Response, Validation, Database
-- `Services`: Auth, User, Duty, Ankündigungsanhänge, Notifications, Firebase, Audit, Rate Limiting
+- `Services`: Auth, User, transaktionale User-Bulkverwaltung, Duty,
+  Ankündigungsanhänge, Notifications, Firebase, Audit, Rate Limiting
 - `Controllers`: schlanke REST-Controller
 
 ## Datenmodell

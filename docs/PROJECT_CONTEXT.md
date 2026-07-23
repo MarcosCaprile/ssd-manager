@@ -125,9 +125,10 @@ Verified on the MacBook through 2026-07-23:
   Teacher and secretariat profiles omit duty statistics. Role changes by
   teacher supervision or Sani-Leitung are restricted to existing
   Schulsanitäter/Sani-Leitung accounts and only toggle those two roles.
-- New sanitary accounts require a non-future `Sanitäter seit` date at creation.
-  It is returned in profiles but has no update endpoint. Existing sanitary
-  accounts remain `Nicht hinterlegt` instead of receiving an invented date.
+- New sanitary accounts require a valid `Sanitäter seit` date at creation. It
+  may be in the past or future, is returned in profiles, and has no update
+  endpoint. Existing sanitary accounts remain `Nicht hinterlegt` instead of
+  receiving an invented date.
 - Each user has a 100 MB quota for announcement uploads. The profile shows
   usage and a sortable list of claimed and unclaimed files; owners can delete
   their own files. Concurrent uploads serialize on the user row so the quota
@@ -196,7 +197,7 @@ Verified on the MacBook through 2026-07-23:
   tests, and all API smoke suites for general behavior, writes, duties,
   attachments, secretariat, security, and concurrency. Migrations 001–006 are
   applied locally and an immediate rerun skipped all six. Smoke-test data was
-  cleaned up. Migrations 005–006 are not yet deployed to Railway.
+  cleaned up. Migrations 005–007 are not yet deployed to Railway.
 - Android commit `4cf2a6f` was built as a fresh universal debug APK with the
   Railway HTTPS API explicitly embedded. The APK uses package
   `de.schule.ssdmanager`, minSdk 24, targetSdk 36, a valid Android debug
@@ -205,7 +206,44 @@ Verified on the MacBook through 2026-07-23:
   It was installed successfully over USB on the owner's Samsung test phone
   without clearing app data; Android reported `MainActivity` visible and
   top-resumed with a running app process. Features backed by migrations
-  005–006 still require the separate Railway deployment.
+  005–007 still require the separate Railway deployment.
+- Successful API mutations now invalidate central Riverpod revisions for
+  users, duties, and announcements. Loaded panels retain visible content while
+  refreshing, tab selection and app resume trigger relevant synchronization,
+  and role changes no longer require an app restart to appear.
+- New sanitary accounts accept an immutable `sanitaeter_since` date in the
+  past or future. The creation picker supports advance preparation, and both
+  single-account and bulk API tests verify future dates.
+- Managers have a dedicated Sani bulk page with a bundled, visually verified
+  XLSX template, local plus server-side row validation, transactional
+  all-or-nothing create/update/deactivate/reactivate/delete-marking, and
+  selected-user export in the same format. Passwords are never exported, and
+  deactivation/delete-marking immediately revokes sessions.
+- Migration `007_system_announcements.sql` adds typed announcements. A sick
+  report transaction now stores a red system-chat message naming the user,
+  date, and remaining planned Sani count before push delivery is attempted.
+- The Flutter launcher logo was replaced on Android and iOS with the SSD
+  Manager medical-kit/calendar icon; the same asset is used inside the app.
+- Push presentation now groups the single announcement conversation: Android
+  updates one inbox-style notification with up to six lines, while iOS uses
+  one `ssd-announcements` thread. Foreground messages refresh the visible data,
+  notification taps retain deep-link routing, and token refreshes are
+  registered after authentication.
+- Final local verification passed `flutter analyze`, 30 Flutter tests, every
+  backend PHP syntax check, the four PHP rule tests, and all API suites for
+  general behavior, writes, bulk users, duty management, attachments,
+  secretariat, security, and concurrency. Migration 007 is applied locally,
+  and all smoke-test data was cleaned up.
+- A fresh universal Android debug APK built successfully with the Railway HTTPS
+  API explicitly embedded, the new launcher/status icons, and a valid Android
+  debug signature. Its SHA-256 is
+  `372fa082b8adcb9c9c51dae55a0c40d9907aba505dcaa7559bbbab00b82fe45d`.
+  Because macOS File Provider immediately recreated generated Gradle files
+  with names such as `filepaths 2.xml`, this final build used a temporary
+  `/private/tmp` target linked at the ignored repository `build` path. The
+  clean external build completed without duplicate output.
+  New APIs and migrations 005–007 are not usable against Railway until a
+  separate deployment is requested.
 
 ## Implemented Flutter App
 
@@ -237,6 +275,13 @@ The Flutter app currently includes:
   storage, appearance, password, and device pages plus confirmed red logout at
   the bottom.
 - Prepared push/deep-link routes.
+- Live in-place synchronization after successful user, duty, attachment, and
+  announcement mutations.
+- Manager-only XLSX bulk import, validation, atomic account changes, template
+  download, and selected-Sani export.
+- Grouped local announcement notifications and typed red sick-report system
+  messages.
+- SSD Manager launcher and in-app logo assets for Android and iOS.
 
 ## Implemented Backend
 
@@ -251,7 +296,9 @@ The PHP backend currently includes:
 - Audit logging.
 - Login rate limiting.
 - Notification logs.
-- Firebase Cloud Messaging HTTP v1 integration prepared.
+- Firebase Cloud Messaging HTTP v1 payload delivery, token registration, and
+  client presentation implemented; real delivery remains disabled until the
+  native Firebase files and server-side service-account variables are supplied.
 - Cron job for marking past planned duties as completed and sending 48-hour reminders.
 - Versioned migration tracking and explicit duty-day event/closure fields.
 - Transactional announcement creation with push failures isolated after commit.
@@ -273,7 +320,12 @@ Important backend rules already exist server-side:
 - Sick reporting.
 - Admin assignment/removal.
 - Audit logging.
-- Push trigger preparation.
+- Push triggers, token refresh registration, deep-link routing, Android
+  announcement stacking, and iOS announcement-thread grouping; real delivery
+  still requires external Firebase/APNs configuration.
+- Transactional sanitary-account bulk validation and application with audit
+  logging and session revocation.
+- Typed system announcements created atomically with successful sick reports.
 
 ## Documentation Already Present
 
@@ -290,11 +342,12 @@ The repository already contains:
 
 Technical gaps:
 
-- The current continuation and migrations 005–006 are not yet deployed.
+- The current continuation and migrations 005–007 are not yet deployed.
   Railway is still on GitHub commit `4ffb110` and schema 001–004 until a
   deployment is explicitly requested.
 - The new weekend-event, tombstone, inactive-account, device-session, delayed
-  loading, compact-bubble, and profile-navigation UX still needs an
+  loading, compact-bubble, profile-navigation, live-refresh, bulk, system-
+  message, launcher-icon, and notification-grouping UX still needs an
   interactive acceptance run in the iOS simulator and on the Android test
   phone.
 - Railway API, MySQL, automatic migration, secret-backed variables, container build, and public HTTPS healthcheck are operational. Production still needs the first real school and teacher account, a backup schedule, the Railway cron service, and optionally a custom API domain.
@@ -349,9 +402,8 @@ Resolve these before production deployment:
 4. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
 5. May a normal first-aider see historical duties of other users?
 6. What is the final deletion/anonymization policy?
-7. Is an import flow for existing first-aider lists needed?
-8. Is push notification support mandatory for V1 or optional?
-9. How long should announcement texts and attachments be retained, and who may
+7. Is push notification support mandatory for V1 or optional?
+8. How long should announcement texts and attachments be retained, and who may
    moderate/delete them?
 
 ## MacBook Handoff Notes
@@ -388,3 +440,20 @@ flutter config --build-dir=../../../../private/tmp/ssd_manager_flutter_build
 flutter build ios --simulator --dart-define=SSD_API_BASE_URL=http://127.0.0.1:8080/api/v1
 flutter config --build-dir=
 ```
+
+If Android repeatedly creates generated duplicates such as `filepaths 2.xml`
+or `GeneratedPluginRegistrant 2.dex` even after `flutter clean`, keep Gradle's
+expected repository path but redirect only the ignored build output to a fresh
+temporary directory:
+
+```bash
+flutter clean
+flutter pub get
+ANDROID_BUILD_DIR="$(mktemp -d /private/tmp/ssd_manager_android_build.XXXXXX)"
+ln -s "$ANDROID_BUILD_DIR" build
+trap 'test ! -L build || unlink build' EXIT
+flutter build apk --debug --dart-define=SSD_API_BASE_URL=https://ssd-api-production.up.railway.app/api/v1
+```
+
+Always remove the `build` symlink after the build. The temporary directory
+contains generated output only and is not committed.

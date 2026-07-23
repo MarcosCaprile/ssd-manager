@@ -64,6 +64,7 @@ With the local database migrated and seeded, start the backend and run the API s
 php -S localhost:8080 -t backend/public
 php backend/tests/api_smoke.php
 php backend/tests/api_write_smoke.php
+php backend/tests/api_bulk_smoke.php
 php backend/tests/api_duty_management_smoke.php
 php backend/tests/api_attachment_smoke.php
 php backend/tests/api_secretariat_smoke.php
@@ -90,7 +91,12 @@ symlinks can make the analysis server scan the full generated build tree.
 If Android D8 reports `GeneratedPluginRegistrant 2.dex` beside the normal
 registrant, macOS File Provider duplicated a generated cache file. Run
 `flutter clean`, then `flutter pub get`, and rebuild; do not change Android
-dependencies to work around this generated-output problem.
+dependencies to work around this generated-output problem. If duplicate
+generated files such as `filepaths 2.xml` reappear immediately, point the
+ignored repository `build` path at a fresh directory under `/private/tmp` for
+that build, then remove the symlink. This keeps generated Gradle output outside
+the File Provider area; the exact procedure is documented in
+`docs/PROJECT_CONTEXT.md`.
 
 On the MacBook, Homebrew OpenJDK 17 and Android Command-line Tools are configured in Flutter. Android SDK platforms 34-36, Build Tools 36.0.0, Platform Tools, NDK 28.2, and CMake 3.22.1 are installed, and `flutter doctor` reports all Android licenses accepted. Local HTTP is allowed only in Android debug builds; release builds must use HTTPS.
 
@@ -103,6 +109,11 @@ deployment `dbb59439-ee79-447e-bf0a-f80d4fbea95a` on 2026-07-23. Its
 pre-deploy step applied migrations `001` through `004`, and the database-backed
 healthcheck returned HTTP 200. Do not assume those migrations are pending in
 later work.
+
+The repository now also contains local migrations `005` through `007`.
+Migration `007_system_announcements.sql` is applied to the local development
+database, but migrations `005` through `007` are not on Railway until a
+separate production deployment is explicitly requested.
 
 Every simulator/device build must set `SSD_API_BASE_URL` explicitly and record
 whether it targets local development or Railway. The production test account
@@ -138,6 +149,16 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - A successful mutation must not be reported as failed only because its
   follow-up refresh failed. Keep already loaded panel content cached, refresh it
   explicitly when needed, and delay full loading indicators for two seconds.
+- Sanitary start dates are immutable after account creation but may be in the
+  future so accounts can be prepared before qualification becomes effective.
+- Bulk user changes are manager-only, limited to sanitary accounts, validated
+  in full, and applied transactionally. Keep the bundled XLSX template
+  compatible with the Flutter `excel` parser and run
+  `test/user_bulk_spreadsheet_test.dart` after changing it.
+- Android announcement pushes are data messages rendered as one local inbox
+  notification; iOS uses the shared `ssd-announcements` thread. Native Firebase
+  config files and Railway FCM service-account variables remain external
+  prerequisites and must never be committed.
 
 ## Project Memory Protocol
 

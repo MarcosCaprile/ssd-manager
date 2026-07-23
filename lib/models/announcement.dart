@@ -36,6 +36,8 @@ class Announcement {
     required this.senderName,
     required this.senderRole,
     required this.message,
+    required this.messageType,
+    this.systemType,
     required this.createdAt,
     required this.attachments,
   });
@@ -45,8 +47,12 @@ class Announcement {
   final String senderName;
   final String senderRole;
   final String message;
+  final String messageType;
+  final String? systemType;
   final DateTime createdAt;
   final List<AnnouncementAttachment> attachments;
+
+  bool get isSystem => messageType == 'system';
 
   factory Announcement.fromJson(Map<String, dynamic> json) {
     return Announcement(
@@ -55,6 +61,8 @@ class Announcement {
       senderName: (json['sender_name'] ?? '') as String,
       senderRole: (json['sender_role'] ?? '') as String,
       message: (json['message'] ?? '') as String,
+      messageType: (json['message_type'] ?? 'user') as String,
+      systemType: json['system_type'] as String?,
       createdAt: parseUtcDateTime(json['created_at'] as String),
       attachments: ((json['attachments'] ?? []) as List<dynamic>)
           .map(

@@ -26,7 +26,7 @@ final class AnnouncementController
     public function index(Request $request, array $params, AuthContext $auth): never
     {
         $statement = $this->pdo->prepare(
-            'SELECT a.id, a.sender_user_id, a.message, a.created_at,
+            'SELECT a.id, a.sender_user_id, a.message, a.message_type, a.system_type, a.created_at,
                     CONCAT(u.first_name, " ", u.last_name) AS sender_name, u.role AS sender_role
              FROM announcements a
              JOIN users u ON u.id = a.sender_user_id
@@ -157,6 +157,8 @@ final class AnnouncementController
             'sender_name' => trim($auth->user['first_name'] . ' ' . $auth->user['last_name']),
             'sender_role' => $auth->role(),
             'message' => $message,
+            'message_type' => 'user',
+            'system_type' => null,
             'created_at' => gmdate('Y-m-d H:i:s'),
             'attachments' => $claimedAttachments,
         ], 201);
@@ -175,6 +177,8 @@ final class AnnouncementController
             'sender_name' => $row['sender_name'],
             'sender_role' => $row['sender_role'],
             'message' => $row['message'],
+            'message_type' => $row['message_type'],
+            'system_type' => $row['system_type'],
             'created_at' => $row['created_at'],
             'attachments' => $attachments,
         ];

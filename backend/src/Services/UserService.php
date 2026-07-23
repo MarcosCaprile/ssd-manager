@@ -296,10 +296,6 @@ final class UserService
         ) {
             Response::error('Das Datum „Sanitäter seit“ ist ungültig.', 422);
         }
-        $today = new \DateTimeImmutable('today', new \DateTimeZone('Europe/Berlin'));
-        if ($date > $today) {
-            Response::error('„Sanitäter seit“ darf nicht in der Zukunft liegen.', 422);
-        }
         return $value;
     }
 }

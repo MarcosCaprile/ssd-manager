@@ -34,8 +34,21 @@ class _ProfileStatisticsScreenState
     await next;
   }
 
+  Future<void> _refreshPreservingContent() async {
+    try {
+      final next = await _load();
+      if (mounted) setState(() => _future = Future.value(next));
+    } catch (_) {
+      // Bereits sichtbare Statistiken bleiben bei einem kurzen
+      // Verbindungsproblem erhalten.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(dutyRevisionProvider, (previous, next) {
+      if (previous != next) _refreshPreservingContent();
+    });
     return Scaffold(
       appBar: AppBar(title: const Text('Dienststatistik')),
       body: FutureBuilder<ProfileStatistics>(

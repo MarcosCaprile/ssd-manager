@@ -19,6 +19,7 @@ use App\Services\FirebaseMessagingService;
 use App\Services\NotificationService;
 use App\Services\RateLimiter;
 use App\Services\UserService;
+use App\Services\UserBulkService;
 
 $pdo = Database::connection();
 $firebase = new FirebaseMessagingService();
@@ -26,13 +27,14 @@ $notifications = new NotificationService($pdo, $firebase);
 $authService = new AuthService($pdo, new RateLimiter($pdo));
 $dutyService = new DutyService($pdo, $notifications);
 $userService = new UserService($pdo);
+$userBulkService = new UserBulkService($pdo);
 $attachmentService = new AnnouncementAttachmentService($pdo);
 
 $authController = new AuthController($authService);
 $meController = new MeController($userService, $authService, $attachmentService);
 $dutyController = new DutyController($dutyService);
 $announcementController = new AnnouncementController($pdo, $notifications, $attachmentService);
-$userController = new UserController($userService, $authService);
+$userController = new UserController($userService, $authService, $userBulkService);
 
 $router = new Router($authService);
 
@@ -76,6 +78,8 @@ $router->add('GET', 'announcements/attachments/{id}', [$announcementController, 
 
 $router->add('GET', 'users', [$userController, 'index']);
 $router->add('POST', 'users', [$userController, 'store']);
+$router->add('POST', 'users/bulk/validate', [$userController, 'validateBulk']);
+$router->add('POST', 'users/bulk/apply', [$userController, 'applyBulk']);
 $router->add('GET', 'users/{id}', [$userController, 'show']);
 $router->add('PATCH', 'users/{id}', [$userController, 'update']);
 $router->add('POST', 'users/{id}/deactivate', [$userController, 'deactivate']);

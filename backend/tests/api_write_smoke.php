@@ -29,6 +29,7 @@ $testPassword = 'LocalSmokePassword!2026';
 $changedPassword = 'ChangedSmokePassword!2026';
 $testUserId = null;
 $announcementId = null;
+$systemAnnouncementId = null;
 $loginAttemptBaseline = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) FROM login_attempts')->fetchColumn();
 
 /**
@@ -148,11 +149,18 @@ function current_device_id(array $response): int
     throw new RuntimeException('Device response does not identify the current session.');
 }
 
-function cleanup(PDO $pdo, ?int $testUserId, ?int $announcementId, int $loginAttemptBaseline, string $testUsername): void
+function cleanup(
+    PDO $pdo,
+    ?int $testUserId,
+    ?int $announcementId,
+    ?int $systemAnnouncementId,
+    int $loginAttemptBaseline,
+    string $testUsername
+): void
 {
-    if ($announcementId !== null) {
-        $pdo->prepare('DELETE FROM notification_logs WHERE announcement_id = :id')->execute(['id' => $announcementId]);
-        $pdo->prepare('DELETE FROM announcements WHERE id = :id')->execute(['id' => $announcementId]);
+    foreach (array_filter([$announcementId, $systemAnnouncementId]) as $id) {
+        $pdo->prepare('DELETE FROM notification_logs WHERE announcement_id = :id')->execute(['id' => $id]);
+        $pdo->prepare('DELETE FROM announcements WHERE id = :id')->execute(['id' => $id]);
     }
     if ($testUserId !== null) {
         $pdo->prepare('DELETE FROM notification_logs WHERE user_id = :id')->execute(['id' => $testUserId]);
@@ -181,6 +189,7 @@ try {
     $rules = new DutyRules(Config::env('SCHOOL_TIMEZONE', 'Europe/Berlin') ?? 'Europe/Berlin');
     $regularDate = find_test_date($rules, false);
     $sickDate = find_test_date($rules, true);
+    $futureSince = (new DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d');
 
     $teacher = api_login('lehrer', $seedPassword);
     $lead = api_login('leitung', $seedPassword);
@@ -202,15 +211,19 @@ try {
         'email' => $testEmail,
         'temporary_password' => $testPassword,
         'role' => 'sanitaeter',
-        'sanitaeter_since' => '2024-01-01',
+        'sanitaeter_since' => $futureSince,
     ], $teacher['access_token']), 201, 'teacher creates test account');
 
-    $findUser = $pdo->prepare('SELECT id FROM users WHERE school_id = 1 AND username = :username');
+    $findUser = $pdo->prepare(
+        'SELECT id, sanitaeter_since FROM users WHERE school_id = 1 AND username = :username'
+    );
     $findUser->execute(['username' => $testUsername]);
-    $testUserId = (int) $findUser->fetchColumn();
-    if ($testUserId < 1) {
+    $createdUser = $findUser->fetch();
+    $testUserId = (int) ($createdUser['id'] ?? 0);
+    if ($testUserId < 1 || ($createdUser['sanitaeter_since'] ?? null) !== $futureSince) {
         throw new RuntimeException('Created test account was not found in the local database.');
     }
+    echo '[OK] future first-aider start date is accepted' . PHP_EOL;
 
     expect_status(
         api_request('POST', 'users', [
@@ -419,6 +432,34 @@ try {
         'sick-report duty details'
     );
     assignment_id($sickDetails, $testUserId, 'sick_reported');
+    $announcements = expect_status(
+        api_request('GET', 'announcements', accessToken: $teacher['access_token']),
+        200,
+        'sick report announcement list'
+    );
+    foreach (($announcements['body']['data'] ?? []) as $item) {
+        if (
+            ($item['message_type'] ?? null) === 'system'
+            && ($item['system_type'] ?? null) === 'duty_sick_reported'
+            && (int) ($item['sender_user_id'] ?? 0) === $testUserId
+        ) {
+            $systemAnnouncementId = (int) ($item['id'] ?? 0);
+            $systemMessage = (string) ($item['message'] ?? '');
+            $humanSickDate = (new DateTimeImmutable($sickDate))->format('d.m.Y');
+            if (
+                !str_contains($systemMessage, $testUsername)
+                || !str_contains($systemMessage, $humanSickDate)
+                || !str_contains($systemMessage, 'noch')
+            ) {
+                throw new RuntimeException('Sick-report system announcement has incomplete content.');
+            }
+            break;
+        }
+    }
+    if ($systemAnnouncementId === null || $systemAnnouncementId < 1) {
+        throw new RuntimeException('Sick report created no system announcement.');
+    }
+    echo '[OK] sick report creates a red-system-message payload' . PHP_EOL;
 
     expect_status(
         api_request('POST', "users/{$testUserId}/deactivate", accessToken: $teacher['access_token']),
@@ -535,7 +576,14 @@ try {
     $failure = $exception;
 } finally {
     try {
-        cleanup($pdo, $testUserId, $announcementId, $loginAttemptBaseline, $testUsername);
+        cleanup(
+            $pdo,
+            $testUserId,
+            $announcementId,
+            $systemAnnouncementId,
+            $loginAttemptBaseline,
+            $testUsername
+        );
         echo '[OK] local write-test data cleaned up' . PHP_EOL;
     } catch (Throwable $cleanupException) {
         $failure ??= $cleanupException;

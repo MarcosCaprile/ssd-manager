@@ -82,4 +82,23 @@ void main() {
 
     expect(announcement.attachments.single.isDeleted, isTrue);
   });
+
+  test('parses sick-report system announcements', () {
+    final announcement = Announcement.fromJson({
+      'id': 45,
+      'sender_user_id': 7,
+      'sender_name': 'Thomas Tomate',
+      'sender_role': 'sanitaeter',
+      'message':
+          'Thomas T. hat sich für den Dienst am 24.07.2026 krankgemeldet. '
+          'Es sind noch 2 Sanis für diesen Tag eingetragen.',
+      'message_type': 'system',
+      'system_type': 'duty_sick_reported',
+      'created_at': '2026-07-23 17:05:00',
+      'attachments': <dynamic>[],
+    });
+
+    expect(announcement.isSystem, isTrue);
+    expect(announcement.systemType, 'duty_sick_reported');
+  });
 }

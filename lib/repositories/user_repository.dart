@@ -3,6 +3,7 @@ import '../models/device_session.dart';
 import '../models/attachment_storage.dart';
 import '../models/profile_statistics.dart';
 import '../models/user.dart';
+import '../models/user_bulk.dart';
 
 class UserRepository {
   UserRepository(this._api);
@@ -94,5 +95,25 @@ class UserRepository {
 
   Future<void> changeRole(int id, UserRole role) {
     return _api.patch('users/$id/role', body: {'role': role.toJson()});
+  }
+
+  Future<UserBulkValidation> validateBulk(List<UserBulkRow> rows) async {
+    final data =
+        await _api.post(
+              'users/bulk/validate',
+              body: {'rows': rows.map((row) => row.toJson()).toList()},
+            )
+            as Map<String, dynamic>;
+    return UserBulkValidation.fromJson(data);
+  }
+
+  Future<UserBulkValidation> applyBulk(List<UserBulkRow> rows) async {
+    final data =
+        await _api.post(
+              'users/bulk/apply',
+              body: {'rows': rows.map((row) => row.toJson()).toList()},
+            )
+            as Map<String, dynamic>;
+    return UserBulkValidation.fromJson(data);
   }
 }

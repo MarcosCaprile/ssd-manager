@@ -8,6 +8,7 @@ import '../../utils/date_formatters.dart';
 import '../../utils/user_error_message.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/status_views.dart';
+import 'bulk_user_screen.dart';
 import 'user_detail_screen.dart';
 
 class SaniListScreen extends ConsumerStatefulWidget {
@@ -54,6 +55,11 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(userRevisionProvider, (previous, next) {
+      if (previous != next) {
+        _refresh(preserveOnError: true);
+      }
+    });
     final currentUser = ref.watch(authControllerProvider).user;
     final canManage = currentUser?.role.canManageUsers == true;
 
@@ -62,11 +68,45 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
               onPressed: () async {
-                final changed = await showModalBottomSheet<bool>(
+                final action = await showModalBottomSheet<_AddAccountAction>(
                   context: context,
-                  isScrollControlled: true,
-                  builder: (context) => const _CreateUserSheet(),
+                  showDragHandle: true,
+                  builder: (context) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.person_add_alt_1),
+                          title: const Text('Einzelnen Account erstellen'),
+                          onTap: () => Navigator.of(
+                            context,
+                          ).pop(_AddAccountAction.single),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.table_view_outlined),
+                          title: const Text('Bulk-Funktionen'),
+                          subtitle: const Text(
+                            'Excel-Import, Bearbeitung, Entfernen und Export',
+                          ),
+                          onTap: () =>
+                              Navigator.of(context).pop(_AddAccountAction.bulk),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
+                if (!context.mounted || action == null) return;
+                final changed = action == _AddAccountAction.single
+                    ? await showModalBottomSheet<bool>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (context) => const _CreateUserSheet(),
+                      )
+                    : await Navigator.of(context).push<bool>(
+                        MaterialPageRoute(
+                          builder: (_) => const BulkUserScreen(),
+                        ),
+                      );
                 if (changed == true) {
                   await _refresh(preserveOnError: true);
                 }
@@ -245,6 +285,8 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
   }
 }
 
+enum _AddAccountAction { single, bulk }
+
 class _UserTile extends StatelessWidget {
   const _UserTile({
     required this.user,
@@ -334,8 +376,8 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
       context: context,
       initialDate: _sanitaeterSince ?? DateTime.now(),
       firstDate: DateTime(1970),
-      lastDate: DateTime.now(),
-      helpText: 'Seit wann ist die Person Schulsanitäter?',
+      lastDate: DateTime(DateTime.now().year + 10, 12, 31),
+      helpText: 'Ab wann ist die Person Schulsanitäter?',
     );
     if (selected != null) setState(() => _sanitaeterSince = selected);
   }
@@ -489,7 +531,7 @@ class _CreateUserSheetState extends ConsumerState<_CreateUserSheet> {
                     ),
                   ),
                   Text(
-                    'Dieses Datum wird beim Erstellen fest gespeichert und kann später nicht geändert werden.',
+                    'Das Datum darf auch in der Zukunft liegen. Es wird beim Erstellen fest gespeichert und kann später nicht geändert werden.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

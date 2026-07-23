@@ -25,20 +25,32 @@ final class FirebaseMessagingService
             return 'missing_project';
         }
 
+        $data = array_map(static fn (mixed $value): string => (string) $value, $data);
+        $data['title'] = $title;
+        $data['body'] = $body;
+        $isAnnouncement = ($data['route'] ?? '') === 'announcements';
+        $isHighPriority = ($data['priority'] ?? '') === 'high' || $isAnnouncement;
+
         $payload = [
             'message' => [
                 'token' => $token,
-                'notification' => [
-                    'title' => $title,
-                    'body' => $body,
-                ],
                 'data' => $data,
                 'android' => [
-                    'priority' => ($data['priority'] ?? '') === 'high' ? 'HIGH' : 'NORMAL',
+                    'priority' => $isHighPriority ? 'HIGH' : 'NORMAL',
                 ],
                 'apns' => [
                     'headers' => [
-                        'apns-priority' => ($data['priority'] ?? '') === 'high' ? '10' : '5',
+                        'apns-priority' => '10',
+                    ],
+                    'payload' => [
+                        'aps' => [
+                            'alert' => [
+                                'title' => $title,
+                                'body' => $body,
+                            ],
+                            'sound' => 'default',
+                            'thread-id' => $isAnnouncement ? 'ssd-announcements' : 'ssd-manager',
+                        ],
                     ],
                 ],
             ],

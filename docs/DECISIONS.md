@@ -6,6 +6,55 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-23
 
+### Refresh visible data after successful mutations
+
+Decision: Successful user, duty, announcement, and attachment mutations bump
+central Riverpod revision providers. Loaded screens refresh in place while
+keeping their current content, and the app also refreshes relevant data on tab
+selection and foreground resume.
+
+Reason: Role and planning changes must appear without closing and reopening the
+app, while a transient follow-up fetch must not turn a completed mutation into
+a false failure.
+
+### Allow future sanitary start dates
+
+Decision: `sanitaeter_since` remains mandatory for new sanitary accounts and
+immutable afterwards, but may be a valid past or future calendar date.
+
+Reason: Schools need to prepare accounts shortly before a student officially
+qualifies without later editing historical profile data.
+
+### Manage sanitary accounts through atomic XLSX bulk operations
+
+Decision: Teacher supervision and Sani-Leitung receive a dedicated bulk page
+for template download, XLSX import, row validation, transactional create/
+update/deactivate/reactivate/delete-marking, and selected-user export. Bulk
+operations are limited to sanitary profiles, never export passwords, and apply
+no rows if any row is invalid.
+
+Reason: Cohorts should be manageable efficiently without weakening school,
+role, session-revocation, uniqueness, or audit rules.
+
+### Group announcement pushes as one conversation
+
+Decision: Android receives data pushes that the app renders into one inbox-style
+announcement notification containing up to six recent lines. iOS notifications
+share the `ssd-announcements` thread. Opening the announcement panel clears the
+local stack.
+
+Reason: All announcements belong to one school-wide conversation, so multiple
+individual notification cards create noise and misrepresent the product model.
+
+### Publish sick reports as system announcements
+
+Decision: A successful sick report creates a transactional system announcement
+with the username, duty date, and remaining planned Sani count. Flutter renders
+it separately with a red border; it is not styled as a personal chat bubble.
+
+Reason: Other Sanis need immediate, clearly distinguished staffing information,
+and the duty change and shared message must not diverge.
+
 ### Automatically commit and push completed Codex work
 
 Decision: After a requested implementation is complete and verified, Codex
@@ -84,6 +133,10 @@ Existing accounts without a trustworthy date display `Nicht hinterlegt`.
 Reason: The date is historical profile information, not a routine preference.
 Requiring it at creation avoids later accidental manipulation, while refusing
 to backfill an invented date preserves data integrity.
+
+Status: The immutability decision remains active. Any earlier implication that
+the creation date must not be in the future is superseded by “Allow future
+sanitary start dates” above.
 
 ### Restrict role changes to Sani and Sani-Leitung
 

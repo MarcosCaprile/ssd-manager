@@ -26,6 +26,11 @@ class _DutyScheduleScreenState extends ConsumerState<DutyScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(dutyRevisionProvider, (previous, next) {
+      if (previous != next) {
+        _refreshAll(preserveOnError: true);
+      }
+    });
     final user = ref.watch(authControllerProvider).user;
     return DefaultTabController(
       length: 2,

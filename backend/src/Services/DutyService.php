@@ -497,28 +497,92 @@ final class DutyService
         if (!$this->rules->canReportSick($date)) {
             Response::error('Eine Krankmeldung ist nur innerhalb der letzten 48 Stunden möglich.', 422);
         }
-        $assignment = $this->plannedAssignmentForUser($auth->schoolId(), $date, $auth->userId());
-        if (!$assignment) {
-            Response::error('Für diesen Tag ist keine aktive Eintragung vorhanden.', 404);
+        $this->pdo->beginTransaction();
+        try {
+            $assignment = $this->plannedAssignmentForUser(
+                $auth->schoolId(),
+                $date,
+                $auth->userId()
+            );
+            if (!$assignment) {
+                $this->pdo->rollBack();
+                Response::error('Für diesen Tag ist keine aktive Eintragung vorhanden.', 404);
+            }
+            $update = $this->pdo->prepare(
+                'UPDATE duty_assignments
+                 SET status = "sick_reported", sick_reported_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
+                 WHERE id = :id AND status = "planned"'
+            );
+            $update->execute(['id' => $assignment['id']]);
+            if ($update->rowCount() !== 1) {
+                $this->pdo->rollBack();
+                Response::error('Die Krankmeldung wurde bereits verarbeitet.', 409);
+            }
+
+            $remaining = $this->plannedCount((int) $assignment['duty_day_id']);
+            $remainingText = $remaining === 1
+                ? 'Es ist noch 1 Sani für diesen Tag eingetragen.'
+                : "Es sind noch {$remaining} Sanis für diesen Tag eingetragen.";
+            $systemMessage = $auth->user['username']
+                . ' hat sich für den Dienst am '
+                . $this->humanDate($date)
+                . ' krankgemeldet. '
+                . $remainingText;
+            $announcement = $this->pdo->prepare(
+                'INSERT INTO announcements
+                 (school_id, sender_user_id, message, message_type, system_type, created_at, updated_at)
+                 VALUES
+                 (:school_id, :sender_user_id, :message, "system", "duty_sick_reported",
+                  UTC_TIMESTAMP(), UTC_TIMESTAMP())'
+            );
+            $announcement->execute([
+                'school_id' => $auth->schoolId(),
+                'sender_user_id' => $auth->userId(),
+                'message' => $systemMessage,
+            ]);
+            $announcementId = (int) $this->pdo->lastInsertId();
+
+            $this->audit->log(
+                $auth->schoolId(),
+                $auth->userId(),
+                'duty.sick_reported',
+                $auth->userId(),
+                'duty_assignment',
+                (int) $assignment['id'],
+                [
+                    'announcement_id' => $announcementId,
+                    'remaining_sanis' => $remaining,
+                ]
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
         }
-        $this->pdo->prepare(
-            'UPDATE duty_assignments
-             SET status = "sick_reported", sick_reported_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
-             WHERE id = :id'
-        )->execute(['id' => $assignment['id']]);
-        $this->audit->log($auth->schoolId(), $auth->userId(), 'duty.sick_reported', $auth->userId(), 'duty_assignment', (int) $assignment['id']);
-        $this->notifications->notifyUsersByRole(
-            $auth->schoolId(),
-            ['sanitaeter', 'sani_leitung', 'teacher'],
-            'duty_sick_reported',
-            'Dringend: Krankmeldung im SSD',
-            'Für ' . $this->humanDate($date) . ' ist kurzfristig ein Platz frei geworden.',
-            'sick:' . $date,
-            (int) $assignment['duty_day_id'],
-            null,
-            [$auth->userId()],
-            ['route' => 'duty', 'date' => $date, 'priority' => 'high']
-        );
+
+        try {
+            $this->notifications->notifyUsersByRole(
+                $auth->schoolId(),
+                ['sanitaeter', 'sani_leitung', 'teacher', 'sekretariat'],
+                'announcement_system_sick',
+                'Krankmeldung im SSD',
+                $systemMessage,
+                'sick-announcement:' . $announcementId,
+                (int) $assignment['duty_day_id'],
+                $announcementId,
+                [$auth->userId()],
+                [
+                    'route' => 'announcements',
+                    'date' => $date,
+                    'priority' => 'high',
+                    'message_type' => 'system',
+                ]
+            );
+        } catch (\Throwable $exception) {
+            error_log('Sick announcement notification failed after successful save: ' . $exception->getMessage());
+        }
     }
 
     public function adminAssign(AuthContext $auth, string $date, int $userId): void

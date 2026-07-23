@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_client.dart';
 import '../core/device/device_info_service.dart';
+import '../core/files/bulk_user_spreadsheet_service.dart';
 import '../core/push/push_service.dart';
 import '../core/security/session_storage.dart';
 import '../repositories/announcement_repository.dart';
@@ -16,9 +17,43 @@ final deviceInfoServiceProvider = Provider<DeviceInfoService>(
   (ref) => DeviceInfoService(),
 );
 final pushServiceProvider = Provider<PushService>((ref) => PushService());
+final bulkUserSpreadsheetServiceProvider = Provider<BulkUserSpreadsheetService>(
+  (ref) => BulkUserSpreadsheetService(),
+);
+
+class DataRevisionController extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
+}
+
+final userRevisionProvider = NotifierProvider<DataRevisionController, int>(
+  DataRevisionController.new,
+);
+final dutyRevisionProvider = NotifierProvider<DataRevisionController, int>(
+  DataRevisionController.new,
+);
 
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(sessionStorage: ref.watch(sessionStorageProvider));
+  return ApiClient(
+    sessionStorage: ref.watch(sessionStorageProvider),
+    onMutationSucceeded: (method, path) {
+      if (path == 'users' || path.startsWith('users/')) {
+        ref.read(userRevisionProvider.notifier).bump();
+        ref.read(dutyRevisionProvider.notifier).bump();
+      }
+      if (path == 'duties' || path.startsWith('duties/')) {
+        ref.read(dutyRevisionProvider.notifier).bump();
+        ref.read(userRevisionProvider.notifier).bump();
+      }
+      if (path == 'announcements' ||
+          path.startsWith('announcements/') ||
+          path.startsWith('me/attachments')) {
+        ref.read(announcementRevisionProvider.notifier).bump();
+      }
+    },
+  );
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -38,17 +73,8 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
   return AnnouncementRepository(ref.watch(apiClientProvider));
 });
 
-class AnnouncementRevisionController extends Notifier<int> {
-  @override
-  int build() => 0;
-
-  void bump() => state++;
-}
-
 final announcementRevisionProvider =
-    NotifierProvider<AnnouncementRevisionController, int>(
-      AnnouncementRevisionController.new,
-    );
+    NotifierProvider<DataRevisionController, int>(DataRevisionController.new);
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(ref.watch(apiClientProvider));
