@@ -92,19 +92,13 @@ https://ssd-api-production.up.railway.app
 
 ## Aktueller Produktionsstand
 
-GitHub-Commit `4ffb110` wurde am 2026-07-23 als Railway-Deployment
-`dbb59439-ee79-447e-bf0a-f80d4fbea95a` erfolgreich veröffentlicht. Der
-Pre-Deploy-Schritt hat die versionierten Migrationen `001` bis `004`
-angewendet. Der datenbankgestützte Healthcheck antwortete anschließend mit
-HTTP 200.
-
-Die aktuelle Repository-Weiterentwicklung ergänzt
-`005_attachment_tombstones.sql`, `006_device_install_identity.sql` und
-`007_system_announcements.sql`. Alle drei sind in der lokalen Datenbank
-angewandt, aber noch nicht auf Railway ausgerollt. Beim nächsten ausdrücklich
-beauftragten Railway-Deployment werden sie durch den Pre-Deploy-Schritt
-eingespielt. Bis dahin erwartet die live geschaltete API weiterhin nur das
-Schema 001–004.
+GitHub-Commit `131ff78` wurde am 2026-07-23 automatisch als Railway-Deployment
+`85b0afa0-9d47-4e67-a39e-507113fb7708` erfolgreich veröffentlicht. Der
+Pre-Deploy-Schritt hat die bereits vorhandenen Migrationen `001` bis `006`
+bestätigt und `007_system_announcements.sql` angewendet. Apache startete
+anschließend normal und der öffentliche datenbankgestützte Healthcheck
+antwortete mit HTTP 200. Produktion und Repository verwenden damit Schema
+`001` bis `007`.
 
 ## Railway-Cronjob
 

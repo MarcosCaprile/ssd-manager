@@ -54,7 +54,7 @@ Verified on the MacBook through 2026-07-23:
 - The repository now contains a PHP 8.4/Apache `Dockerfile`, Railway configuration, automatic pre-deploy migration, a database-backed `/api/v1/health` endpoint, and CLI bootstrap scripts for the first school and teacher account.
 - CLI bootstrap failures now return a non-zero exit code so Railway cannot accept a failed pre-deploy migration as successful.
 - A separate Railway project named `SSD Manager` now exists in the owner's existing workspace; the pre-existing StudyConnect project was not changed.
-- Railway MySQL and `ssd-api` run exclusively in `EU West (Amsterdam)`. Migrations `001` through `004` completed successfully and the public healthcheck returns HTTP 200 at `https://ssd-api-production.up.railway.app/api/v1/health`.
+- Railway MySQL and `ssd-api` run exclusively in `EU West (Amsterdam)`. Migrations `001` through `007` completed successfully and the public healthcheck returns HTTP 200 at `https://ssd-api-production.up.railway.app/api/v1/health`.
 - Railway CLI 5.27.2 is installed on the MacBook and the repository is linked locally to the SSD Manager Railway project.
 - Railway enabled Apache `mpm_event` again at container startup even though the official PHP Apache image used `mpm_prefork` during the build. The verified runtime fix pins `php:8.4-apache-bookworm` and disables `mpm_event`/`mpm_worker` immediately before Apache starts.
 - The Apache fix was merged to GitHub `main` in commit `483274c`. Railway associated that commit with the service and skipped a redundant rebuild with `No changes to watched files` because the identical Dockerfile and backend content was already live from the verified CLI deployment; the public database healthcheck remained healthy.
@@ -197,7 +197,9 @@ Verified on the MacBook through 2026-07-23:
   tests, and all API smoke suites for general behavior, writes, duties,
   attachments, secretariat, security, and concurrency. Migrations 001–006 are
   applied locally and an immediate rerun skipped all six. Smoke-test data was
-  cleaned up. Migrations 005–007 are not yet deployed to Railway.
+  cleaned up. At this checkpoint migrations 005–007 were not yet deployed;
+  deployment `85b0afa0-9d47-4e67-a39e-507113fb7708` later applied the complete
+  schema through migration 007.
 - Android commit `4cf2a6f` was built as a fresh universal debug APK with the
   Railway HTTPS API explicitly embedded. The APK uses package
   `de.schule.ssdmanager`, minSdk 24, targetSdk 36, a valid Android debug
@@ -206,7 +208,7 @@ Verified on the MacBook through 2026-07-23:
   It was installed successfully over USB on the owner's Samsung test phone
   without clearing app data; Android reported `MainActivity` visible and
   top-resumed with a running app process. Features backed by migrations
-  005–007 still require the separate Railway deployment.
+  005–007 were deployed subsequently with commit `131ff78`.
 - Successful API mutations now invalidate central Riverpod revisions for
   users, duties, and announcements. Loaded panels retain visible content while
   refreshing, tab selection and app resume trigger relevant synchronization,
@@ -242,8 +244,10 @@ Verified on the MacBook through 2026-07-23:
   with names such as `filepaths 2.xml`, this final build used a temporary
   `/private/tmp` target linked at the ignored repository `build` path. The
   clean external build completed without duplicate output.
-  New APIs and migrations 005–007 are not usable against Railway until a
-  separate deployment is requested.
+- GitHub automatically deployed commit `131ff78` to Railway as deployment
+  `85b0afa0-9d47-4e67-a39e-507113fb7708`. The pre-deploy process skipped the
+  already-applied migrations 001–006, applied migration 007, started Apache
+  normally, and passed the public database-backed healthcheck with HTTP 200.
 
 ## Implemented Flutter App
 
@@ -342,9 +346,6 @@ The repository already contains:
 
 Technical gaps:
 
-- The current continuation and migrations 005–007 are not yet deployed.
-  Railway is still on GitHub commit `4ffb110` and schema 001–004 until a
-  deployment is explicitly requested.
 - The new weekend-event, tombstone, inactive-account, device-session, delayed
   loading, compact-bubble, profile-navigation, live-refresh, bulk, system-
   message, launcher-icon, and notification-grouping UX still needs an
