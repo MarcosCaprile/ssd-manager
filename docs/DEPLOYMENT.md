@@ -90,6 +90,14 @@ Aktuelle Railway-Domain:
 https://ssd-api-production.up.railway.app
 ```
 
+## Aktueller Produktionsstand
+
+GitHub-Commit `4ffb110` wurde am 2026-07-23 als Railway-Deployment
+`dbb59439-ee79-447e-bf0a-f80d4fbea95a` erfolgreich veröffentlicht. Der
+Pre-Deploy-Schritt hat die versionierten Migrationen `001` bis `004`
+angewendet. Der datenbankgestützte Healthcheck antwortete anschließend mit
+HTTP 200.
+
 ## Railway-Cronjob
 
 Für `backend/cron/run_due_jobs.php` wird später ein separater Railway-Service

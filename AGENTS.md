@@ -98,6 +98,12 @@ The production deployment target is a dedicated SSD Manager project in the owner
 
 The live Railway API healthcheck is `https://ssd-api-production.up.railway.app/api/v1/health`. Railway's runtime enabled `mpm_event` in addition to PHP Apache's required `mpm_prefork`; keep the Bookworm image pin and the runtime MPM enforcement in `backend/docker/railway-entrypoint.sh`. The fix is on GitHub `main`; Railway associated the merge commit with the service and skipped a redundant rebuild because the identical watched files were already live from the verified CLI deployment.
 
+GitHub `main` commit `4ffb110` was deployed successfully to Railway as
+deployment `dbb59439-ee79-447e-bf0a-f80d4fbea95a` on 2026-07-23. Its
+pre-deploy step applied migrations `001` through `004`, and the database-backed
+healthcheck returned HTTP 200. Do not assume those migrations are pending in
+later work.
+
 Every simulator/device build must set `SSD_API_BASE_URL` explicitly and record
 whether it targets local development or Railway. The production test account
 exists only in Railway; a simulator build compiled with

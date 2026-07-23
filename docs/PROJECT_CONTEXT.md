@@ -26,7 +26,7 @@ Verified on the original Windows development machine:
 - PHP was not available in `PATH`, so backend/PHP tests could not be run there.
 - Backend code was inspected structurally, but not end-to-end tested against a live database in that session.
 
-Verified on the MacBook on 2026-07-21:
+Verified on the MacBook through 2026-07-23:
 
 - Flutter 3.44.7 and Dart 3.12.2 are available.
 - `flutter pub get` completed successfully.
@@ -54,7 +54,7 @@ Verified on the MacBook on 2026-07-21:
 - The repository now contains a PHP 8.4/Apache `Dockerfile`, Railway configuration, automatic pre-deploy migration, a database-backed `/api/v1/health` endpoint, and CLI bootstrap scripts for the first school and teacher account.
 - CLI bootstrap failures now return a non-zero exit code so Railway cannot accept a failed pre-deploy migration as successful.
 - A separate Railway project named `SSD Manager` now exists in the owner's existing workspace; the pre-existing StudyConnect project was not changed.
-- Railway MySQL and `ssd-api` run exclusively in `EU West (Amsterdam)`. The initial schema migration completed successfully and the public healthcheck returns HTTP 200 at `https://ssd-api-production.up.railway.app/api/v1/health`.
+- Railway MySQL and `ssd-api` run exclusively in `EU West (Amsterdam)`. Migrations `001` through `004` completed successfully and the public healthcheck returns HTTP 200 at `https://ssd-api-production.up.railway.app/api/v1/health`.
 - Railway CLI 5.27.2 is installed on the MacBook and the repository is linked locally to the SSD Manager Railway project.
 - Railway enabled Apache `mpm_event` again at container startup even though the official PHP Apache image used `mpm_prefork` during the build. The verified runtime fix pins `php:8.4-apache-bookworm` and disables `mpm_event`/`mpm_worker` immediately before Apache starts.
 - The Apache fix was merged to GitHub `main` in commit `483274c`. Railway associated that commit with the service and skipped a redundant rebuild with `No changes to watched files` because the identical Dockerfile and backend content was already live from the verified CLI deployment; the public database healthcheck remained healthy.
@@ -70,7 +70,7 @@ Verified on the MacBook on 2026-07-21:
 - Local verification for the duty-schedule extension passed: `flutter analyze`, 13 Flutter tests, the 4 PHP rule tests, the general API smoke test, the existing write smoke test, and the new duty-management API smoke test. The previously verified security/concurrency suites were not re-run in this session because the sandbox approval for their local database connection timed out.
 - Simulator logs exposed a separate shared refresh crash: five screens assigned a newly created `Future` through expression-bodied `setState` callbacks. Sani list, announcements, duty schedule, user detail, and profile refreshes now create the future first and perform only a synchronous assignment inside `setState`.
 - The duty-schedule extension was interactively verified on the iPhone 17 simulator against the migrated local API: compact weekday-only cards, visible assigned first-aiders, editable capacity/title/description, red multi-day closures with weekends skipped, manager add/edit dialogs, and exact-date history filtering all worked. Temporary UI test users, assignments, event days, closures, sessions, notifications, and audit rows were removed afterwards.
-- A universal Android debug APK for the current Flutter code built successfully with package `de.schule.ssdmanager`, minSdk 24, targetSdk 36, ARM32/ARM64/x86_64 libraries, a valid Android debug signature, and the Railway HTTPS API URL embedded. The new backend migration/API is not live until these uncommitted changes are explicitly committed and pushed, so this build is a platform verification artifact rather than the final installable feature handoff.
+- A universal Android debug APK for the current Flutter code built successfully with package `de.schule.ssdmanager`, minSdk 24, targetSdk 36, ARM32/ARM64/x86_64 libraries, a valid Android debug signature, and the Railway HTTPS API URL embedded. Its matching backend migrations and APIs are live on Railway, so this build is ready for end-to-end testing on the owner's Android phone.
 - The shared announcement channel now uses compact messenger-style bubbles.
   Consecutive messages from one sender omit repeated sender metadata; sender
   changes begin a clearly labeled group. Successful sends append the returned
@@ -105,9 +105,8 @@ Verified on the MacBook on 2026-07-21:
   and removed.
 - A new universal Android debug APK was built for package
   `de.schule.ssdmanager`, minSdk 24 and targetSdk 36 against the Railway HTTPS
-  URL. Its Android debug signature was verified. The attachment API and both
-  pending database migrations are still local until an explicitly authorized
-  commit/push deploys them, so this APK remains a platform-verification build.
+  URL. Its Android debug signature was verified. The attachment API and its
+  database migrations are deployed on Railway.
 - A reported production-account login failure was traced to environment
   selection rather than incorrect credentials: the installed iOS simulator
   build targeted `http://127.0.0.1:8080/api/v1`, while the test account exists
@@ -119,7 +118,7 @@ Verified on the MacBook on 2026-07-21:
 - Migration `004_user_roles_profiles_and_storage.sql` adds the `sekretariat`
   role, the immutable nullable `sanitaeter_since` profile field, and an index
   for per-user attachment storage queries. The migration is applied locally
-  but is not yet deployed to Railway.
+  and on Railway.
 - Secretariat users can view the duty plan, the complete separated school
   user list, and announcements and can send announcements. They cannot assign
   themselves or others, manage duties, manage accounts, or change roles.
@@ -162,6 +161,14 @@ Verified on the MacBook on 2026-07-21:
   17 simulator, and visibly launched the SSD Manager login screen. The public
   Railway database healthcheck returned HTTP 200. The installed app now no
   longer points at the local API.
+- GitHub `main` commit `4ffb110` (`Expand SSD workflows and role security`)
+  was deployed successfully to Railway as
+  `dbb59439-ee79-447e-bf0a-f80d4fbea95a` on 2026-07-23. The pre-deploy step
+  applied migrations `001_initial_schema.sql` through
+  `004_user_roles_profiles_and_storage.sql`; Apache then started normally and
+  the database healthcheck returned HTTP 200. Unauthenticated probes of the
+  new storage and closure-reset routes returned HTTP 401, confirming that the
+  deployed routes are present and protected.
 
 ## Implemented Flutter App
 
@@ -243,10 +250,6 @@ Technical gaps:
 
 - Railway API, MySQL, automatic migration, secret-backed variables, container build, and public HTTPS healthcheck are operational. Production still needs the first real school and teacher account, a backup schedule, the Railway cron service, and optionally a custom API domain.
 - The corrected Android test APK points to the live Railway HTTPS API, but it still needs an end-to-end run on the owner's physical phone.
-- The new duty-management, announcement-attachment, role/profile/storage
-  backend, migrations 002 through 004, and their Flutter clients still need an explicitly authorized
-  commit/push so Railway can deploy them before the newly built Android APK is
-  handed off as fully functional against production.
 - The authenticated iOS journey for the production test teacher is verified across the main read paths. Mutating duty and account workflows that require a separate student target still need end-to-end testing after additional test accounts exist.
 - Further automated coverage is still useful for cron behavior, notification delivery, and complete Flutter UI-to-API journeys.
 - `open_filex` currently uses CocoaPods on iOS and does not yet support
