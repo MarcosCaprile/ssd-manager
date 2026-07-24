@@ -11,6 +11,11 @@ Benötigte Dateien:
 - Android: `android/app/google-services.json`
 - iOS: `ios/Runner/GoogleService-Info.plist`
 
+Android und iOS sind in Firebase mit derselben dauerhaft festgelegten
+App-Kennung `com.minutmate.ssdmanager` zu registrieren. Eine Firebase-App mit
+einer abweichenden Paket- oder Bundle-Kennung ist mit den nativen Builds nicht
+kompatibel.
+
 Diese Dateien sind in `.gitignore`, weil sie projektbezogene Konfiguration enthalten.
 
 Android wendet das Google-Services-Gradle-Plugin nur an, wenn

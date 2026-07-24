@@ -44,9 +44,14 @@ Verified on the MacBook through 2026-07-23:
 - Live testing found and fixed four backend defects: concurrent capacity overbooking, invalid calendar dates returning HTTP 500, duplicate accounts returning HTTP 500, and removal of an assignment through a mismatched duty-date URL.
 - The iOS deployment target was raised from 13.0 to 15.0 in all Runner build configurations. An unsigned iOS simulator build then completed successfully and produced `Runner.app`.
 - The repository is inside the macOS Documents/File Provider area. Building iOS into the default local `build/` directory can add extended attributes that make Apple code signing reject generated frameworks. A temporary Flutter build directory under `/private/tmp` avoids this machine-specific problem.
-- Android remains unchanged: its package name is `de.schule.ssdmanager`, and its compile, minimum, and target SDK versions continue to come from Flutter defaults.
+- At this checkpoint Android still used the former package identifier; its
+  compile, minimum, and target SDK versions continued to come from Flutter
+  defaults.
 - OpenJDK 17 and the Android SDK Command-line Tools are installed through Homebrew, and Flutter is configured to use them. Android platforms 34-36, Build Tools 36.0.0, Platform Tools, NDK 28.2, and CMake 3.22.1 are installed; `flutter doctor` reports a healthy Android toolchain and all licenses accepted.
-- A universal, debug-signed Android APK was built successfully on the MacBook for package `de.schule.ssdmanager`, minimum SDK 24, and target SDK 36. The APK signature and manifest were verified, and the embedded local backend URL was confirmed in Flutter's build input.
+- A universal, debug-signed Android APK was built successfully on the MacBook
+  with the then-current package identifier, minimum SDK 24, and target SDK 36.
+  The APK signature and manifest were verified, and the embedded local backend
+  URL was confirmed in Flutter's build input.
 - Android declares Internet access for all builds. Cleartext HTTP is enabled only in the debug manifest so a physical device can reach the local PHP backend during development; release builds remain intended for HTTPS.
 - The installed iOS 26.5 runtime and iPhone 17 Pro simulator were started successfully. SSD Manager launched, displayed its login screen, received HTTP 200 from the local API for the seeded `noah` demo login, and correctly navigated to the mandatory initial password-change screen.
 - A hosted All-Inkl MySQL/MariaDB database is available. The initial schema migration was imported successfully through phpMyAdmin and all nine expected empty tables were verified; no demo accounts, seeds, credentials, or student data were imported.
@@ -59,7 +64,10 @@ Verified on the MacBook through 2026-07-23:
 - Railway enabled Apache `mpm_event` again at container startup even though the official PHP Apache image used `mpm_prefork` during the build. The verified runtime fix pins `php:8.4-apache-bookworm` and disables `mpm_event`/`mpm_worker` immediately before Apache starts.
 - The Apache fix was merged to GitHub `main` in commit `483274c`. Railway associated that commit with the service and skipped a redundant rebuild with `No changes to watched files` because the identical Dockerfile and backend content was already live from the verified CLI deployment; the public database healthcheck remained healthy.
 - A production test school and teacher account were bootstrapped transactionally. Public HTTPS login by username returned HTTP 200 with the expected school, `teacher` role, and mandatory initial password change; the verification session was revoked immediately and no credentials are stored in the repository.
-- A new universal debug APK was built against the live Railway HTTPS API. Its package is `de.schule.ssdmanager`, minSdk is 24, targetSdk is 36, the APK contains ARM32, ARM64, and x86_64 binaries, and its Android debug signature was verified.
+- A new universal debug APK was built against the live Railway HTTPS API with
+  the then-current package identifier. Its minSdk is 24, targetSdk is 36, the
+  APK contains ARM32, ARM64, and x86_64 binaries, and its Android debug
+  signature was verified.
 - Authenticated simulator testing exposed a shared `LocaleDataException`: duty cards, announcements, profile dates, and date-dependent actions used German `intl` formatters without initializing `de_DE`. Date formatting is now deterministic and independent of runtime locale initialization, with regression tests.
 - Database timestamps are stored in UTC but returned without a timezone suffix. The Flutter models now parse those values explicitly as UTC before displaying local time, and announcement roles use the German product labels instead of raw API values.
 - The user detail screen no longer offers role, deactivation, or deletion actions for the signed-in account because the backend intentionally forbids self-administration. Duty and user-management API failures are now caught and shown as user-facing messages instead of uncaught asynchronous errors.
@@ -70,7 +78,10 @@ Verified on the MacBook through 2026-07-23:
 - Local verification for the duty-schedule extension passed: `flutter analyze`, 13 Flutter tests, the 4 PHP rule tests, the general API smoke test, the existing write smoke test, and the new duty-management API smoke test. The previously verified security/concurrency suites were not re-run in this session because the sandbox approval for their local database connection timed out.
 - Simulator logs exposed a separate shared refresh crash: five screens assigned a newly created `Future` through expression-bodied `setState` callbacks. Sani list, announcements, duty schedule, user detail, and profile refreshes now create the future first and perform only a synchronous assignment inside `setState`.
 - The duty-schedule extension was interactively verified on the iPhone 17 simulator against the migrated local API: compact weekday-only cards, visible assigned first-aiders, editable capacity/title/description, red multi-day closures with weekends skipped, manager add/edit dialogs, and exact-date history filtering all worked. Temporary UI test users, assignments, event days, closures, sessions, notifications, and audit rows were removed afterwards.
-- A universal Android debug APK for the current Flutter code built successfully with package `de.schule.ssdmanager`, minSdk 24, targetSdk 36, ARM32/ARM64/x86_64 libraries, a valid Android debug signature, and the Railway HTTPS API URL embedded. Its matching backend migrations and APIs are live on Railway, so this build is ready for end-to-end testing on the owner's Android phone.
+- A universal Android debug APK for that Flutter checkpoint built successfully
+  with the then-current package identifier, minSdk 24, targetSdk 36,
+  ARM32/ARM64/x86_64 libraries, a valid Android debug signature, and the
+  Railway HTTPS API URL embedded.
 - The shared announcement channel now uses compact messenger-style bubbles.
   Consecutive messages from one sender omit repeated sender metadata; sender
   changes begin a clearly labeled group. Successful sends append the returned
@@ -104,7 +115,7 @@ Verified on the MacBook through 2026-07-23:
   macOS File Provider copies ending in ` 2.dart` were confirmed as old subsets
   and removed.
 - A new universal Android debug APK was built for package
-  `de.schule.ssdmanager`, minSdk 24 and targetSdk 36 against the Railway HTTPS
+  identifier then in use, minSdk 24 and targetSdk 36 against the Railway HTTPS
   URL. Its Android debug signature was verified. The attachment API and its
   database migrations are deployed on Railway.
 - A reported production-account login failure was traced to environment
@@ -154,7 +165,7 @@ Verified on the MacBook through 2026-07-23:
 - A new debug-signed universal Android test APK was built against
   `https://ssd-api-production.up.railway.app/api/v1` at
   `build/app/outputs/flutter-apk/SSD-Manager-Test.apk`. It uses package
-  `de.schule.ssdmanager`, minSdk 24, targetSdk 36, a valid Android debug
+  identifier then in use, minSdk 24, targetSdk 36, a valid Android debug
   signature, and SHA-256
   `2891004b4670c172da688e18c38aa1fd6141c9435e984cf7d391656953eae96d`.
 - A fresh iOS simulator build against the same Railway URL succeeded through
@@ -202,7 +213,7 @@ Verified on the MacBook through 2026-07-23:
   schema through migration 007.
 - Android commit `4cf2a6f` was built as a fresh universal debug APK with the
   Railway HTTPS API explicitly embedded. The APK uses package
-  `de.schule.ssdmanager`, minSdk 24, targetSdk 36, a valid Android debug
+  identifier then in use, minSdk 24, targetSdk 36, a valid Android debug
   signature, and SHA-256
   `e21a7c1fd2bbfeb63c078a5f5d836cae5945642f672f0c450ae8b27900d759bd`.
   It was installed successfully over USB on the owner's Samsung test phone
@@ -248,6 +259,18 @@ Verified on the MacBook through 2026-07-23:
   `85b0afa0-9d47-4e67-a39e-507113fb7708`. The pre-deploy process skipped the
   already-applied migrations 001–006, applied migration 007, started Apache
   normally, and passed the public database-backed healthcheck with HTTP 200.
+- Android application ID and namespace, the Kotlin launcher package, and the
+  iOS Runner bundle identifier are permanently aligned as
+  `com.minutmate.ssdmanager`. Runner test bundle identifiers use the matching
+  `com.minutmate.ssdmanager.RunnerTests` namespace.
+- The identifier migration passed `flutter analyze` and all 30 Flutter tests.
+  A fresh Android debug APK built against the Railway HTTPS API reports
+  `com.minutmate.ssdmanager` in its packaged manifest, has a valid Android v2
+  debug signature, and has SHA-256
+  `821e95e3dc4eab358d3fd4f8633a587be9f611c30f82f079a3a335e292ba706e`.
+  A fresh iOS simulator build reports the same bundle identifier and minimum
+  iOS version 15.0. Because Android considers the permanent identifier a new
+  application, earlier legacy test installations are not upgraded in place.
 
 ## Implemented Flutter App
 
@@ -361,7 +384,7 @@ Technical gaps:
 - Firebase project and config files still need final setup.
 - Push notifications must be tested on real Android/iOS devices.
 - Android release signing is not set up.
-- iOS Bundle ID, Apple Developer Team, and signing are not finalized.
+- Apple Developer Team and iOS signing are not finalized.
 - Deployment still needs cron setup, backups, and centralized log/alert handling.
 
 Product and policy gaps:
@@ -398,13 +421,12 @@ Codex can help integrate config files, prepare builds, run checks, fix bugs, pre
 Resolve these before production deployment:
 
 1. Should V1 be distributed internally only, through Play Store/App Store, or both?
-2. What final Android package name and iOS Bundle ID should be used?
-3. Which roles may send announcements?
-4. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
-5. May a normal first-aider see historical duties of other users?
-6. What is the final deletion/anonymization policy?
-7. Is push notification support mandatory for V1 or optional?
-8. How long should announcement texts and attachments be retained, and who may
+2. Which roles may send announcements?
+3. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
+4. May a normal first-aider see historical duties of other users?
+5. What is the final deletion/anonymization policy?
+6. Is push notification support mandatory for V1 or optional?
+7. How long should announcement texts and attachments be retained, and who may
    moderate/delete them?
 
 ## MacBook Handoff Notes

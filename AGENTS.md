@@ -11,6 +11,11 @@ The current repository is the source of truth. Historical Codex chats are local 
 ## Stack
 
 - Flutter/Dart for Android and iOS.
+- Android application ID, Android namespace, and iOS bundle identifier are
+  permanently aligned as `com.minutmate.ssdmanager`.
+- Android treats the permanent identifier as a different app from earlier
+  legacy test builds. Remove the legacy installation before acceptance testing
+  if only one SSD Manager app should remain on the device.
 - Riverpod for app state/providers.
 - PHP 8.2+ backend without a required Composer setup.
 - MySQL/MariaDB schema and seed data in `backend/database`.

@@ -4,6 +4,17 @@ This file records durable project decisions so they are available across local C
 
 Do not store secrets, credentials, tokens, signing keys, real student data, or private account details here.
 
+## 2026-07-24
+
+### Use one permanent mobile app identifier
+
+Decision: Android `applicationId` and namespace plus the iOS Runner bundle
+identifier use `com.minutmate.ssdmanager`. Platform test targets derive their
+identifier from the same namespace.
+
+Reason: Firebase, push delivery, signing, device installation, and future store
+records must refer to one stable cross-platform product identity.
+
 ## 2026-07-23
 
 ### Refresh visible data after successful mutations

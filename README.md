@@ -71,8 +71,8 @@ Variablen stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 ## Firebase
 
 1. Firebase-Projekt erstellen.
-2. Android-App mit Package `de.schule.ssdmanager` registrieren.
-3. iOS-App mit passender Bundle ID registrieren.
+2. Android-App mit Package `com.minutmate.ssdmanager` registrieren.
+3. iOS-App mit Bundle ID `com.minutmate.ssdmanager` registrieren.
 4. `google-services.json` nach `android/app/` legen.
 5. `GoogleService-Info.plist` nach `ios/Runner/` legen.
 6. Service-Account-JSON auf dem Server außerhalb des Webroots speichern.

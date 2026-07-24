@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "de.schule.ssdmanager"
+    namespace = "com.minutmate.ssdmanager"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,8 +16,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "de.schule.ssdmanager"
+        applicationId = "com.minutmate.ssdmanager"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
