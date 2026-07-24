@@ -105,6 +105,10 @@ ignored repository `build` path at a fresh directory under `/private/tmp` for
 that build, then remove the symlink. This keeps generated Gradle output outside
 the File Provider area; the exact procedure is documented in
 `docs/PROJECT_CONTEXT.md`.
+After installing a Firebase-enabled Android test build, verify
+`POST_NOTIFICATIONS` separately. Android can preserve or restore this runtime
+permission as denied even when Firebase and both notification channels are
+configured correctly.
 
 On the MacBook, Homebrew OpenJDK 17 and Android Command-line Tools are configured in Flutter. Android SDK platforms 34-36, Build Tools 36.0.0, Platform Tools, NDK 28.2, and CMake 3.22.1 are installed, and `flutter doctor` reports all Android licenses accepted. Local HTTP is allowed only in Android debug builds; release builds must use HTTPS.
 

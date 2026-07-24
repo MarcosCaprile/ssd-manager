@@ -454,9 +454,17 @@ Technical gaps:
   Railway HTTPS API with incoming share intent filters and valid Android-v2
   debug signing. Its SHA-256 is
   `c719d0bfa95d8c288d710463b9d85ab32834bae106a897658fdf67ddcab15570`.
-  Installation and real notification acceptance are pending because the
-  connected Samsung reports `unauthorized` until USB debugging is accepted on
-  the phone.
+  It was installed as an update on the connected Samsung after restarting ADB
+  and accepting USB debugging. The app reached the top-resumed state; Firebase
+  initialization succeeded and its background messaging service started
+  without an app error.
+- Device inspection found Android `POST_NOTIFICATIONS` set to denied even
+  though Firebase and the app configuration were intact. The explicitly
+  requested permission is now granted. Both `ssd_manager_messages` (high) and
+  `ssd_manager_sick_reports` (maximum) channels exist and are enabled.
+- Android resolved SSD Manager for both single and multiple share intents. A
+  controlled text-share intent opened the app and placed the marked, unsent
+  test text in the announcement composer.
 - GitHub `main` commit `d348185` deployed successfully to Railway as deployment
   `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
   applied, Apache started normally, and the public database-backed healthcheck
