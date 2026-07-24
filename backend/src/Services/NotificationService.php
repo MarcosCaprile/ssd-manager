@@ -111,6 +111,13 @@ final class NotificationService
         if ($this->wasSent($deduplicationKey)) {
             return;
         }
+        $data['notification_type'] = $type;
+        if ($dutyDayId !== null) {
+            $data['duty_day_id'] = (string) $dutyDayId;
+        }
+        if ($announcementId !== null) {
+            $data['announcement_id'] = (string) $announcementId;
+        }
         $status = 'queued';
         try {
             $status = $this->firebase->sendToToken($token, $title, $body, $data);

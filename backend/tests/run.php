@@ -108,6 +108,47 @@ test_case('invalid Firebase base64 configuration is rejected', function (): void
     }
 });
 
+test_case('Firebase keeps regular and sick announcements in separate threads', function (): void {
+    $method = new ReflectionMethod(FirebaseMessagingService::class, 'messagePayload');
+    $service = new FirebaseMessagingService();
+    $regular = $method->invoke(
+        $service,
+        'test-token',
+        'Neue Ankündigung',
+        'Text',
+        ['route' => 'announcements'],
+        true,
+        true,
+        false
+    );
+    $sick = $method->invoke(
+        $service,
+        'test-token',
+        'Krankmeldung im SSD',
+        'Text',
+        [
+            'route' => 'announcements',
+            'system_type' => 'duty_sick_reported',
+        ],
+        true,
+        true,
+        true
+    );
+
+    assert_true(
+        ($regular['message']['apns']['payload']['aps']['thread-id'] ?? null) === 'ssd-announcements',
+        'Regular announcement used the wrong APNs thread.'
+    );
+    assert_true(
+        ($sick['message']['apns']['payload']['aps']['thread-id'] ?? null) === 'ssd-sick-reports',
+        'Sick report was not separated from normal announcements.'
+    );
+    assert_true(
+        ($sick['message']['android']['priority'] ?? null) === 'HIGH',
+        'Sick report did not keep high Android priority.'
+    );
+});
+
 $failed = 0;
 foreach ($tests as $name => $test) {
     try {

@@ -22,6 +22,9 @@
   Vollbild-Ladeanzeigen erscheinen erst nach zwei Sekunden. Zentrale
   Riverpod-Revisionsprovider invalidieren betroffene Daten nach erfolgreichen
   Mutationen, Tabwechseln und App-Resume, ohne vorhandenen Inhalt zu entfernen.
+  Der aktuell sichtbare Hauptbereich wird im Vordergrund zusätzlich alle vier
+  Sekunden still abgeglichen; Push-Ereignisse aktualisieren Ankündigungen
+  unmittelbar.
 - Sani-Bulkdateien werden in Flutter als XLSX in ein explizites Mapping
   übersetzt, lokal und serverseitig geprüft und vom Backend ausschließlich
   vollständig innerhalb einer Transaktion angewendet.
@@ -29,8 +32,10 @@
   Backend, eine alte aktive Sitzung derselben App-Installation beim erneuten
   Login zu ersetzen.
 - Firebase wird nur für Push-Benachrichtigungen genutzt. Android rendert
-  Announcement-Datenpushes lokal als einen Inbox-Stack; iOS gruppiert sie über
-  einen gemeinsamen APNs-Thread. Geräteinformationen bleiben datensparsam.
+  normale Announcement-Datenpushes lokal als einen Inbox-Stack; iOS gruppiert
+  sie über einen gemeinsamen APNs-Thread. Krankmeldungen verwenden auf beiden
+  Plattformen einen davon getrennten dringenden Kanal/Thread.
+  Geräteinformationen bleiben datensparsam.
 
 ## Flutter
 

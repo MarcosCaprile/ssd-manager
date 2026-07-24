@@ -6,6 +6,43 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-24
 
+### Separate urgent sick-report pushes from the announcement conversation
+
+Decision: A sick report remains a red system message in announcements but is
+delivered through its own urgent Android channel/card and the separate iOS
+`ssd-sick-reports` thread. The reporting user is included in delivery so that
+account can receive confirmation. Normal announcement pushes remain grouped and
+are suppressed only while the announcement panel is visibly open; sick report
+notifications are never suppressed by that visibility rule.
+
+Reason: Staffing emergencies must not disappear inside a normal chat stack,
+and the person reporting sick needs verifiable confirmation on the same test
+device. A user already reading ordinary chat messages does not need a duplicate
+phone alert.
+
+### Track unread announcements and synchronize visible panels
+
+Decision: The app stores the device-local unread announcement count, displays a
+red count badge in the bottom navigation, and clears it when announcements are
+opened. Push receipt refreshes announcements immediately. While foregrounded,
+the currently visible duty, announcement, or Sani-list panel also refreshes
+silently every four seconds without replacing existing content with a loading
+screen.
+
+Reason: Changes from the current device and other devices must appear without
+closing or manually reloading the app. Push provides immediate chat updates,
+while bounded foreground polling covers duty and account changes that do not
+have a dedicated push event.
+
+### Separate announcement history by populated calendar day
+
+Decision: The announcement chat displays one date divider above the first
+message of each day that contains messages. Empty days create no divider, and
+sender grouping restarts after a day boundary.
+
+Reason: The conversation chronology should remain clear without adding visual
+noise for dates on which nothing was written.
+
 ### Use one permanent mobile app identifier
 
 Decision: Android `applicationId` and namespace plus the iOS Runner bundle

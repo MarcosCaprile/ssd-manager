@@ -35,6 +35,8 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   final List<_PendingAttachment> _pending = [];
   List<Announcement> _items = [];
   bool _sending = false;
+  bool _refreshing = false;
+  bool _refreshQueued = false;
 
   @override
   void initState() {
@@ -63,15 +65,97 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   }
 
   Future<void> _refreshPreservingContent() async {
-    try {
-      final items = await _load();
-      if (mounted) {
-        setState(() => _future = Future.value(List.unmodifiable(items)));
-      }
-    } catch (_) {
-      // Bereits sichtbare Ankündigungen bleiben erhalten. Ein späteres
-      // Pull-to-refresh kann die Aktualisierung erneut versuchen.
+    if (_refreshing) {
+      _refreshQueued = true;
+      return;
     }
+    _refreshing = true;
+    try {
+      do {
+        _refreshQueued = false;
+        try {
+          final items = await _load();
+          if (mounted) {
+            setState(() => _future = Future.value(List.unmodifiable(items)));
+          }
+        } catch (_) {
+          // Bereits sichtbare Ankündigungen bleiben erhalten. Der nächste
+          // Push, Live-Abgleich oder Pull-to-refresh versucht es erneut.
+        }
+      } while (_refreshQueued && mounted);
+    } finally {
+      _refreshing = false;
+    }
+  }
+
+  List<Announcement> _withAnnouncement(
+    List<Announcement> announcements,
+    Announcement announcement,
+  ) {
+    final byId = {
+      for (final item in announcements) item.id: item,
+      announcement.id: announcement,
+    };
+    final result = byId.values.toList()
+      ..sort((a, b) {
+        final timeComparison = a.createdAt.compareTo(b.createdAt);
+        return timeComparison != 0 ? timeComparison : a.id.compareTo(b.id);
+      });
+    return result;
+  }
+
+  bool _isSameLocalDay(DateTime first, DateTime second) {
+    final a = first.toLocal();
+    final b = second.toLocal();
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  Widget _buildAnnouncementItem({
+    required Announcement announcement,
+    required Announcement? previous,
+    required User? currentUser,
+  }) {
+    final startsNewDay =
+        previous == null ||
+        !_isSameLocalDay(previous.createdAt, announcement.createdAt);
+    final showSender =
+        startsNewDay ||
+        previous.isSystem ||
+        announcement.isSystem ||
+        previous.senderUserId != announcement.senderUserId;
+    final bubble = announcement.isSystem
+        ? _SystemAnnouncementBubble(announcement: announcement)
+        : _AnnouncementBubble(
+            announcement: announcement,
+            mine: currentUser?.id == announcement.senderUserId,
+            showSender: showSender,
+            repository: ref.read(announcementRepositoryProvider),
+          );
+    return Column(
+      key: ValueKey(announcement.id),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (startsNewDay) _ChatDayDivider(createdAt: announcement.createdAt),
+        bubble,
+      ],
+    );
+  }
+
+  Future<void> _refreshAfterSend() async {
+    if (_refreshQueued) {
+      await _refreshPreservingContent();
+    }
+  }
+
+  Future<void> _setSentAnnouncement(Announcement sent) async {
+    if (!mounted) return;
+    _controller.clear();
+    setState(() {
+      _pending.clear();
+      _items = _withAnnouncement(_items, sent);
+      _future = Future.value(List.unmodifiable(_items));
+    });
+    await _refreshAfterSend();
   }
 
   Future<void> _send() async {
@@ -98,13 +182,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
             .whereType<int>()
             .toList(),
       );
-      if (!mounted) return;
-      _controller.clear();
-      setState(() {
-        _pending.clear();
-        _items = [..._items, sent];
-        _future = Future.value(List.unmodifiable(_items));
-      });
+      await _setSentAnnouncement(sent);
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -163,23 +241,10 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
                       final previous = originalIndex == 0
                           ? null
                           : announcements[originalIndex - 1];
-                      final showSender =
-                          previous == null ||
-                          previous.isSystem ||
-                          announcement.isSystem ||
-                          previous.senderUserId != announcement.senderUserId;
-                      if (announcement.isSystem) {
-                        return _SystemAnnouncementBubble(
-                          key: ValueKey(announcement.id),
-                          announcement: announcement,
-                        );
-                      }
-                      return _AnnouncementBubble(
-                        key: ValueKey(announcement.id),
+                      return _buildAnnouncementItem(
                         announcement: announcement,
-                        mine: currentUser?.id == announcement.senderUserId,
-                        showSender: showSender,
-                        repository: ref.read(announcementRepositoryProvider),
+                        previous: previous,
+                        currentUser: currentUser,
                       );
                     },
                   ),
@@ -395,6 +460,40 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   }
 }
 
+class _ChatDayDivider extends StatelessWidget {
+  const _ChatDayDivider({required this.createdAt});
+
+  final DateTime createdAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 5),
+      child: Center(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Text(
+              DateFormatters.chatDayLabel(createdAt),
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 enum _AttachmentSource { photo, file }
 
 class _PendingAttachment {
@@ -490,7 +589,6 @@ class _PendingAttachmentStrip extends StatelessWidget {
 
 class _AnnouncementBubble extends StatelessWidget {
   const _AnnouncementBubble({
-    super.key,
     required this.announcement,
     required this.mine,
     required this.showSender,
@@ -597,7 +695,7 @@ class _AnnouncementBubble extends StatelessWidget {
 }
 
 class _SystemAnnouncementBubble extends StatelessWidget {
-  const _SystemAnnouncementBubble({super.key, required this.announcement});
+  const _SystemAnnouncementBubble({required this.announcement});
 
   final Announcement announcement;
 

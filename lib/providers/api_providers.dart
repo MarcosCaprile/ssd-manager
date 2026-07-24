@@ -28,6 +28,25 @@ class DataRevisionController extends Notifier<int> {
   void bump() => state++;
 }
 
+class AnnouncementUnreadController extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void setCount(int count) {
+    state = count < 0 ? 0 : count;
+  }
+
+  Future<void> clear() async {
+    state = 0;
+    try {
+      await ref.read(pushServiceProvider).clearAnnouncementNotifications();
+    } catch (_) {
+      // The in-app read state stays valid if platform notification cleanup
+      // is temporarily unavailable.
+    }
+  }
+}
+
 final userRevisionProvider = NotifierProvider<DataRevisionController, int>(
   DataRevisionController.new,
 );
@@ -75,6 +94,11 @@ final announcementRepositoryProvider = Provider<AnnouncementRepository>((ref) {
 
 final announcementRevisionProvider =
     NotifierProvider<DataRevisionController, int>(DataRevisionController.new);
+
+final announcementUnreadProvider =
+    NotifierProvider<AnnouncementUnreadController, int>(
+      AnnouncementUnreadController.new,
+    );
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(ref.watch(apiClientProvider));

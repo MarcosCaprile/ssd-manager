@@ -572,12 +572,13 @@ final class DutyService
                 'sick-announcement:' . $announcementId,
                 (int) $assignment['duty_day_id'],
                 $announcementId,
-                [$auth->userId()],
+                [],
                 [
                     'route' => 'announcements',
                     'date' => $date,
                     'priority' => 'high',
                     'message_type' => 'system',
+                    'system_type' => 'duty_sick_reported',
                 ]
             );
         } catch (\Throwable $exception) {

@@ -28,4 +28,21 @@ void main() {
 
     expect(DateFormatters.chatTimestamp(timestamp, now: now), '22.07. 09:05');
   });
+
+  test('labels chat days with today, yesterday, or weekday and date', () {
+    final now = DateTime(2026, 7, 24, 18, 30);
+
+    expect(
+      DateFormatters.chatDayLabel(DateTime(2026, 7, 24, 9), now: now),
+      'Heute',
+    );
+    expect(
+      DateFormatters.chatDayLabel(DateTime(2026, 7, 23, 9), now: now),
+      'Gestern',
+    );
+    expect(
+      DateFormatters.chatDayLabel(DateTime(2026, 7, 20, 9), now: now),
+      'Montag, 20.07.2026',
+    );
+  });
 }

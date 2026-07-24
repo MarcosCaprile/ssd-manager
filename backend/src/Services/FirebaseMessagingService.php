@@ -29,9 +29,43 @@ final class FirebaseMessagingService
         $data['title'] = $title;
         $data['body'] = $body;
         $isAnnouncement = ($data['route'] ?? '') === 'announcements';
+        $isSickReport = ($data['system_type'] ?? '') === 'duty_sick_reported'
+            || ($data['notification_type'] ?? '') === 'announcement_system_sick';
         $isHighPriority = ($data['priority'] ?? '') === 'high' || $isAnnouncement;
 
-        $payload = [
+        $payload = $this->messagePayload(
+            $token,
+            $title,
+            $body,
+            $data,
+            $isHighPriority,
+            $isAnnouncement,
+            $isSickReport
+        );
+
+        $response = $this->postJson(
+            "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send",
+            $payload,
+            ['Authorization: Bearer ' . $this->accessToken()]
+        );
+
+        return $response['ok'] ? 'sent' : 'failed';
+    }
+
+    /**
+     * @param array<string,string> $data
+     * @return array<string,mixed>
+     */
+    private function messagePayload(
+        string $token,
+        string $title,
+        string $body,
+        array $data,
+        bool $isHighPriority,
+        bool $isAnnouncement,
+        bool $isSickReport,
+    ): array {
+        return [
             'message' => [
                 'token' => $token,
                 'data' => $data,
@@ -49,20 +83,14 @@ final class FirebaseMessagingService
                                 'body' => $body,
                             ],
                             'sound' => 'default',
-                            'thread-id' => $isAnnouncement ? 'ssd-announcements' : 'ssd-manager',
+                            'thread-id' => $isSickReport
+                                ? 'ssd-sick-reports'
+                                : ($isAnnouncement ? 'ssd-announcements' : 'ssd-manager'),
                         ],
                     ],
                 ],
             ],
         ];
-
-        $response = $this->postJson(
-            "https://fcm.googleapis.com/v1/projects/{$projectId}/messages:send",
-            $payload,
-            ['Authorization: Bearer ' . $this->accessToken()]
-        );
-
-        return $response['ok'] ? 'sent' : 'failed';
     }
 
     private function accessToken(): string

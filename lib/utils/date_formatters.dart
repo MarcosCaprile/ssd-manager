@@ -32,6 +32,17 @@ class DateFormatters {
     return '${_twoDigits(local.day)}.${_twoDigits(local.month)}. $time';
   }
 
+  static String chatDayLabel(DateTime value, {DateTime? now}) {
+    final local = value.toLocal();
+    final current = (now ?? DateTime.now()).toLocal();
+    final day = DateTime(local.year, local.month, local.day);
+    final today = DateTime(current.year, current.month, current.day);
+    final difference = today.difference(day).inDays;
+    if (difference == 0) return 'Heute';
+    if (difference == 1) return 'Gestern';
+    return '${dutyWeekday(local)}, ${_date(local)}';
+  }
+
   static String _date(DateTime value) {
     return '${_twoDigits(value.day)}.${_twoDigits(value.month)}.${value.year.toString().padLeft(4, '0')}';
   }

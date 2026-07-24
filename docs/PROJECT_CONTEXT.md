@@ -1,6 +1,6 @@
 # SSD Manager Project Context
 
-Stand: 2026-07-23
+Stand: 2026-07-24
 
 This document preserves important project context from earlier local Codex chats. Those chats existed only on the original Windows PC, so this file should travel with the repository through GitHub and be used as durable context on the MacBook or in future Codex chats.
 
@@ -349,8 +349,9 @@ Important backend rules already exist server-side:
 - Admin assignment/removal.
 - Audit logging.
 - Push triggers, token refresh registration, deep-link routing, Android
-  announcement stacking, and iOS announcement-thread grouping; real delivery
-  is configured for Android but still needs a device acceptance test. iOS
+  announcement stacking, a separate sick-report channel/thread, foreground
+  suppression for visible normal chat messages, and iOS announcement-thread
+  grouping. Real normal-message delivery is verified on Android; iOS
   additionally requires its Firebase plist and APNs configuration.
 - Transactional sanitary-account bulk validation and application with audit
   logging and session revocation.
@@ -406,10 +407,29 @@ Technical gaps:
   `ef9c2e79e70daf0c131b1da81df53693edfae9453eecec7e12afa6c0c0e6a7ef`.
   It was installed successfully on the connected Samsung test phone in the
   primary Android user, and its `MainActivity` reached the top-resumed state
-  without a Firebase startup error. Notification permission is intentionally
-  still ungranted until the owner accepts the Android prompt during login;
-  real notification reception remains an acceptance step.
-- Push notifications must be tested on real Android/iOS devices.
+  without a Firebase startup error. The owner subsequently granted permission
+  and confirmed real Android delivery for normal announcement messages.
+- Announcement pushes now distinguish normal chat messages from
+  `duty_sick_reported` system messages. Normal messages keep the single
+  announcement stack and are suppressed while the foreground app is visibly
+  showing the announcement panel. Sick reports always use their own urgent
+  Android channel and notification card plus the separate iOS
+  `ssd-sick-reports` thread.
+- The app persists an announcement unread count and shows it as a red badge in
+  the main navigation outside the announcement panel. Opening that panel marks
+  the conversation read. Incoming pushes trigger an immediate content refresh;
+  the visible duty, announcement, and Sani-list panels also perform a silent
+  four-second fallback synchronization while the app is in the foreground.
+- Announcement history now shows one date divider above the first message of
+  each populated day. Consecutive messages across midnight therefore start a
+  new visible day and sender group.
+- A fresh Firebase-enabled Android debug APK for this continuation was built
+  against the Railway HTTPS API, verified with Android v2 signing, and
+  installed successfully over USB on the Samsung test phone. Its SHA-256 is
+  `8bf51d0ec5b057138089b863d0a01daea17970c58e84b756599e79501a727a6c`.
+- Separate sick-report delivery still needs one real acceptance action after
+  the updated backend is live. iOS push delivery remains unconfigured and
+  untested on a real device.
 - Android release signing is not set up.
 - Apple Developer Team and iOS signing are not finalized.
 - Deployment still needs cron setup, backups, and centralized log/alert handling.

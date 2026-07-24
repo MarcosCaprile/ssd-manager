@@ -78,11 +78,18 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     switch (data['route']) {
       case 'announcements':
         ref.read(announcementRevisionProvider.notifier).bump();
+        unawaited(_syncAnnouncementUnreadCount());
       case 'duty':
         ref.read(dutyRevisionProvider.notifier).bump();
       case 'users':
         ref.read(userRevisionProvider.notifier).bump();
     }
+  }
+
+  Future<void> _syncAnnouncementUnreadCount() async {
+    final count = await ref.read(pushServiceProvider).announcementUnreadCount();
+    if (!mounted) return;
+    ref.read(announcementUnreadProvider.notifier).setCount(count);
   }
 
   @override

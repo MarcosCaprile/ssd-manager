@@ -6,17 +6,27 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'push_message_policy.dart';
+
 const _announcementNotificationId = 41001;
 const _notificationChannelId = 'ssd_manager_messages';
 const _notificationChannelName = 'SSD Manager Nachrichten';
 const _notificationThreadId = 'ssd-announcements';
+const _sickNotificationChannelId = 'ssd_manager_sick_reports';
+const _sickNotificationChannelName = 'SSD Manager Krankmeldungen';
+const _sickNotificationThreadId = 'ssd-sick-reports';
 const _storedAnnouncementLines = 'push.announcement_lines';
+const _storedSickNotificationIds = 'push.sick_notification_ids';
+const _storedAnnouncementUnreadCount = 'push.announcement_unread_count';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp();
-    await _PushNotificationPresenter.show(message.data);
+    await _PushNotificationPresenter.show(
+      message.data,
+      announcementsVisible: false,
+    );
   } catch (_) {
     // A missing native Firebase configuration must never crash app startup.
   }
@@ -27,6 +37,7 @@ class PushService {
 
   static bool _firebaseReady = false;
   static bool _listenersRegistered = false;
+  static bool _announcementsVisible = false;
   static Map<String, dynamic>? _initialLocalData;
   static final _openedDataController =
       StreamController<Map<String, dynamic>>.broadcast();
@@ -52,8 +63,15 @@ class PushService {
       if (!_listenersRegistered) {
         FirebaseMessaging.onMessage.listen((message) async {
           final data = _combinedData(message);
+          try {
+            await _PushNotificationPresenter.show(
+              data,
+              announcementsVisible: _announcementsVisible,
+            );
+          } catch (_) {
+            // A presentation failure must not block the in-app live refresh.
+          }
           _receivedDataController.add(data);
-          await _PushNotificationPresenter.show(data);
         });
         FirebaseMessaging.onMessageOpenedApp.listen((message) {
           _openedDataController.add(_combinedData(message));
@@ -105,6 +123,13 @@ class PushService {
   Future<void> clearAnnouncementNotifications() =>
       _PushNotificationPresenter.clearAnnouncements();
 
+  Future<int> announcementUnreadCount() =>
+      _PushNotificationPresenter.announcementUnreadCount();
+
+  void setAnnouncementsVisible(bool visible) {
+    _announcementsVisible = visible;
+  }
+
   static Map<String, dynamic> _combinedData(RemoteMessage message) {
     return <String, dynamic>{
       ...message.data,
@@ -119,6 +144,7 @@ class PushService {
 class _PushNotificationPresenter {
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
+  static Future<void> _operationQueue = Future.value();
 
   static Future<void> initialize({
     void Function(Map<String, dynamic> data)? onOpened,
@@ -149,16 +175,78 @@ class _PushNotificationPresenter {
     return _decodePayload(details?.notificationResponse?.payload);
   }
 
-  static Future<void> show(Map<String, dynamic> data) async {
+  static Future<void> show(
+    Map<String, dynamic> data, {
+    required bool announcementsVisible,
+  }) {
+    return _enqueue(
+      () => _show(data, announcementsVisible: announcementsVisible),
+    );
+  }
+
+  static Future<void> _show(
+    Map<String, dynamic> data, {
+    required bool announcementsVisible,
+  }) async {
     await initialize();
     final title = (data['title'] ?? 'SSD Manager').toString().trim();
     final body = (data['body'] ?? '').toString().trim();
     if (body.isEmpty) return;
 
-    final isAnnouncement = data['route'] == 'announcements';
+    final kind = PushMessagePolicy.classify(data);
     final payload = jsonEncode(data);
-    if (isAnnouncement) {
-      final preferences = SharedPreferencesAsync();
+    final preferences = SharedPreferencesAsync();
+    final unreadCount =
+        PushMessagePolicy.countsAsUnread(
+          kind: kind,
+          announcementsVisible: announcementsVisible,
+        )
+        ? await _incrementAnnouncementUnreadCount(preferences)
+        : await _readAnnouncementUnreadCount(preferences);
+
+    if (kind == PushMessageKind.sickReport) {
+      final notificationId = _sickNotificationId(data);
+      final storedIds =
+          await preferences.getStringList(_storedSickNotificationIds) ?? [];
+      if (!storedIds.contains('$notificationId')) {
+        await preferences.setStringList(_storedSickNotificationIds, [
+          ...storedIds,
+          '$notificationId',
+        ]);
+      }
+      await _plugin.show(
+        id: notificationId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            _sickNotificationChannelId,
+            _sickNotificationChannelName,
+            channelDescription:
+                'Dringende Krankmeldungen aus dem Schulsanitätsdienst',
+            icon: 'ic_stat_ssd_manager',
+            importance: Importance.max,
+            priority: Priority.max,
+            category: AndroidNotificationCategory.message,
+            styleInformation: BigTextStyleInformation(body),
+          ),
+          iOS: DarwinNotificationDetails(
+            threadIdentifier: _sickNotificationThreadId,
+            badgeNumber: unreadCount > 0 ? unreadCount : null,
+          ),
+        ),
+        payload: payload,
+      );
+      return;
+    }
+
+    if (kind == PushMessageKind.regularAnnouncement) {
+      if (!PushMessagePolicy.shouldShowPhoneNotification(
+        kind: kind,
+        announcementsVisible: announcementsVisible,
+      )) {
+        return;
+      }
       final previous =
           await preferences.getStringList(_storedAnnouncementLines) ?? [];
       final lines = [...previous, body];
@@ -191,8 +279,9 @@ class _PushNotificationPresenter {
             styleInformation: style,
             onlyAlertOnce: false,
           ),
-          iOS: const DarwinNotificationDetails(
+          iOS: DarwinNotificationDetails(
             threadIdentifier: _notificationThreadId,
+            badgeNumber: unreadCount > 0 ? unreadCount : null,
           ),
         ),
         payload: payload,
@@ -221,10 +310,63 @@ class _PushNotificationPresenter {
     );
   }
 
-  static Future<void> clearAnnouncements() async {
+  static Future<void> clearAnnouncements() {
+    return _enqueue(_clearAnnouncements);
+  }
+
+  static Future<void> _clearAnnouncements() async {
     await initialize();
-    await SharedPreferencesAsync().remove(_storedAnnouncementLines);
+    final preferences = SharedPreferencesAsync();
+    final sickNotificationIds =
+        await preferences.getStringList(_storedSickNotificationIds) ?? [];
+    await preferences.remove(_storedAnnouncementLines);
+    await preferences.remove(_storedSickNotificationIds);
+    await preferences.setInt(_storedAnnouncementUnreadCount, 0);
     await _plugin.cancel(id: _announcementNotificationId);
+    for (final value in sickNotificationIds) {
+      final id = int.tryParse(value);
+      if (id != null) {
+        await _plugin.cancel(id: id);
+      }
+    }
+  }
+
+  static Future<int> announcementUnreadCount() {
+    return _readAnnouncementUnreadCount(SharedPreferencesAsync());
+  }
+
+  static Future<int> _readAnnouncementUnreadCount(
+    SharedPreferencesAsync preferences,
+  ) async {
+    return await preferences.getInt(_storedAnnouncementUnreadCount) ?? 0;
+  }
+
+  static Future<int> _incrementAnnouncementUnreadCount(
+    SharedPreferencesAsync preferences,
+  ) async {
+    final current = await _readAnnouncementUnreadCount(preferences);
+    final next = current + 1;
+    await preferences.setInt(_storedAnnouncementUnreadCount, next);
+    return next;
+  }
+
+  static int _sickNotificationId(Map<String, dynamic> data) {
+    final announcementId = int.tryParse(
+      (data['announcement_id'] ?? '').toString(),
+    );
+    final uniquePart =
+        announcementId ??
+        DateTime.now().millisecondsSinceEpoch.remainder(100000000);
+    return 500000000 + uniquePart.remainder(100000000);
+  }
+
+  static Future<void> _enqueue(Future<void> Function() operation) {
+    final queued = _operationQueue.then((_) => operation());
+    _operationQueue = queued.then<void>(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {},
+    );
+    return queued;
   }
 
   static Map<String, dynamic>? _decodePayload(String? payload) {
