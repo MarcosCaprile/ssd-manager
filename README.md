@@ -80,9 +80,13 @@ Variablen stehen in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ```env
 FCM_ENABLED=true
-FIREBASE_SERVICE_ACCOUNT=/secure/path/firebase-service-account.json
+FIREBASE_SERVICE_ACCOUNT_JSON_BASE64=<base64-codiertes-service-account-json>
 FIREBASE_PROJECT_ID=your-project-id
 ```
+
+Für lokale Entwicklung kann stattdessen weiterhin
+`FIREBASE_SERVICE_ACCOUNT=/secure/path/firebase-service-account.json` verwendet
+werden. Das echte JSON und sein Base64-Inhalt dürfen niemals committed werden.
 
 Details stehen in [docs/FIREBASE.md](docs/FIREBASE.md).
 

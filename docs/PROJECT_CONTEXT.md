@@ -386,6 +386,11 @@ Technical gaps:
   installed locally at the ignored `android/app/google-services.json` path and
   was validated against the permanent application ID. The iOS Firebase plist
   and backend service-account configuration are still outstanding.
+- The downloaded Firebase Admin service account was validated locally against
+  the same Firebase project without exposing its private key. Production can
+  now load this credential directly from the protected
+  `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` Railway variable; the previous local
+  ignored file-path method remains available for development.
 - Push notifications must be tested on real Android/iOS devices.
 - Android release signing is not set up.
 - Apple Developer Team and iOS signing are not finalized.

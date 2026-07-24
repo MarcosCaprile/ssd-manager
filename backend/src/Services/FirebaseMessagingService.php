@@ -109,12 +109,32 @@ final class FirebaseMessagingService
      */
     private function serviceAccount(): array
     {
-        $path = Config::env('FIREBASE_SERVICE_ACCOUNT');
-        if (!$path || !is_file($path)) {
-            throw new \RuntimeException('FIREBASE_SERVICE_ACCOUNT is not configured.');
+        $encoded = Config::env('FIREBASE_SERVICE_ACCOUNT_JSON_BASE64');
+        if ($encoded !== null) {
+            $compact = preg_replace('/\s+/', '', $encoded);
+            $contents = $compact === null ? false : base64_decode($compact, true);
+            if ($contents === false) {
+                throw new \RuntimeException('Invalid base64 Firebase service account configuration.');
+            }
+        } else {
+            $path = Config::env('FIREBASE_SERVICE_ACCOUNT');
+            if (!$path || !is_file($path)) {
+                throw new \RuntimeException('Firebase service account is not configured.');
+            }
+            $contents = file_get_contents($path);
         }
-        $decoded = json_decode(file_get_contents($path) ?: '', true);
-        if (!is_array($decoded)) {
+
+        $decoded = json_decode($contents ?: '', true);
+        if (
+            !is_array($decoded)
+            || ($decoded['type'] ?? null) !== 'service_account'
+            || !is_string($decoded['project_id'] ?? null)
+            || trim($decoded['project_id']) === ''
+            || !is_string($decoded['client_email'] ?? null)
+            || trim($decoded['client_email']) === ''
+            || !is_string($decoded['private_key'] ?? null)
+            || !str_contains($decoded['private_key'], 'BEGIN PRIVATE KEY')
+        ) {
             throw new \RuntimeException('Invalid Firebase service account JSON.');
         }
         return $decoded;

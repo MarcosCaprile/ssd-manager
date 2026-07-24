@@ -37,11 +37,15 @@ Das Backend nutzt FCM HTTP v1. Dafür wird ein Firebase Service Account benötig
 
 ```env
 FCM_ENABLED=true
-FIREBASE_SERVICE_ACCOUNT=/secure/path/firebase-service-account.json
+FIREBASE_SERVICE_ACCOUNT_JSON_BASE64=<base64-codiertes-service-account-json>
 FIREBASE_PROJECT_ID=your-project-id
 ```
 
-Das Service-Account-JSON darf nicht im Webroot und nicht im Repository liegen.
+Railway erhält das JSON ausschließlich als geschützte Base64-Servicevariable;
+es wird nicht in das Container-Dateisystem oder Repository geschrieben. Lokal
+kann alternativ `FIREBASE_SERVICE_ACCOUNT=/secure/path/firebase-service-account.json`
+verwendet werden. Das Service-Account-JSON darf nicht im Webroot und nicht im
+Repository liegen.
 Auch die nativen App-Konfigurationsdateien und APNs-/Firebase-Einstellungen
 müssen vom Projektinhaber im echten Firebase-/Apple-Konto eingerichtet werden.
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Services\DutyRules;
+use App\Services\FirebaseMessagingService;
 
 $tests = [];
 
@@ -55,6 +56,56 @@ test_case('sick report is allowed inside 48 hours but not in the past', function
     $now = new DateTimeImmutable('2026-07-17 08:00:00', new DateTimeZone('Europe/Berlin'));
     assert_true($rules->canReportSick('2026-07-18', $now));
     assert_false($rules->canReportSick('2026-07-16', $now));
+});
+
+test_case('Firebase service account loads from a base64 environment secret', function (): void {
+    $previousEncoded = $_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64'] ?? null;
+    $previousPath = $_ENV['FIREBASE_SERVICE_ACCOUNT'] ?? null;
+    $_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64'] = base64_encode(json_encode([
+        'type' => 'service_account',
+        'project_id' => 'unit-test-project',
+        'client_email' => 'unit-test@example.invalid',
+        'private_key' => "-----BEGIN PRIVATE KEY-----\nunit-test\n-----END PRIVATE KEY-----\n",
+    ], JSON_THROW_ON_ERROR));
+    unset($_ENV['FIREBASE_SERVICE_ACCOUNT']);
+
+    try {
+        $method = new ReflectionMethod(FirebaseMessagingService::class, 'serviceAccount');
+        $account = $method->invoke(new FirebaseMessagingService());
+        assert_true(($account['project_id'] ?? null) === 'unit-test-project');
+    } finally {
+        if ($previousEncoded === null) {
+            unset($_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64']);
+        } else {
+            $_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64'] = $previousEncoded;
+        }
+        if ($previousPath === null) {
+            unset($_ENV['FIREBASE_SERVICE_ACCOUNT']);
+        } else {
+            $_ENV['FIREBASE_SERVICE_ACCOUNT'] = $previousPath;
+        }
+    }
+});
+
+test_case('invalid Firebase base64 configuration is rejected', function (): void {
+    $previousEncoded = $_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64'] ?? null;
+    $_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64'] = 'not-valid-base64%%%';
+
+    try {
+        $method = new ReflectionMethod(FirebaseMessagingService::class, 'serviceAccount');
+        try {
+            $method->invoke(new FirebaseMessagingService());
+            throw new RuntimeException('Invalid Firebase configuration was accepted.');
+        } catch (RuntimeException $exception) {
+            assert_true(str_contains($exception->getMessage(), 'Invalid base64'));
+        }
+    } finally {
+        if ($previousEncoded === null) {
+            unset($_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64']);
+        } else {
+            $_ENV['FIREBASE_SERVICE_ACCOUNT_JSON_BASE64'] = $previousEncoded;
+        }
+    }
 });
 
 $failed = 0;

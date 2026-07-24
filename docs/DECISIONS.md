@@ -15,6 +15,16 @@ identifier from the same namespace.
 Reason: Firebase, push delivery, signing, device installation, and future store
 records must refer to one stable cross-platform product identity.
 
+### Store the Railway Firebase credential as a protected Base64 variable
+
+Decision: Production reads the Firebase service-account JSON from
+`FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`. A local ignored file path remains a
+development fallback, but production does not require a credential file in the
+container.
+
+Reason: Railway service variables can securely inject the credential at runtime
+without committing a private key or depending on an ephemeral filesystem path.
+
 ## 2026-07-23
 
 ### Refresh visible data after successful mutations

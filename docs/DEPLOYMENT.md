@@ -63,8 +63,14 @@ SCHOOL_TIMEZONE=Europe/Berlin
 DUTY_CAPACITY=3
 RATE_LIMIT_LOGIN_ATTEMPTS=8
 RATE_LIMIT_LOGIN_WINDOW_MINUTES=15
-FCM_ENABLED=false
+FCM_ENABLED=true
+FIREBASE_PROJECT_ID=<FIREBASE-PROJEKT-ID>
+FIREBASE_SERVICE_ACCOUNT_JSON_BASE64=<GESCHUETZTES-BASE64-SERVICE-ACCOUNT-JSON>
 ```
+
+Die Base64-Servicevariable enthält einen privaten Schlüssel. Sie darf nur als
+geschützte Railway-Variable gesetzt, niemals ausgegeben, in Logs geschrieben
+oder ins Repository übernommen werden.
 
 6. Im API-Service eine öffentliche Railway-Domain erzeugen. Railway stellt
    HTTPS automatisch bereit. Der Healthcheck läuft unter `/api/v1/health`.

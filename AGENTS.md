@@ -159,6 +159,10 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   notification; iOS uses the shared `ssd-announcements` thread. Native Firebase
   config files and Railway FCM service-account variables remain external
   prerequisites and must never be committed.
+- Railway receives the Firebase service account only through the protected
+  `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` variable. Never print, log, commit, or
+  persist its decoded private-key content. Local development may use the
+  ignored `FIREBASE_SERVICE_ACCOUNT` file path instead.
 
 ## Project Memory Protocol
 

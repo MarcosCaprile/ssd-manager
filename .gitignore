@@ -49,5 +49,6 @@ app.*.map.json
 # Local backend and Firebase configuration
 /backend/.env
 /backend/firebase-service-account*.json
+**/*firebase-adminsdk*.json
 /android/app/google-services.json
 /ios/Runner/GoogleService-Info.plist
