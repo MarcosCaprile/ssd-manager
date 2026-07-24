@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -14,15 +16,36 @@ import '../../widgets/status_views.dart';
 import 'duty_editor_sheets.dart';
 
 class DutyScheduleScreen extends ConsumerStatefulWidget {
-  const DutyScheduleScreen({super.key});
+  const DutyScheduleScreen({super.key, this.active = true});
+
+  final bool active;
 
   @override
   ConsumerState<DutyScheduleScreen> createState() => _DutyScheduleScreenState();
 }
 
 class _DutyScheduleScreenState extends ConsumerState<DutyScheduleScreen> {
+  static const _liveRefreshInterval = Duration(seconds: 2);
+
   final _upcomingKey = GlobalKey<_DutyListState>();
   final _historyKey = GlobalKey<_DutyListState>();
+  Timer? _liveRefreshTimer;
+  bool _liveRefreshRunning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _liveRefreshTimer = Timer.periodic(
+      _liveRefreshInterval,
+      (_) => _liveRefresh(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _liveRefreshTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +150,19 @@ class _DutyScheduleScreenState extends ConsumerState<DutyScheduleScreen> {
       if (_historyKey.currentState != null)
         _historyKey.currentState!.refresh(preserveOnError: preserveOnError),
     ]);
+  }
+
+  Future<void> _liveRefresh() async {
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    final isForeground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
+    if (!widget.active || !isForeground || _liveRefreshRunning) return;
+    _liveRefreshRunning = true;
+    try {
+      await _refreshAll(preserveOnError: true);
+    } finally {
+      _liveRefreshRunning = false;
+    }
   }
 }
 

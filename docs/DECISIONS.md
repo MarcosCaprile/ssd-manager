@@ -25,14 +25,30 @@ phone alert.
 Decision: The app stores the device-local unread announcement count, displays a
 red count badge in the bottom navigation, and clears it when announcements are
 opened. Push receipt refreshes announcements immediately. While foregrounded,
-the currently visible duty, announcement, or Sani-list panel also refreshes
-silently every four seconds without replacing existing content with a loading
-screen.
+each visible screen owns its silent fallback synchronization: announcements
+every second and duty/Sani-list data every two seconds. Every tick reads the
+actual lifecycle state rather than relying on a cached shell flag. Dynamic JSON
+requests and responses explicitly bypass intermediary caches. In-app push
+refresh is emitted before local notification presentation, so notification
+plugin latency cannot block content updates.
 
 Reason: Changes from the current device and other devices must appear without
 closing or manually reloading the app. Push provides immediate chat updates,
-while bounded foreground polling covers duty and account changes that do not
-have a dedicated push event.
+while bounded foreground polling covers missed/delayed pushes and duty or
+account changes that do not have a dedicated push event.
+
+### Support native incoming and outgoing attachment sharing
+
+Decision: SSD Manager is registered as an Android and iOS share target for
+text, photos, and files. Incoming content opens the announcement composer with
+the attachment/text prepared but never sends automatically. Existing chat
+attachments expose the platform share sheet. Android uses `SEND`/
+`SEND_MULTIPLE`; iOS uses a `ShareExtension` with the
+`group.com.minutmate.ssdmanager` App Group and extension bundle identifier
+`com.minutmate.ssdmanager.ShareExtension`.
+
+Reason: Sharing should match normal messenger behavior while keeping the final
+send action explicit and preserving the permanent app identity.
 
 ### Separate announcement history by populated calendar day
 

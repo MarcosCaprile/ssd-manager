@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'providers/api_providers.dart';
 import 'providers/auth_provider.dart';
 import 'providers/deep_link_provider.dart';
+import 'providers/incoming_share_provider.dart';
 import 'providers/theme_provider.dart';
 import 'screens/auth/change_password_screen.dart';
 import 'screens/auth/login_screen.dart';
@@ -44,11 +45,17 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
   StreamSubscription<Map<String, dynamic>>? _pushOpenSubscription;
   StreamSubscription<Map<String, dynamic>>? _pushReceiveSubscription;
   StreamSubscription<String>? _pushTokenSubscription;
+  StreamSubscription<IncomingSharePayload>? _incomingShareSubscription;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() async {
+      final incomingShares = ref.read(incomingShareServiceProvider);
+      _incomingShareSubscription = incomingShares.shares.listen(
+        _handleIncomingShare,
+      );
+      await incomingShares.initialize();
       await ref.read(authControllerProvider.notifier).bootstrap();
       final push = ref.read(pushServiceProvider);
       final initial = await push.initialData();
@@ -71,6 +78,13 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
           // The next login/bootstrap retries token registration.
         }
       });
+    });
+  }
+
+  void _handleIncomingShare(IncomingSharePayload payload) {
+    ref.read(incomingShareProvider.notifier).set(payload);
+    ref.read(deepLinkControllerProvider.notifier).setFromData(const {
+      'route': 'announcements',
     });
   }
 
@@ -97,6 +111,7 @@ class _AuthGateState extends ConsumerState<_AuthGate> {
     _pushOpenSubscription?.cancel();
     _pushReceiveSubscription?.cancel();
     _pushTokenSubscription?.cancel();
+    _incomingShareSubscription?.cancel();
     super.dispose();
   }
 

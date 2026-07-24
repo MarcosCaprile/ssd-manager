@@ -73,6 +73,8 @@ class ApiClient {
       final headers = <String, String>{
         'Accept': 'application/json',
         'Content-Type': 'application/json',
+        if (method == 'GET') 'Cache-Control': 'no-cache, no-store',
+        if (method == 'GET') 'Pragma': 'no-cache',
         if (accessToken != null) 'Authorization': 'Bearer $accessToken',
       };
 

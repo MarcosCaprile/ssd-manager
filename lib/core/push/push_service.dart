@@ -37,21 +37,41 @@ class PushService {
 
   static bool _firebaseReady = false;
   static bool _listenersRegistered = false;
+  static Future<void>? _initialization;
   static bool _announcementsVisible = false;
   static Map<String, dynamic>? _initialLocalData;
   static final _openedDataController =
       StreamController<Map<String, dynamic>>.broadcast();
   static final _receivedDataController =
       StreamController<Map<String, dynamic>>.broadcast();
+  static final _tokenChangesController = StreamController<String>.broadcast();
 
   static Future<void> initializeFirebaseIfConfigured() async {
-    await _PushNotificationPresenter.initialize(
-      onOpened: _openedDataController.add,
-    );
-    _initialLocalData = await _PushNotificationPresenter.initialData();
-
+    if (_firebaseReady && _listenersRegistered) return;
+    final activeInitialization = _initialization;
+    if (activeInitialization != null) {
+      await activeInitialization;
+      return;
+    }
+    final initialization = _initialize();
+    _initialization = initialization;
     try {
-      await Firebase.initializeApp();
+      await initialization;
+    } finally {
+      _initialization = null;
+    }
+  }
+
+  static Future<void> _initialize() async {
+    try {
+      await _PushNotificationPresenter.initialize(
+        onOpened: _openedDataController.add,
+      );
+      _initialLocalData ??= await _PushNotificationPresenter.initialData();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
+      await FirebaseMessaging.instance.setAutoInitEnabled(true);
       _firebaseReady = true;
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
       await FirebaseMessaging.instance
@@ -60,30 +80,36 @@ class PushService {
             badge: false,
             sound: false,
           );
-      if (!_listenersRegistered) {
-        FirebaseMessaging.onMessage.listen((message) async {
-          final data = _combinedData(message);
-          try {
-            await _PushNotificationPresenter.show(
-              data,
-              announcementsVisible: _announcementsVisible,
-            );
-          } catch (_) {
-            // A presentation failure must not block the in-app live refresh.
-          }
-          _receivedDataController.add(data);
-        });
-        FirebaseMessaging.onMessageOpenedApp.listen((message) {
-          _openedDataController.add(_combinedData(message));
-        });
-        _listenersRegistered = true;
-      }
+      if (_listenersRegistered) return;
+      FirebaseMessaging.onMessage.listen((message) {
+        final data = _combinedData(message);
+        // In-app updates must never wait for the operating system's
+        // notification UI. This is the actual realtime signal.
+        _receivedDataController.add(data);
+        unawaited(
+          _PushNotificationPresenter.show(
+            data,
+            announcementsVisible: _announcementsVisible,
+          ).catchError((_) {}),
+        );
+      });
+      FirebaseMessaging.onMessageOpenedApp.listen((message) {
+        _openedDataController.add(_combinedData(message));
+      });
+      FirebaseMessaging.instance.onTokenRefresh.listen(
+        _tokenChangesController.add,
+      );
+      _listenersRegistered = true;
     } catch (_) {
+      // A later login or foreground resume retries the complete setup.
       _firebaseReady = false;
     }
   }
 
   Future<String?> readToken() async {
+    if (!_firebaseReady) {
+      await initializeFirebaseIfConfigured();
+    }
     if (!_firebaseReady) return null;
     try {
       await FirebaseMessaging.instance.requestPermission(
@@ -97,10 +123,7 @@ class PushService {
     }
   }
 
-  Stream<String> get tokenChanges {
-    if (!_firebaseReady) return const Stream.empty();
-    return FirebaseMessaging.instance.onTokenRefresh;
-  }
+  Stream<String> get tokenChanges => _tokenChangesController.stream;
 
   Stream<Map<String, dynamic>> get openedData => _openedDataController.stream;
 
@@ -111,6 +134,9 @@ class PushService {
     final localData = _initialLocalData;
     _initialLocalData = null;
     if (localData != null) return localData;
+    if (!_firebaseReady) {
+      await initializeFirebaseIfConfigured();
+    }
     if (!_firebaseReady) return null;
     try {
       final message = await FirebaseMessaging.instance.getInitialMessage();
@@ -142,6 +168,7 @@ class PushService {
 }
 
 class _PushNotificationPresenter {
+  static const _operationTimeout = Duration(seconds: 5);
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
   static Future<void> _operationQueue = Future.value();
@@ -164,6 +191,27 @@ class _PushNotificationPresenter {
         final data = _decodePayload(response.payload);
         if (data != null) onOpened?.call(data);
       },
+    );
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _notificationChannelId,
+        _notificationChannelName,
+        description:
+            'Ankündigungen und wichtige Nachrichten des Schulsanitätsdienstes',
+        importance: Importance.high,
+      ),
+    );
+    await android?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _sickNotificationChannelId,
+        _sickNotificationChannelName,
+        description: 'Dringende Krankmeldungen aus dem Schulsanitätsdienst',
+        importance: Importance.max,
+      ),
     );
     _initialized = true;
   }
@@ -361,7 +409,9 @@ class _PushNotificationPresenter {
   }
 
   static Future<void> _enqueue(Future<void> Function() operation) {
-    final queued = _operationQueue.then((_) => operation());
+    final queued = _operationQueue.then(
+      (_) => operation().timeout(_operationTimeout),
+    );
     _operationQueue = queued.then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {},

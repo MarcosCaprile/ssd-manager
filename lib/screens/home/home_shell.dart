@@ -19,34 +19,17 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell>
     with WidgetsBindingObserver {
-  static const _liveRefreshInterval = Duration(seconds: 4);
-
   int _index = 0;
   final Set<int> _visited = {0};
-  Timer? _liveRefreshTimer;
-  bool _isForeground = true;
-
-  static const _screens = [
-    DutyScheduleScreen(),
-    AnnouncementsScreen(),
-    SaniListScreen(),
-    ProfileScreen(),
-  ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _isForeground =
-        WidgetsBinding.instance.lifecycleState == null ||
-        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     ref.read(pushServiceProvider).setAnnouncementsVisible(false);
-    _liveRefreshTimer = Timer.periodic(
-      _liveRefreshInterval,
-      (_) => _refreshVisibleData(),
-    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _updateAnnouncementVisibility();
       _syncAnnouncementUnreadCount();
       final pending = ref.read(deepLinkControllerProvider);
       if (pending != null) _openDeepLink(pending);
@@ -55,7 +38,6 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   @override
   void dispose() {
-    _liveRefreshTimer?.cancel();
     ref.read(pushServiceProvider).setAnnouncementsVisible(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -63,9 +45,9 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    _isForeground = state == AppLifecycleState.resumed;
     _updateAnnouncementVisibility();
     if (state == AppLifecycleState.resumed) {
+      unawaited(_updatePushTokenSafely());
       _refreshAllData();
       if (_index == 1) {
         ref.read(announcementUnreadProvider.notifier).clear();
@@ -87,11 +69,22 @@ class _HomeShellState extends ConsumerState<HomeShell>
       body: IndexedStack(
         index: _index,
         children: [
-          for (var index = 0; index < _screens.length; index++)
-            if (_visited.contains(index))
-              _screens[index]
-            else
-              const SizedBox.shrink(),
+          if (_visited.contains(0))
+            DutyScheduleScreen(active: _index == 0)
+          else
+            const SizedBox.shrink(),
+          if (_visited.contains(1))
+            AnnouncementsScreen(active: _index == 1)
+          else
+            const SizedBox.shrink(),
+          if (_visited.contains(2))
+            SaniListScreen(active: _index == 2)
+          else
+            const SizedBox.shrink(),
+          if (_visited.contains(3))
+            const ProfileScreen()
+          else
+            const SizedBox.shrink(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -153,27 +146,27 @@ class _HomeShellState extends ConsumerState<HomeShell>
     ref.read(userRevisionProvider.notifier).bump();
   }
 
-  void _refreshVisibleData() {
-    if (!mounted || !_isForeground) return;
-    if (_index == 0) {
-      ref.read(dutyRevisionProvider.notifier).bump();
-    } else if (_index == 1) {
-      ref.read(announcementRevisionProvider.notifier).bump();
-    } else if (_index == 2) {
-      ref.read(userRevisionProvider.notifier).bump();
-    }
-  }
-
   void _updateAnnouncementVisibility() {
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    final isForeground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
     ref
         .read(pushServiceProvider)
-        .setAnnouncementsVisible(_isForeground && _index == 1);
+        .setAnnouncementsVisible(isForeground && _index == 1);
   }
 
   Future<void> _syncAnnouncementUnreadCount() async {
     final count = await ref.read(pushServiceProvider).announcementUnreadCount();
     if (!mounted) return;
     ref.read(announcementUnreadProvider.notifier).setCount(count);
+  }
+
+  Future<void> _updatePushTokenSafely() async {
+    try {
+      await ref.read(authRepositoryProvider).updatePushToken();
+    } catch (_) {
+      // Login and the next foreground resume retry token registration.
+    }
   }
 
   void _openDeepLink(AppDeepLink link) {

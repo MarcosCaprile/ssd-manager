@@ -140,6 +140,9 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - Preserve the role model and school boundary checks. Security-sensitive rules must be enforced server-side, not only in Flutter UI.
 - Never display raw exception, URL, API, SQL, or response-body details to app users. Route errors through the shared safe user-message mapping.
 - Prefer the existing architecture: Riverpod providers and repositories on the Flutter side; controller/service/core separation on the PHP side.
+- Foreground live synchronization belongs to the visible screen and must read
+  the actual current app lifecycle state. Push-driven in-app refresh must be
+  emitted before, and must never wait for, local notification presentation.
 - Keep V1 scope focused. The shared announcement channel supports explicitly requested photo/file attachments; private chat, open registration, and broad social features remain out of scope unless explicitly requested.
 - Ordinary Saturdays and Sundays stay absent from the duty plan, but managers
   may create explicitly named weekend events. Manually created duty days always

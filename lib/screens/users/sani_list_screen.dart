@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,27 +14,38 @@ import 'bulk_user_screen.dart';
 import 'user_detail_screen.dart';
 
 class SaniListScreen extends ConsumerStatefulWidget {
-  const SaniListScreen({super.key});
+  const SaniListScreen({super.key, this.active = true});
+
+  final bool active;
 
   @override
   ConsumerState<SaniListScreen> createState() => _SaniListScreenState();
 }
 
 class _SaniListScreenState extends ConsumerState<SaniListScreen> {
+  static const _liveRefreshInterval = Duration(seconds: 2);
+
   late Future<List<User>> _future;
   final _searchController = TextEditingController();
   String _query = '';
+  Timer? _liveRefreshTimer;
+  bool _liveRefreshRunning = false;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _liveRefreshTimer = Timer.periodic(
+      _liveRefreshInterval,
+      (_) => _liveRefresh(),
+    );
   }
 
   Future<List<User>> _load() => ref.read(userRepositoryProvider).users();
 
   @override
   void dispose() {
+    _liveRefreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -51,6 +64,19 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
     final next = _load();
     setState(() => _future = next);
     await next;
+  }
+
+  Future<void> _liveRefresh() async {
+    final lifecycleState = WidgetsBinding.instance.lifecycleState;
+    final isForeground =
+        lifecycleState == null || lifecycleState == AppLifecycleState.resumed;
+    if (!widget.active || !isForeground || _liveRefreshRunning) return;
+    _liveRefreshRunning = true;
+    try {
+      await _refresh(preserveOnError: true);
+    } finally {
+      _liveRefreshRunning = false;
+    }
   }
 
   @override

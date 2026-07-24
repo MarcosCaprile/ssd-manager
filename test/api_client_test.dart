@@ -5,6 +5,27 @@ import 'package:ssd_manager/core/api/api_client.dart';
 import 'package:ssd_manager/core/security/session_storage.dart';
 
 void main() {
+  test('GET requests explicitly bypass stale intermediary caches', () async {
+    late http.Request captured;
+    final client = ApiClient(
+      sessionStorage: _EmptySessionStorage(),
+      httpClient: MockClient((request) async {
+        captured = request;
+        return http.Response(
+          '{"data":[],"message":null}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+      baseUrl: 'https://example.test/api/v1',
+    );
+
+    await client.get('announcements');
+
+    expect(captured.headers['Cache-Control'], 'no-cache, no-store');
+    expect(captured.headers['Pragma'], 'no-cache');
+  });
+
   test(
     'successful mutation stays successful when refresh signal throws',
     () async {

@@ -291,7 +291,10 @@ The Flutter app currently includes:
 - Admin/lead workflows for assigning and removing other first-aiders.
 - Announcement reading and sending.
 - Compact grouped announcement bubbles with authenticated photo/file
-  attachments, previews, full-screen image zoom, and system file opening.
+  attachments, previews, full-screen gallery-style image zoom, system file
+  opening, and outgoing platform sharing.
+- Native Android/iOS share targets that open shared text, photos, or files in
+  the announcement composer without sending automatically.
 - First-aider list with name search, blue Schulsanitäter and green
   Sani-Leitung marking, a separate teacher/secretariat section, and a
   manager-only inactive-account section at the bottom.
@@ -303,7 +306,8 @@ The Flutter app currently includes:
   the bottom.
 - Prepared push/deep-link routes.
 - Live in-place synchronization after successful user, duty, attachment, and
-  announcement mutations.
+  announcement mutations, push-driven chat refresh, and visible-screen
+  foreground fallback synchronization.
 - Manager-only XLSX bulk import, validation, atomic account changes, template
   download, and selected-Sani export.
 - Grouped local announcement notifications and typed red sick-report system
@@ -418,8 +422,11 @@ Technical gaps:
 - The app persists an announcement unread count and shows it as a red badge in
   the main navigation outside the announcement panel. Opening that panel marks
   the conversation read. Incoming pushes trigger an immediate content refresh;
-  the visible duty, announcement, and Sani-list panels also perform a silent
-  four-second fallback synchronization while the app is in the foreground.
+  announcements additionally synchronize every second while visible, and the
+  visible duty/Sani-list panels every two seconds. Each screen reads the actual
+  lifecycle state on every tick. Dynamic JSON requests/responses use explicit
+  no-cache headers, and foreground push refresh no longer waits for local
+  notification presentation.
 - Announcement history now shows one date divider above the first message of
   each populated day. Consecutive messages across midnight therefore start a
   new visible day and sender group.
@@ -430,6 +437,26 @@ Technical gaps:
 - Separate sick-report delivery still needs one real acceptance action against
   the updated live backend. iOS push delivery remains unconfigured and untested
   on a real device.
+- Firebase initialization and token registration now retry after transient
+  startup failures. Android notification channels are explicitly created, and
+  local notification operations have a timeout so one stalled platform call
+  cannot block later notifications.
+- Android exposes SSD Manager for native `SEND` and `SEND_MULTIPLE` sharing.
+  iOS has a compiled Share Extension using
+  `com.minutmate.ssdmanager.ShareExtension` and the shared App Group
+  `group.com.minutmate.ssdmanager`. The iOS simulator build with the extension
+  completed successfully; real-device use requires the owner to enable that App
+  Group for both identifiers in the Apple Developer account.
+- Photo previews start aspect-fit over a black full-screen canvas, support
+  pinch/double-tap zoom across the complete viewport, and expose the system
+  share sheet. File cards also expose the system share sheet.
+- A fresh Firebase-enabled universal Android debug APK was built against the
+  Railway HTTPS API with incoming share intent filters and valid Android-v2
+  debug signing. Its SHA-256 is
+  `c719d0bfa95d8c288d710463b9d85ab32834bae106a897658fdf67ddcab15570`.
+  Installation and real notification acceptance are pending because the
+  connected Samsung reports `unauthorized` until USB debugging is accepted on
+  the phone.
 - GitHub `main` commit `871ee87` deployed successfully to Railway as
   deployment `7b328e37-6729-4734-99b2-8890647826ec`. The public
   database-backed healthcheck returned HTTP 200 with the separate

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -10,6 +11,7 @@ import '../../models/announcement.dart';
 import '../../models/user.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/incoming_share_provider.dart';
 import '../../repositories/announcement_repository.dart';
 import '../../themes/app_colors.dart';
 import '../../utils/date_formatters.dart';
@@ -18,7 +20,9 @@ import '../../widgets/status_views.dart';
 import 'announcement_attachment_views.dart';
 
 class AnnouncementsScreen extends ConsumerStatefulWidget {
-  const AnnouncementsScreen({super.key});
+  const AnnouncementsScreen({super.key, this.active = true});
+
+  final bool active;
 
   @override
   ConsumerState<AnnouncementsScreen> createState() =>
@@ -26,6 +30,7 @@ class AnnouncementsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
+  static const _liveRefreshInterval = Duration(seconds: 1);
   static const _maxAttachments = 4;
   static const _maxAttachmentBytes = 8 * 1024 * 1024;
 
@@ -37,15 +42,22 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   bool _sending = false;
   bool _refreshing = false;
   bool _refreshQueued = false;
+  Timer? _liveRefreshTimer;
+  String? _scheduledIncomingShareId;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _liveRefreshTimer = Timer.periodic(
+      _liveRefreshInterval,
+      (_) => _liveRefresh(),
+    );
   }
 
   @override
   void dispose() {
+    _liveRefreshTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -86,6 +98,16 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     } finally {
       _refreshing = false;
     }
+  }
+
+  void _liveRefresh() {
+    if (!widget.active || !_isAppInForeground) return;
+    _refreshPreservingContent();
+  }
+
+  bool get _isAppInForeground {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null || state == AppLifecycleState.resumed;
   }
 
   List<Announcement> _withAnnouncement(
@@ -199,6 +221,10 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     ref.listen<int>(announcementRevisionProvider, (previous, next) {
       if (previous != next) _refreshPreservingContent();
     });
+    final incomingShare = ref.watch(incomingShareProvider);
+    if (widget.active && incomingShare != null) {
+      _scheduleIncomingShare(incomingShare);
+    }
     final currentUser = ref.watch(authControllerProvider).user;
     final canSend =
         !_sending &&
@@ -385,7 +411,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
           imageQuality: 88,
           maxWidth: 2400,
         );
-        await _addFiles(files, photo: true);
+        await _addFiles(files);
       } else {
         const typeGroup = XTypeGroup(
           label: 'Unterstützte Dateien',
@@ -410,10 +436,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
             'org.openxmlformats.presentationml.presentation',
           ],
         );
-        await _addFiles(
-          await openFiles(acceptedTypeGroups: [typeGroup]),
-          photo: false,
-        );
+        await _addFiles(await openFiles(acceptedTypeGroups: [typeGroup]));
       }
     } catch (error) {
       if (mounted) {
@@ -424,7 +447,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     }
   }
 
-  Future<void> _addFiles(List<XFile> files, {required bool photo}) async {
+  Future<void> _addFiles(List<XFile> files) async {
     var rejectedForSize = false;
     final remaining = _maxAttachments - _pending.length;
     for (final file in files.take(remaining)) {
@@ -434,8 +457,12 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
         continue;
       }
       final extension = file.name.split('.').last.toLowerCase();
-      final previewable =
-          photo && const ['jpg', 'jpeg', 'png', 'webp'].contains(extension);
+      final previewable = const [
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+      ].contains(extension);
       _pending.add(
         _PendingAttachment(
           fileName: file.name,
@@ -451,6 +478,41 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     } else if (rejectedForSize) {
       _showMessage('Dateien müssen zwischen 1 Byte und 8 MB groß sein.');
     }
+  }
+
+  void _scheduleIncomingShare(IncomingSharePayload payload) {
+    if (_scheduledIncomingShareId == payload.id) return;
+    _scheduledIncomingShareId = payload.id;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        final sharedFiles = payload.files
+            .map((item) => XFile(item.path, name: item.fileName))
+            .toList();
+        if (sharedFiles.isNotEmpty) {
+          await _addFiles(sharedFiles);
+        }
+        if (payload.text.isNotEmpty && mounted) {
+          final current = _controller.text.trim();
+          _controller.text = current.isEmpty
+              ? payload.text
+              : '$current\n${payload.text}';
+          _controller.selection = TextSelection.collapsed(
+            offset: _controller.text.length,
+          );
+          setState(() {});
+        }
+      } catch (error) {
+        if (mounted) {
+          _showMessage(userErrorMessage(error));
+        }
+      } finally {
+        if (mounted) {
+          ref.read(incomingShareProvider.notifier).consume(payload.id);
+        }
+        _scheduledIncomingShareId = null;
+      }
+    });
   }
 
   void _showMessage(String message) {
