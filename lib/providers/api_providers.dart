@@ -5,6 +5,7 @@ import '../core/device/device_info_service.dart';
 import '../core/files/bulk_user_spreadsheet_service.dart';
 import '../core/push/push_service.dart';
 import '../core/security/session_storage.dart';
+import '../models/announcement.dart';
 import '../repositories/announcement_repository.dart';
 import '../repositories/auth_repository.dart';
 import '../repositories/duty_repository.dart';
@@ -34,6 +35,10 @@ class AnnouncementUnreadController extends Notifier<int> {
 
   void setCount(int count) {
     state = count < 0 ? 0 : count;
+  }
+
+  void ensureAtLeast(int count) {
+    if (count > state) state = count;
   }
 
   Future<void> clear() async {
@@ -98,6 +103,20 @@ final announcementRevisionProvider =
 final announcementUnreadProvider =
     NotifierProvider<AnnouncementUnreadController, int>(
       AnnouncementUnreadController.new,
+    );
+
+class AnnouncementFeedController extends Notifier<List<Announcement>?> {
+  @override
+  List<Announcement>? build() => null;
+
+  void replace(List<Announcement> announcements) {
+    state = List.unmodifiable(announcements);
+  }
+}
+
+final announcementFeedProvider =
+    NotifierProvider<AnnouncementFeedController, List<Announcement>?>(
+      AnnouncementFeedController.new,
     );
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {

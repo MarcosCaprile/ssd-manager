@@ -422,11 +422,11 @@ Technical gaps:
 - The app persists an announcement unread count and shows it as a red badge in
   the main navigation outside the announcement panel. Opening that panel marks
   the conversation read. Incoming pushes trigger an immediate content refresh;
-  announcements additionally synchronize every second while visible, and the
-  visible duty/Sani-list panels every two seconds. Each screen reads the actual
-  lifecycle state on every tick. Dynamic JSON requests/responses use explicit
-  no-cache headers, and foreground push refresh no longer waits for local
-  notification presentation.
+  one central home-shell feed synchronizes announcements every second in every
+  foreground panel and drives both chat content and unread badges. The visible
+  duty/Sani-list panels synchronize every two seconds. Dynamic JSON requests/
+  responses use explicit no-cache headers, and foreground push refresh no
+  longer waits for local notification presentation.
 - Announcement history now shows one date divider above the first message of
   each populated day. Consecutive messages across midnight therefore start a
   new visible day and sender group.
@@ -465,6 +465,17 @@ Technical gaps:
 - Android resolved SSD Manager for both single and multiple share intents. A
   controlled text-share intent opened the app and placed the marked, unsent
   test text in the announcement composer.
+- The follow-up device report showed that the previously installed package had
+  subsequently been uninstalled from Android user 0, which also removed its
+  session and notification permission. Live-v2 was rebuilt and installed
+  fresh. Its SHA-256 is
+  `9411e1569ff80640b718746c2d4e22c855275967a8f8b966eafead4e8e1ec1dd`.
+  Android notification permission is granted for this installation.
+- Live-v2 replaces panel-local announcement refresh with one central
+  one-second feed shared by the chat and badge. It also requests notification
+  permission after login and, if denied, offers a direct route to Android's
+  app-specific notification settings. Authenticated two-account acceptance is
+  pending because uninstalling the prior package removed the saved login.
 - GitHub `main` commit `d348185` deployed successfully to Railway as deployment
   `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
   applied, Apache started normally, and the public database-backed healthcheck

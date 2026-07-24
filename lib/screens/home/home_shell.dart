@@ -19,18 +19,30 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell>
     with WidgetsBindingObserver {
+  static const _announcementSyncInterval = Duration(seconds: 1);
+
   int _index = 0;
   final Set<int> _visited = {0};
+  final Set<int> _unreadAnnouncementIds = {};
+  Timer? _announcementSyncTimer;
+  bool _announcementSyncRunning = false;
+  bool _notificationPermissionChecked = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ref.read(pushServiceProvider).setAnnouncementsVisible(false);
+    _announcementSyncTimer = Timer.periodic(
+      _announcementSyncInterval,
+      (_) => _syncAnnouncements(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _updateAnnouncementVisibility();
       _syncAnnouncementUnreadCount();
+      _syncAnnouncements();
+      _ensureNotificationPermission();
       final pending = ref.read(deepLinkControllerProvider);
       if (pending != null) _openDeepLink(pending);
     });
@@ -38,6 +50,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   @override
   void dispose() {
+    _announcementSyncTimer?.cancel();
     ref.read(pushServiceProvider).setAnnouncementsVisible(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -49,6 +62,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
     if (state == AppLifecycleState.resumed) {
       unawaited(_updatePushTokenSafely());
       _refreshAllData();
+      _syncAnnouncements();
       if (_index == 1) {
         ref.read(announcementUnreadProvider.notifier).clear();
       } else {
@@ -62,6 +76,9 @@ class _HomeShellState extends ConsumerState<HomeShell>
     ref.listen<AppDeepLink?>(deepLinkControllerProvider, (previous, next) {
       if (next == null) return;
       _openDeepLink(next);
+    });
+    ref.listen<int>(announcementRevisionProvider, (previous, next) {
+      if (previous != next) _syncAnnouncements();
     });
     final unreadAnnouncements = ref.watch(announcementUnreadProvider);
 
@@ -134,6 +151,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
       ref.read(dutyRevisionProvider.notifier).bump();
     } else if (index == 1) {
       ref.read(announcementRevisionProvider.notifier).bump();
+      _unreadAnnouncementIds.clear();
       ref.read(announcementUnreadProvider.notifier).clear();
     } else if (index == 2) {
       ref.read(userRevisionProvider.notifier).bump();
@@ -159,6 +177,74 @@ class _HomeShellState extends ConsumerState<HomeShell>
     final count = await ref.read(pushServiceProvider).announcementUnreadCount();
     if (!mounted) return;
     ref.read(announcementUnreadProvider.notifier).setCount(count);
+  }
+
+  Future<void> _syncAnnouncements() async {
+    if (!mounted || _announcementSyncRunning || !_isForeground) return;
+    _announcementSyncRunning = true;
+    try {
+      final previous = ref.read(announcementFeedProvider);
+      final next = await ref.read(announcementRepositoryProvider).latest();
+      if (!mounted) return;
+      if (previous != null) {
+        final previousIds = previous.map((item) => item.id).toSet();
+        final newIds = next
+            .where((item) => !previousIds.contains(item.id))
+            .map((item) => item.id);
+        if (_index == 1) {
+          _unreadAnnouncementIds.clear();
+        } else {
+          _unreadAnnouncementIds.addAll(newIds);
+          ref
+              .read(announcementUnreadProvider.notifier)
+              .ensureAtLeast(_unreadAnnouncementIds.length);
+        }
+      }
+      ref.read(announcementFeedProvider.notifier).replace(next);
+    } catch (_) {
+      // The next one-second tick retries without replacing visible content.
+    } finally {
+      _announcementSyncRunning = false;
+    }
+  }
+
+  bool get _isForeground {
+    final state = WidgetsBinding.instance.lifecycleState;
+    return state == null ||
+        state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.inactive;
+  }
+
+  Future<void> _ensureNotificationPermission() async {
+    if (_notificationPermissionChecked) return;
+    _notificationPermissionChecked = true;
+    final push = ref.read(pushServiceProvider);
+    final allowed = await push.requestNotificationPermission();
+    if (!mounted || allowed) return;
+    final openSettings = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Benachrichtigungen aktivieren'),
+        content: const Text(
+          'Damit du neue Ankündigungen und dringende Krankmeldungen erhältst, '
+          'erlaube Benachrichtigungen für SSD Manager in den '
+          'Geräteeinstellungen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Später'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Einstellungen öffnen'),
+          ),
+        ],
+      ),
+    );
+    if (openSettings == true) {
+      await push.openNotificationSettings();
+    }
   }
 
   Future<void> _updatePushTokenSafely() async {

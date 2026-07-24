@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -45,6 +46,9 @@ class PushService {
   static final _receivedDataController =
       StreamController<Map<String, dynamic>>.broadcast();
   static final _tokenChangesController = StreamController<String>.broadcast();
+  static const _settingsChannel = MethodChannel(
+    'com.minutmate.ssdmanager/settings',
+  );
 
   static Future<void> initializeFirebaseIfConfigured() async {
     if (_firebaseReady && _listenersRegistered) return;
@@ -120,6 +124,32 @@ class PushService {
       return FirebaseMessaging.instance.getToken();
     } catch (_) {
       return null;
+    }
+  }
+
+  Future<bool> requestNotificationPermission() async {
+    if (!_firebaseReady) {
+      await initializeFirebaseIfConfigured();
+    }
+    if (!_firebaseReady) return false;
+    try {
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> openNotificationSettings() async {
+    try {
+      await _settingsChannel.invokeMethod<void>('openNotificationSettings');
+    } catch (_) {
+      // Platforms without this channel keep the explanatory dialog as fallback.
     }
   }
 

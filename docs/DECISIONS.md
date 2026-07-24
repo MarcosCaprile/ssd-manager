@@ -25,17 +25,30 @@ phone alert.
 Decision: The app stores the device-local unread announcement count, displays a
 red count badge in the bottom navigation, and clears it when announcements are
 opened. Push receipt refreshes announcements immediately. While foregrounded,
-each visible screen owns its silent fallback synchronization: announcements
-every second and duty/Sani-list data every two seconds. Every tick reads the
-actual lifecycle state rather than relying on a cached shell flag. Dynamic JSON
-requests and responses explicitly bypass intermediary caches. In-app push
-refresh is emitted before local notification presentation, so notification
-plugin latency cannot block content updates.
+the authenticated home shell owns one central announcement feed that
+synchronizes every second regardless of the selected panel. Chat content and
+unread badges derive from this same feed. Duty/Sani-list screens synchronize
+every two seconds while visible. Every tick reads the actual lifecycle state
+rather than relying on a cached shell flag. Dynamic JSON requests and responses
+explicitly bypass intermediary caches. In-app push refresh is emitted before
+local notification presentation, so notification plugin latency cannot block
+content updates.
 
 Reason: Changes from the current device and other devices must appear without
 closing or manually reloading the app. Push provides immediate chat updates,
 while bounded foreground polling covers missed/delayed pushes and duty or
 account changes that do not have a dedicated push event.
+
+### Provide an explicit notification-permission recovery path
+
+Decision: After authentication, SSD Manager requests notification permission
+from the operating system. If permission is unavailable, the app shows a
+plain-language explanation with a direct button to Android's app-specific
+notification settings. The permission is verified independently from Firebase
+initialization and channel creation.
+
+Reason: A valid FCM setup and existing notification channels do not imply that
+Android currently permits the app to display notifications.
 
 ### Support native incoming and outgoing attachment sharing
 

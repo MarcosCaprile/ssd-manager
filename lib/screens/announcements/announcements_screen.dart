@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:file_selector/file_selector.dart';
@@ -30,7 +29,6 @@ class AnnouncementsScreen extends ConsumerStatefulWidget {
 }
 
 class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
-  static const _liveRefreshInterval = Duration(seconds: 1);
   static const _maxAttachments = 4;
   static const _maxAttachmentBytes = 8 * 1024 * 1024;
 
@@ -42,22 +40,16 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   bool _sending = false;
   bool _refreshing = false;
   bool _refreshQueued = false;
-  Timer? _liveRefreshTimer;
   String? _scheduledIncomingShareId;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
-    _liveRefreshTimer = Timer.periodic(
-      _liveRefreshInterval,
-      (_) => _liveRefresh(),
-    );
   }
 
   @override
   void dispose() {
-    _liveRefreshTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -65,6 +57,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   Future<List<Announcement>> _load() async {
     final items = await ref.read(announcementRepositoryProvider).latest();
     _items = items;
+    ref.read(announcementFeedProvider.notifier).replace(items);
     return items;
   }
 
@@ -98,16 +91,6 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     } finally {
       _refreshing = false;
     }
-  }
-
-  void _liveRefresh() {
-    if (!widget.active || !_isAppInForeground) return;
-    _refreshPreservingContent();
-  }
-
-  bool get _isAppInForeground {
-    final state = WidgetsBinding.instance.lifecycleState;
-    return state == null || state == AppLifecycleState.resumed;
   }
 
   List<Announcement> _withAnnouncement(
@@ -220,6 +203,11 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   Widget build(BuildContext context) {
     ref.listen<int>(announcementRevisionProvider, (previous, next) {
       if (previous != next) _refreshPreservingContent();
+    });
+    ref.listen<List<Announcement>?>(announcementFeedProvider, (previous, next) {
+      if (next == null || identical(previous, next)) return;
+      _items = next;
+      setState(() => _future = Future.value(next));
     });
     final incomingShare = ref.watch(incomingShareProvider);
     if (widget.active && incomingShare != null) {

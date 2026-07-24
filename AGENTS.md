@@ -147,6 +147,10 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - Foreground live synchronization belongs to the visible screen and must read
   the actual current app lifecycle state. Push-driven in-app refresh must be
   emitted before, and must never wait for, local notification presentation.
+- Announcements are the exception to visible-screen-only polling: the
+  authenticated home shell owns one central one-second announcement feed in
+  every foreground panel. That feed is the shared source for chat content and
+  unread badges, so neither feature may depend solely on FCM delivery.
 - Keep V1 scope focused. The shared announcement channel supports explicitly requested photo/file attachments; private chat, open registration, and broad social features remain out of scope unless explicitly requested.
 - Ordinary Saturdays and Sundays stay absent from the duty plan, but managers
   may create explicitly named weekend events. Manually created duty days always
