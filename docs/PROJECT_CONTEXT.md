@@ -381,7 +381,11 @@ Technical gaps:
 - `open_filex` currently uses CocoaPods on iOS and does not yet support
   Flutter's Swift Package Manager integration. Flutter 3.44 only warns, but a
   future Flutter version may require a plugin update or replacement.
-- Firebase project and config files still need final setup.
+- Firebase setup is not yet complete across both platforms and the backend.
+- The Android Firebase configuration for `com.minutmate.ssdmanager` is
+  installed locally at the ignored `android/app/google-services.json` path and
+  was validated against the permanent application ID. The iOS Firebase plist
+  and backend service-account configuration are still outstanding.
 - Push notifications must be tested on real Android/iOS devices.
 - Android release signing is not set up.
 - Apple Developer Team and iOS signing are not finalized.
