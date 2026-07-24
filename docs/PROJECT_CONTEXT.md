@@ -474,8 +474,15 @@ Technical gaps:
 - Live-v2 replaces panel-local announcement refresh with one central
   one-second feed shared by the chat and badge. It also requests notification
   permission after login and, if denied, offers a direct route to Android's
-  app-specific notification settings. Authenticated two-account acceptance is
-  pending because uninstalling the prior package removed the saved login.
+  app-specific notification settings. Authenticated two-account testing on the
+  connected Samsung verified the one-second Railway refresh and the red unread
+  badge without opening announcements.
+- The same acceptance test found normal Railway push rows marked `failed`
+  although a direct FCM test reached Android. Multiple active sessions from
+  earlier reinstallations exposed user-only delivery deduplication: the first
+  stale token suppressed the current token of that user. Push delivery now
+  deduplicates identical tokens but attempts every distinct token, with a
+  regression test covering stale/current token separation.
 - GitHub `main` commit `d348185` deployed successfully to Railway as deployment
   `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
   applied, Apache started normally, and the public database-backed healthcheck

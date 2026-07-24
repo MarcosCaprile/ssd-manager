@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Services\DutyRules;
 use App\Services\FirebaseMessagingService;
+use App\Services\NotificationService;
 
 $tests = [];
 
@@ -147,6 +148,19 @@ test_case('Firebase keeps regular and sick announcements in separate threads', f
         ($sick['message']['android']['priority'] ?? null) === 'HIGH',
         'Sick report did not keep high Android priority.'
     );
+});
+
+test_case('push deduplication distinguishes a users device tokens', function (): void {
+    $service = (new ReflectionClass(NotificationService::class))
+        ->newInstanceWithoutConstructor();
+    $method = new ReflectionMethod(NotificationService::class, 'deliveryKey');
+    $first = $method->invoke($service, 'announcement:42', 7, 'stale-token');
+    $same = $method->invoke($service, 'announcement:42', 7, 'stale-token');
+    $current = $method->invoke($service, 'announcement:42', 7, 'current-token');
+
+    assert_true($first === $same, 'The same delivery did not keep a stable key.');
+    assert_true($first !== $current, 'A stale token suppressed a current device token.');
+    assert_true(strlen($current) <= 180, 'The delivery key exceeds the database column.');
 });
 
 $failed = 0;

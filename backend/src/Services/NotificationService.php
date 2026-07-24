@@ -31,7 +31,7 @@ final class NotificationService
         array $data = [],
     ): void {
         $rolePlaceholders = implode(',', array_fill(0, count($roles), '?'));
-        $sql = "SELECT u.id AS user_id, d.firebase_token
+        $sql = "SELECT DISTINCT u.id AS user_id, d.firebase_token
                 FROM users u
                 JOIN user_devices d ON d.user_id = u.id
                 WHERE u.school_id = ? AND u.status = 'active' AND d.revoked_at IS NULL
@@ -51,7 +51,11 @@ final class NotificationService
                 $type,
                 $title,
                 $body,
-                $deduplicationKey . ':' . $row['user_id'],
+                $this->deliveryKey(
+                    $deduplicationKey,
+                    (int) $row['user_id'],
+                    (string) $row['firebase_token']
+                ),
                 $dutyDayId,
                 $announcementId,
                 $data
@@ -73,7 +77,7 @@ final class NotificationService
         array $data = [],
     ): void {
         $statement = $this->pdo->prepare(
-            'SELECT firebase_token FROM user_devices
+            'SELECT DISTINCT firebase_token FROM user_devices
              WHERE user_id = :user_id AND revoked_at IS NULL AND firebase_token IS NOT NULL'
         );
         $statement->execute(['user_id' => $userId]);
@@ -85,7 +89,11 @@ final class NotificationService
                 $type,
                 $title,
                 $body,
-                $deduplicationKey . ':' . $userId,
+                $this->deliveryKey(
+                    $deduplicationKey,
+                    $userId,
+                    (string) $row['firebase_token']
+                ),
                 $dutyDayId,
                 null,
                 $data
@@ -149,5 +157,12 @@ final class NotificationService
         $statement = $this->pdo->prepare('SELECT id FROM notification_logs WHERE deduplication_key = :key LIMIT 1');
         $statement->execute(['key' => $deduplicationKey]);
         return (bool) $statement->fetchColumn();
+    }
+
+    private function deliveryKey(string $baseKey, int $userId, string $token): string
+    {
+        $suffix = ':' . $userId . ':' . substr(hash('sha256', $token), 0, 32);
+        $baseLength = max(0, 180 - strlen($suffix));
+        return substr($baseKey, 0, $baseLength) . $suffix;
     }
 }

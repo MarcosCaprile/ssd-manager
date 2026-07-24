@@ -6,6 +6,17 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-24
 
+### Deduplicate push delivery per distinct device token
+
+Decision: Notification delivery keys combine the event, recipient user, and a
+non-reversible hash of each distinct Firebase token. Duplicate sessions with
+the same token receive only one push, while different tokens of the same user
+are each attempted.
+
+Reason: Reinstallations can leave an older active session with a stale token.
+User-only deduplication allowed that failed first attempt to suppress the
+current working token.
+
 ### Separate urgent sick-report pushes from the announcement conversation
 
 Decision: A sick report remains a red system message in announcements but is
