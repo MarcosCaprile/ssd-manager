@@ -34,9 +34,11 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
 
   late Future<List<Announcement>> _future;
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
   final _imagePicker = ImagePicker();
   final List<_PendingAttachment> _pending = [];
   List<Announcement> _items = [];
+  int? _newestVisibleAnnouncementId;
   bool _sending = false;
   bool _refreshing = false;
   bool _refreshQueued = false;
@@ -51,7 +53,16 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   @override
   void dispose() {
     _controller.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant AnnouncementsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.active && widget.active) {
+      _scrollToLatest(jump: true);
+    }
   }
 
   Future<List<Announcement>> _load() async {
@@ -155,12 +166,41 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   Future<void> _setSentAnnouncement(Announcement sent) async {
     if (!mounted) return;
     _controller.clear();
+    final updated = _withAnnouncement(_items, sent);
     setState(() {
       _pending.clear();
-      _items = _withAnnouncement(_items, sent);
+      _items = updated;
       _future = Future.value(List.unmodifiable(_items));
     });
+    ref.read(announcementFeedProvider.notifier).replace(updated);
     await _refreshAfterSend();
+  }
+
+  void _handleLiveFeed(List<Announcement>? announcements) {
+    if (announcements == null || announcements.isEmpty) return;
+    final newestId = announcements.last.id;
+    final hasNewAnnouncement =
+        _newestVisibleAnnouncementId != null &&
+        _newestVisibleAnnouncementId != newestId;
+    _newestVisibleAnnouncementId = newestId;
+    if (hasNewAnnouncement && widget.active) {
+      _scrollToLatest();
+    }
+  }
+
+  void _scrollToLatest({bool jump = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (jump) {
+        _scrollController.jumpTo(0);
+      } else {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _send() async {
@@ -204,11 +244,8 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     ref.listen<int>(announcementRevisionProvider, (previous, next) {
       if (previous != next) _refreshPreservingContent();
     });
-    ref.listen<List<Announcement>?>(announcementFeedProvider, (previous, next) {
-      if (next == null || identical(previous, next)) return;
-      _items = next;
-      setState(() => _future = Future.value(next));
-    });
+    final liveAnnouncements = ref.watch(announcementFeedProvider);
+    _handleLiveFeed(liveAnnouncements);
     final incomingShare = ref.watch(incomingShareProvider);
     if (widget.active && incomingShare != null) {
       _scheduleIncomingShare(incomingShare);
@@ -226,15 +263,17 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
             child: FutureBuilder<List<Announcement>>(
               future: _future,
               builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
+                if (liveAnnouncements == null &&
+                    snapshot.connectionState != ConnectionState.done) {
                   return const DelayedLoadingView(
                     message: 'Ankündigungen werden geladen ...',
                   );
                 }
-                if (snapshot.hasError) {
+                if (liveAnnouncements == null && snapshot.hasError) {
                   return ErrorView(error: snapshot.error, onRetry: _refresh);
                 }
-                final announcements = snapshot.data ?? [];
+                final announcements =
+                    liveAnnouncements ?? snapshot.data ?? const [];
                 if (announcements.isEmpty) {
                   return const EmptyView(
                     icon: Icons.campaign_outlined,
@@ -246,6 +285,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
                 return RefreshIndicator(
                   onRefresh: _refresh,
                   child: ListView.builder(
+                    controller: _scrollController,
                     reverse: true,
                     padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                     itemCount: announcements.length,

@@ -151,6 +151,9 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   authenticated home shell owns one central one-second announcement feed in
   every foreground panel. That feed is the shared source for chat content and
   unread badges, so neither feature may depend solely on FCM delivery.
+- The open announcement chat must render by directly watching that shared feed.
+  Do not mirror each feed update into a replacement `Future`, because this can
+  leave an already visible `FutureBuilder` on stale snapshot data.
 - Keep V1 scope focused. The shared announcement channel supports explicitly requested photo/file attachments; private chat, open registration, and broad social features remain out of scope unless explicitly requested.
 - Ordinary Saturdays and Sundays stay absent from the duty plan, but managers
   may create explicitly named weekend events. Manually created duty days always

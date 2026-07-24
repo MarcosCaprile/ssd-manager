@@ -487,6 +487,16 @@ Technical gaps:
   deployment `8c5872c4-d746-443d-97bf-8276a986d524`. The deployment succeeded
   and the public database-backed healthcheck returned HTTP 200. A new
   post-deployment announcement remains the final Android acceptance check.
+- Physical two-account testing then confirmed normal push delivery and the
+  live unread badge, but exposed a UI-only chat defect: Railway returned the
+  larger announcement feed in the same second while an already open chat kept
+  its old `FutureBuilder` snapshot. The chat now directly watches the shared
+  feed and scrolls to a newly arrived latest message. A widget regression test
+  verifies that an open chat renders provider updates without navigation.
+- The corrected Railway-connected Android debug APK was installed as an update
+  on the Samsung with app data preserved. Its SHA-256 is
+  `832309b7fd8c38b62a48e8de4ca6069c0dbbfd2c9b285213ddb90a34cc18469f`.
+  Final open-chat two-account acceptance remains pending.
 - GitHub `main` commit `d348185` deployed successfully to Railway as deployment
   `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
   applied, Apache started normally, and the public database-backed healthcheck
