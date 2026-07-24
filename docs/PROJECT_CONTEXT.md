@@ -483,6 +483,10 @@ Technical gaps:
   stale token suppressed the current token of that user. Push delivery now
   deduplicates identical tokens but attempts every distinct token, with a
   regression test covering stale/current token separation.
+- GitHub `main` commit `7c38ed4` deployed automatically to Railway as
+  deployment `8c5872c4-d746-443d-97bf-8276a986d524`. The deployment succeeded
+  and the public database-backed healthcheck returned HTTP 200. A new
+  post-deployment announcement remains the final Android acceptance check.
 - GitHub `main` commit `d348185` deployed successfully to Railway as deployment
   `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
   applied, Apache started normally, and the public database-backed healthcheck
