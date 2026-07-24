@@ -457,6 +457,10 @@ Technical gaps:
   Installation and real notification acceptance are pending because the
   connected Samsung reports `unauthorized` until USB debugging is accepted on
   the phone.
+- GitHub `main` commit `d348185` deployed successfully to Railway as deployment
+  `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
+  applied, Apache started normally, and the public database-backed healthcheck
+  returned HTTP 200 with the new `no-store, no-cache` response policy.
 - GitHub `main` commit `871ee87` deployed successfully to Railway as
   deployment `7b328e37-6729-4734-99b2-8890647826ec`. The public
   database-backed healthcheck returned HTTP 200 with the separate
