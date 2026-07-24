@@ -427,9 +427,13 @@ Technical gaps:
   against the Railway HTTPS API, verified with Android v2 signing, and
   installed successfully over USB on the Samsung test phone. Its SHA-256 is
   `8bf51d0ec5b057138089b863d0a01daea17970c58e84b756599e79501a727a6c`.
-- Separate sick-report delivery still needs one real acceptance action after
-  the updated backend is live. iOS push delivery remains unconfigured and
-  untested on a real device.
+- Separate sick-report delivery still needs one real acceptance action against
+  the updated live backend. iOS push delivery remains unconfigured and untested
+  on a real device.
+- GitHub `main` commit `871ee87` deployed successfully to Railway as
+  deployment `7b328e37-6729-4734-99b2-8890647826ec`. The public
+  database-backed healthcheck returned HTTP 200 with the separate
+  sick-report-push backend active.
 - Android release signing is not set up.
 - Apple Developer Team and iOS signing are not finalized.
 - Deployment still needs cron setup, backups, and centralized log/alert handling.
