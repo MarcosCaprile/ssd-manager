@@ -404,8 +404,11 @@ Technical gaps:
   generated `google_app_id` and `gcm_defaultSenderId` resources, and has a
   valid Android-v2 debug signature. Its SHA-256 is
   `ef9c2e79e70daf0c131b1da81df53693edfae9453eecec7e12afa6c0c0e6a7ef`.
-  No Android device was connected for installation; real notification
-  reception remains an acceptance step.
+  It was installed successfully on the connected Samsung test phone in the
+  primary Android user, and its `MainActivity` reached the top-resumed state
+  without a Firebase startup error. Notification permission is intentionally
+  still ungranted until the owner accepts the Android prompt during login;
+  real notification reception remains an acceptance step.
 - Push notifications must be tested on real Android/iOS devices.
 - Android release signing is not set up.
 - Apple Developer Team and iOS signing are not finalized.
