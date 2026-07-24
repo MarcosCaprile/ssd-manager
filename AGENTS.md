@@ -20,7 +20,10 @@ The current repository is the source of truth. Historical Codex chats are local 
 - PHP 8.2+ backend without a required Composer setup.
 - MySQL/MariaDB schema and seed data in `backend/database`.
 - REST API under `/api/v1`.
-- Firebase Cloud Messaging is prepared but optional unless Firebase files and backend service-account settings are present.
+- Android Firebase Cloud Messaging is configured end to end: the ignored native
+  Android config is installed locally and Railway has the protected backend
+  service account with FCM enabled. iOS still requires its native plist, APNs
+  configuration, and real-device verification.
 
 ## Important Paths
 
@@ -109,11 +112,12 @@ The production deployment target is a dedicated SSD Manager project in the owner
 
 The live Railway API healthcheck is `https://ssd-api-production.up.railway.app/api/v1/health`. Railway's runtime enabled `mpm_event` in addition to PHP Apache's required `mpm_prefork`; keep the Bookworm image pin and the runtime MPM enforcement in `backend/docker/railway-entrypoint.sh`. The fix is on GitHub `main`; Railway associated the merge commit with the service and skipped a redundant rebuild because the identical watched files were already live from the verified CLI deployment.
 
-GitHub `main` commit `131ff78` was deployed automatically from GitHub to
-Railway as deployment `85b0afa0-9d47-4e67-a39e-507113fb7708` on 2026-07-23.
-Its pre-deploy step confirmed migrations `001` through `006` and applied
-`007_system_announcements.sql`; the database-backed healthcheck returned HTTP
-200. Do not assume migrations `001` through `007` are pending in later work.
+GitHub `main` commit `807dc83` is live on Railway through deployment
+`6784d52f-2f54-44f9-9e32-7ae54da223ec` from 2026-07-24. Its pre-deploy step
+confirmed migrations `001` through `007`, and the database-backed healthcheck
+returned HTTP 200. FCM is enabled with the protected Base64 service account,
+and OAuth authentication was verified inside the running container without
+printing the credential or token.
 
 Every simulator/device build must set `SSD_API_BASE_URL` explicitly and record
 whether it targets local development or Railway. The production test account
@@ -157,8 +161,8 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   `test/user_bulk_spreadsheet_test.dart` after changing it.
 - Android announcement pushes are data messages rendered as one local inbox
   notification; iOS uses the shared `ssd-announcements` thread. Native Firebase
-  config files and Railway FCM service-account variables remain external
-  prerequisites and must never be committed.
+  config files and Railway FCM service-account variables must never be
+  committed.
 - Railway receives the Firebase service account only through the protected
   `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` variable. Never print, log, commit, or
   persist its decoded private-key content. Local development may use the

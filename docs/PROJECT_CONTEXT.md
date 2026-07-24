@@ -324,8 +324,9 @@ The PHP backend currently includes:
 - Login rate limiting.
 - Notification logs.
 - Firebase Cloud Messaging HTTP v1 payload delivery, token registration, and
-  client presentation implemented; real delivery remains disabled until the
-  native Firebase files and server-side service-account variables are supplied.
+  client presentation implemented. Android native configuration and the
+  protected Railway service account are active; iOS configuration and
+  real-device delivery verification remain outstanding.
 - Cron job for marking past planned duties as completed and sending 48-hour reminders.
 - Versioned migration tracking and explicit duty-day event/closure fields.
 - Transactional announcement creation with push failures isolated after commit.
@@ -349,7 +350,8 @@ Important backend rules already exist server-side:
 - Audit logging.
 - Push triggers, token refresh registration, deep-link routing, Android
   announcement stacking, and iOS announcement-thread grouping; real delivery
-  still requires external Firebase/APNs configuration.
+  is configured for Android but still needs a device acceptance test. iOS
+  additionally requires its Firebase plist and APNs configuration.
 - Transactional sanitary-account bulk validation and application with audit
   logging and session revocation.
 - Typed system announcements created atomically with successful sick reports.
@@ -381,16 +383,29 @@ Technical gaps:
 - `open_filex` currently uses CocoaPods on iOS and does not yet support
   Flutter's Swift Package Manager integration. Flutter 3.44 only warns, but a
   future Flutter version may require a plugin update or replacement.
-- Firebase setup is not yet complete across both platforms and the backend.
+- Firebase setup is complete for the Android client and Railway backend but
+  not yet for iOS.
 - The Android Firebase configuration for `com.minutmate.ssdmanager` is
   installed locally at the ignored `android/app/google-services.json` path and
   was validated against the permanent application ID. The iOS Firebase plist
-  and backend service-account configuration are still outstanding.
+  is still outstanding.
 - The downloaded Firebase Admin service account was validated locally against
   the same Firebase project without exposing its private key. Production can
   now load this credential directly from the protected
   `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` Railway variable; the previous local
   ignored file-path method remains available for development.
+- Railway deployment `6784d52f-2f54-44f9-9e32-7ae54da223ec` runs commit
+  `807dc83` with FCM enabled. Migrations 001–007 and the public healthcheck
+  passed, and Firebase OAuth authentication succeeded inside the running
+  container without printing the credential or access token. The temporary
+  Railway SSH key used for this verification was removed immediately.
+- The Firebase-configured Android debug APK uses
+  `com.minutmate.ssdmanager`, embeds the Railway HTTPS API, contains the
+  generated `google_app_id` and `gcm_defaultSenderId` resources, and has a
+  valid Android-v2 debug signature. Its SHA-256 is
+  `ef9c2e79e70daf0c131b1da81df53693edfae9453eecec7e12afa6c0c0e6a7ef`.
+  No Android device was connected for installation; real notification
+  reception remains an acceptance step.
 - Push notifications must be tested on real Android/iOS devices.
 - Android release signing is not set up.
 - Apple Developer Team and iOS signing are not finalized.
@@ -413,8 +428,8 @@ Product and policy gaps:
 
 The project owner must handle tasks that require external accounts, legal responsibility, or real credentials:
 
-- Create and manage the Firebase project.
-- Provide Firebase Android/iOS config files.
+- Manage the Firebase project and provide the remaining iOS configuration and
+  APNs setup.
 - Provide the real school name and first teacher's identity/login details for the initial production accounts.
 - Clarify school approval and privacy/legal requirements.
 - Handle Apple Developer and Google Play or internal distribution setup.
