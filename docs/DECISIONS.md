@@ -6,6 +6,19 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-25
 
+### Register Apple push tokens only after APNs and authentication are ready
+
+Decision: On iOS and macOS, SSD Manager waits within a bounded window for the
+native APNs token before requesting the FCM token. The FCM token is sent to the
+API only after an authenticated session exists, with retries after notification
+permission is granted, on foreground resume, and on Firebase token refresh.
+Runner declares the background `fetch` and `remote-notification` modes.
+
+Reason: APNs registration is asynchronous. A single early FCM request can fail
+silently, and attaching a token to the login request happens before the new API
+session can own that device. The ordered, retryable flow makes physical-iPhone
+delivery deterministic without blocking login.
+
 ### Keep live synchronization visually stable
 
 Decision: Foreground polling keeps the last successfully loaded duty and user

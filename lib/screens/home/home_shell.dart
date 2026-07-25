@@ -220,7 +220,11 @@ class _HomeShellState extends ConsumerState<HomeShell>
     _notificationPermissionChecked = true;
     final push = ref.read(pushServiceProvider);
     final allowed = await push.requestNotificationPermission();
-    if (!mounted || allowed) return;
+    if (!mounted) return;
+    if (allowed) {
+      await _updatePushTokenSafely();
+      return;
+    }
     final openSettings = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(

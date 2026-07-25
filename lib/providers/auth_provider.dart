@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/user.dart';
@@ -31,6 +33,7 @@ class AuthController extends Notifier<AuthState> {
       state = user == null
           ? const AuthState.unauthenticated()
           : AuthState.authenticated(user);
+      if (user != null) unawaited(_registerPushToken());
     } catch (_) {
       await ref.read(authRepositoryProvider).clearLocalSession();
       state = const AuthState.unauthenticated();
@@ -44,6 +47,7 @@ class AuthController extends Notifier<AuthState> {
           .read(authRepositoryProvider)
           .login(identifier: identifier, password: password);
       state = AuthState.authenticated(user);
+      unawaited(_registerPushToken());
     } catch (error) {
       state = AuthState.unauthenticated(
         errorMessage: userErrorMessage(
@@ -67,6 +71,14 @@ class AuthController extends Notifier<AuthState> {
           revokeOtherDevices: revokeOtherDevices,
         );
     state = AuthState.authenticated(user);
+  }
+
+  Future<void> _registerPushToken() async {
+    try {
+      await ref.read(authRepositoryProvider).updatePushToken();
+    } catch (_) {
+      // Foreground resume and token refresh retry registration.
+    }
   }
 
   Future<void> logout() async {

@@ -1,6 +1,6 @@
 # SSD Manager Project Context
 
-Stand: 2026-07-24
+Stand: 2026-07-25
 
 This document preserves important project context from earlier local Codex chats. Those chats existed only on the original Windows PC, so this file should travel with the repository through GitHub and be used as durable context on the MacBook or in future Codex chats.
 
@@ -242,6 +242,13 @@ Verified on the MacBook through 2026-07-23:
   one `ssd-announcements` thread. Foreground messages refresh the visible data,
   notification taps retain deep-link routing, and token refreshes are
   registered after authentication.
+- The physical-iPhone push-registration defect was traced to requesting an FCM
+  token before iOS had supplied its asynchronous APNs token and, during login,
+  before the API session existed. The client now waits for APNs with a bounded
+  retry, registers FCM only after authentication, retries immediately after
+  notification permission and on resume, and declares `fetch` plus
+  `remote-notification` background modes. Static verification passes; delivery
+  still needs acceptance testing with the freshly installed release build.
 - Final local verification passed `flutter analyze`, 30 Flutter tests, every
   backend PHP syntax check, the four PHP rule tests, and all API suites for
   general behavior, writes, bulk users, duty management, attachments,
@@ -328,9 +335,9 @@ The PHP backend currently includes:
 - Login rate limiting.
 - Notification logs.
 - Firebase Cloud Messaging HTTP v1 payload delivery, token registration, and
-  client presentation implemented. Android native configuration and the
-  protected Railway service account are active; iOS configuration and
-  real-device delivery verification remain outstanding.
+  client presentation implemented. Android and iOS native configuration, APNs,
+  signing entitlements, and the protected Railway service account are active;
+  iOS delivery needs revalidation after the client token-ordering fix.
 - Cron job for marking past planned duties as completed and sending 48-hour reminders.
 - Versioned migration tracking and explicit duty-day event/closure fields.
 - Transactional announcement creation with push failures isolated after commit.
@@ -355,8 +362,9 @@ Important backend rules already exist server-side:
 - Push triggers, token refresh registration, deep-link routing, Android
   announcement stacking, a separate sick-report channel/thread, foreground
   suppression for visible normal chat messages, and iOS announcement-thread
-  grouping. Real normal-message delivery is verified on Android; iOS
-  additionally requires its Firebase plist and APNs configuration.
+  grouping. Real normal-message delivery is verified on Android; iOS has its
+  Firebase plist and APNs configuration and now awaits final delivery
+  revalidation on the physical device.
 - Transactional sanitary-account bulk validation and application with audit
   logging and session revocation.
 - Typed system announcements created atomically with successful sick reports.

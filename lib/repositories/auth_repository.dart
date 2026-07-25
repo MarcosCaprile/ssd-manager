@@ -28,7 +28,6 @@ class AuthRepository {
     final data = await _api.get('auth/session') as Map<String, dynamic>;
     final user = User.fromJson(data['user'] as Map<String, dynamic>);
     await _sessionStorage.saveUser(user);
-    await updatePushToken();
     return user;
   }
 
@@ -37,12 +36,10 @@ class AuthRepository {
     required String password,
   }) async {
     final device = await _deviceInfoService.read();
-    final firebaseToken = await _pushService.readToken();
     final body = {
       'identifier': identifier,
       'password': password,
       ...device.toJson(),
-      'firebase_token': firebaseToken,
     };
     final data =
         await _api.post('auth/login', body: body) as Map<String, dynamic>;

@@ -3,10 +3,12 @@ import 'dart:convert';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'apns_token_waiter.dart';
 import 'push_message_policy.dart';
 
 const _announcementNotificationId = 41001;
@@ -35,6 +37,8 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 class PushService {
   PushService();
+
+  static const _apnsTokenWaiter = ApnsTokenWaiter();
 
   static bool _firebaseReady = false;
   static bool _listenersRegistered = false;
@@ -116,12 +120,19 @@ class PushService {
     }
     if (!_firebaseReady) return null;
     try {
-      await FirebaseMessaging.instance.requestPermission(
+      final settings = await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
         sound: true,
       );
-      return FirebaseMessaging.instance.getToken();
+      if (!_notificationAllowed(settings)) return null;
+      if (_requiresApnsToken) {
+        final available = await _apnsTokenWaiter.wait(
+          readToken: FirebaseMessaging.instance.getAPNSToken,
+        );
+        if (!available) return null;
+      }
+      return await FirebaseMessaging.instance.getToken();
     } catch (_) {
       return null;
     }
@@ -138,11 +149,20 @@ class PushService {
         badge: true,
         sound: true,
       );
-      return settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional;
+      return _notificationAllowed(settings);
     } catch (_) {
       return false;
     }
+  }
+
+  static bool get _requiresApnsToken =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS);
+
+  static bool _notificationAllowed(NotificationSettings settings) {
+    return settings.authorizationStatus == AuthorizationStatus.authorized ||
+        settings.authorizationStatus == AuthorizationStatus.provisional;
   }
 
   Future<void> openNotificationSettings() async {
