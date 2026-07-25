@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,29 +21,36 @@ class UserDetailScreen extends ConsumerStatefulWidget {
 
 class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
   late Future<({User user, ProfileStatistics? statistics})> _future;
+  ({User user, ProfileStatistics? statistics})? _cachedData;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadInitial();
   }
 
-  Future<({User user, ProfileStatistics? statistics})> _load() {
+  Future<({User user, ProfileStatistics? statistics})> _fetch() {
     return ref.read(userRepositoryProvider).userProfile(widget.userId);
   }
 
+  Future<({User user, ProfileStatistics? statistics})> _loadInitial() async {
+    final data = await _fetch();
+    _cachedData = data;
+    return data;
+  }
+
   Future<void> _refresh({bool preserveOnError = false}) async {
-    if (preserveOnError) {
+    if (_cachedData != null || preserveOnError) {
       try {
-        final data = await _load();
-        if (mounted) setState(() => _future = SynchronousFuture(data));
+        final data = await _fetch();
+        if (mounted) setState(() => _cachedData = data);
       } catch (_) {
         // Die vorherige Detailansicht bleibt erhalten, wenn nur das
         // Nachladen nach einer erfolgreichen Änderung scheitert.
       }
       return;
     }
-    final next = _load();
+    final next = _loadInitial();
     setState(() => _future = next);
     await next;
   }
@@ -63,13 +69,13 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       body: FutureBuilder<({User user, ProfileStatistics? statistics})>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+          final data = _cachedData ?? snapshot.data;
+          if (data == null) {
+            if (snapshot.hasError) {
+              return ErrorView(error: snapshot.error, onRetry: _refresh);
+            }
             return const DelayedLoadingView(message: 'Profil wird geladen ...');
           }
-          if (snapshot.hasError) {
-            return ErrorView(error: snapshot.error, onRetry: _refresh);
-          }
-          final data = snapshot.data!;
           final user = data.user;
           return RefreshIndicator(
             onRefresh: _refresh,

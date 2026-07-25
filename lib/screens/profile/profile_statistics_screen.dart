@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,27 +17,38 @@ class ProfileStatisticsScreen extends ConsumerStatefulWidget {
 class _ProfileStatisticsScreenState
     extends ConsumerState<ProfileStatisticsScreen> {
   late Future<ProfileStatistics> _future;
+  ProfileStatistics? _cachedStatistics;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadInitial();
   }
 
-  Future<ProfileStatistics> _load() {
+  Future<ProfileStatistics> _fetch() {
     return ref.read(userRepositoryProvider).myStatistics();
   }
 
+  Future<ProfileStatistics> _loadInitial() async {
+    final statistics = await _fetch();
+    _cachedStatistics = statistics;
+    return statistics;
+  }
+
   Future<void> _refresh() async {
-    final next = _load();
+    if (_cachedStatistics != null) {
+      await _refreshPreservingContent();
+      return;
+    }
+    final next = _loadInitial();
     setState(() => _future = next);
     await next;
   }
 
   Future<void> _refreshPreservingContent() async {
     try {
-      final next = await _load();
-      if (mounted) setState(() => _future = SynchronousFuture(next));
+      final next = await _fetch();
+      if (mounted) setState(() => _cachedStatistics = next);
     } catch (_) {
       // Bereits sichtbare Statistiken bleiben bei einem kurzen
       // Verbindungsproblem erhalten.
@@ -55,15 +65,15 @@ class _ProfileStatisticsScreenState
       body: FutureBuilder<ProfileStatistics>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+          final stats = _cachedStatistics ?? snapshot.data;
+          if (stats == null) {
+            if (snapshot.hasError) {
+              return ErrorView(error: snapshot.error, onRetry: _refresh);
+            }
             return const DelayedLoadingView(
               message: 'Dienststatistik wird geladen ...',
             );
           }
-          if (snapshot.hasError) {
-            return ErrorView(error: snapshot.error, onRetry: _refresh);
-          }
-          final stats = snapshot.data!;
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(

@@ -7,6 +7,7 @@ import 'package:ssd_manager/models/announcement.dart';
 import 'package:ssd_manager/providers/api_providers.dart';
 import 'package:ssd_manager/repositories/announcement_repository.dart';
 import 'package:ssd_manager/screens/announcements/announcements_screen.dart';
+import 'package:ssd_manager/widgets/status_views.dart';
 
 void main() {
   testWidgets('open announcements render shared live-feed updates', (
@@ -37,6 +38,7 @@ void main() {
 
     expect(find.text('Erste Live-Nachricht'), findsOneWidget);
     expect(find.text('Zweite Live-Nachricht'), findsOneWidget);
+    expect(find.byType(DelayedLoadingView), findsNothing);
   });
 
   test('equivalent live feeds do not emit redundant state updates', () {

@@ -214,8 +214,7 @@ class _DutyListState extends ConsumerState<_DutyList>
       try {
         final days = List<DutyDay>.unmodifiable(await _fetch());
         if (!mounted || listEquals(_cachedDays, days)) return;
-        _cachedDays = days;
-        setState(() => _future = SynchronousFuture(days));
+        setState(() => _cachedDays = days);
       } catch (_) {
         if (!preserveOnError) rethrow;
         // Sichtbare Daten bleiben bei einem fehlgeschlagenen Live-Abgleich

@@ -148,6 +148,33 @@ test_case('Firebase keeps regular and sick announcements in separate threads', f
         ($sick['message']['android']['priority'] ?? null) === 'HIGH',
         'Sick report did not keep high Android priority.'
     );
+    assert_true(
+        !array_key_exists('message_type', $sick['message']['data'] ?? []),
+        'Sick report kept the reserved FCM message_type data key.'
+    );
+});
+
+test_case('Firebase removes every reserved custom data key', function (): void {
+    $method = new ReflectionMethod(FirebaseMessagingService::class, 'messagePayload');
+    $payload = $method->invoke(
+        new FirebaseMessagingService(),
+        'test-token',
+        'Titel',
+        'Text',
+        [
+            'route' => 'announcements',
+            'from' => 'reserved',
+            'message_type' => 'reserved',
+            'google.test' => 'reserved',
+            'gcm.test' => 'reserved',
+        ],
+        true,
+        true,
+        false
+    );
+    $data = $payload['message']['data'] ?? [];
+    assert_true(($data['route'] ?? null) === 'announcements');
+    assert_true(count($data) === 1, 'Reserved Firebase data keys were not removed.');
 });
 
 test_case('push deduplication distinguishes a users device tokens', function (): void {

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,29 +20,36 @@ class _AttachmentStorageScreenState
     extends ConsumerState<AttachmentStorageScreen> {
   String _sort = 'date_desc';
   late Future<AttachmentStorageSummary> _future;
+  AttachmentStorageSummary? _cachedStorage;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadInitial();
   }
 
-  Future<AttachmentStorageSummary> _load() {
+  Future<AttachmentStorageSummary> _fetch() {
     return ref.read(userRepositoryProvider).attachmentStorage(sort: _sort);
   }
 
+  Future<AttachmentStorageSummary> _loadInitial() async {
+    final storage = await _fetch();
+    _cachedStorage = storage;
+    return storage;
+  }
+
   Future<void> _refresh({bool preserveOnError = false}) async {
-    if (preserveOnError) {
+    if (_cachedStorage != null || preserveOnError) {
       try {
-        final storage = await _load();
-        if (mounted) setState(() => _future = SynchronousFuture(storage));
+        final storage = await _fetch();
+        if (mounted) setState(() => _cachedStorage = storage);
       } catch (_) {
         // Das Löschen bleibt erfolgreich, auch wenn die aktualisierte
         // Speicherübersicht erst beim nächsten Öffnen geladen werden kann.
       }
       return;
     }
-    final next = _load();
+    final next = _loadInitial();
     setState(() => _future = next);
     await next;
   }
@@ -85,15 +91,15 @@ class _AttachmentStorageScreenState
       body: FutureBuilder<AttachmentStorageSummary>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+          final storage = _cachedStorage ?? snapshot.data;
+          if (storage == null) {
+            if (snapshot.hasError) {
+              return ErrorView(error: snapshot.error, onRetry: _refresh);
+            }
             return const DelayedLoadingView(
               message: 'Dateien werden geladen ...',
             );
           }
-          if (snapshot.hasError) {
-            return ErrorView(error: snapshot.error, onRetry: _refresh);
-          }
-          final storage = snapshot.data!;
           return RefreshIndicator(
             onRefresh: _refresh,
             child: CustomScrollView(
@@ -152,12 +158,10 @@ class _AttachmentStorageScreenState
                           child: Text('Kleinste zuerst'),
                         ),
                       ],
-                      onChanged: (value) {
+                      onChanged: (value) async {
                         if (value == null || value == _sort) return;
-                        setState(() {
-                          _sort = value;
-                          _future = _load();
-                        });
+                        setState(() => _sort = value);
+                        await _refresh(preserveOnError: true);
                       },
                     ),
                   ),

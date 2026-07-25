@@ -6,6 +6,40 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-25
 
+### Keep all FCM custom data free of reserved keys
+
+Decision: The backend sanitizes every FCM custom `data` payload centrally and
+removes `from`, `message_type`, and keys beginning with `google.` or `gcm.`.
+Notification semantics use project-owned fields such as `notification_type`
+and `system_type`.
+
+Reason: FCM rejects the complete message when reserved custom-data keys are
+present. A rejected sick-report push must not be confused with a client
+permission or platform-channel failure.
+
+### Materialize completed duties on reads until cron is deployed
+
+Decision: Duty-history and profile-statistics requests convert scoped past
+`planned` assignments to `completed` before reading them. The scheduled
+completion job remains the canonical unattended maintenance path and is still
+required for reminders.
+
+Reason: Railway does not yet run the repository cron service, so assignments
+could remain planned indefinitely and disappear from completed statistics.
+Read-time materialization makes the user-visible result correct without
+weakening school or user boundaries.
+
+### Keep live refresh state inside the already rendered screen
+
+Decision: Once a screen has loaded successfully, polling and push-driven
+refreshes update its cached payload without replacing the completed
+`FutureBuilder` future. Frequently changing unread-count state is watched only
+by the navigation icon that renders it.
+
+Reason: Replacing futures or rebuilding the whole home shell briefly exposed
+loading/blank frames on Android. Narrow state subscriptions and cached updates
+preserve the current panel while still applying live data.
+
 ### Register Apple push tokens only after APNs and authentication are ready
 
 Decision: On iOS and macOS, SSD Manager waits within a bounded window for the

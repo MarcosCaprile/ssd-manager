@@ -116,6 +116,12 @@ aus demselben Image benötigt. Er erhält dieselben Datenbank- und
 Firebase-Variablen, den Startbefehl `php cron/run_due_jobs.php` und einen
 passenden Cron-Zeitplan. Der Web-Service selbst bleibt dauerhaft aktiv.
 
+Bis dieser Service eingerichtet ist, materialisieren die API-Lesewege für
+Diensthistorie und Profilstatistik vergangene `planned`-Einträge automatisch
+als `completed`. Das hält sichtbare Statistiken korrekt, ersetzt aber weder
+48-Stunden-Erinnerungen noch unbeaufsichtigte Wartungsaufgaben; der Cron-Service
+bleibt daher ein offener Produktionsschritt.
+
 ## Backend installieren
 
 Die folgenden Schritte gelten für ein generisches PHP-Hosting außerhalb von

@@ -64,6 +64,7 @@ Run backend tests when PHP is available:
 
 ```bash
 php backend/tests/run.php
+php backend/tests/duty_completion_smoke.php
 ```
 
 With the local database migrated and seeded, start the backend and run the API smoke test in another terminal:
@@ -169,8 +170,17 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   explicitly when needed, and delay full loading indicators for two seconds.
 - Foreground polling must compare semantically equal payloads and publish UI
   state only when data actually changed. Never replace already visible content
-  with an asynchronously completed `Future`; preserved `FutureBuilder` updates
-  use cached data or `SynchronousFuture` so no blank frame is rendered.
+  with a new `Future`; preserved `FutureBuilder` updates write into the
+  screen's cached data so no loading snapshot or blank frame is rendered.
+- Scope frequently changing badge/provider watches to the smallest consuming
+  widget. An unread-count update must not rebuild the home shell or its
+  `IndexedStack`.
+- FCM custom `data` payloads must never use reserved keys such as `from`,
+  `message_type`, or names beginning with `google.` or `gcm.`. Keep the
+  backend's central payload sanitizer active for every notification type.
+- Until the Railway cron service exists, duty-history and profile-statistics
+  reads must materialize past `planned` assignments as `completed`. Keep the
+  cron completion job as the unattended maintenance path and for reminders.
 - Sanitary start dates are immutable after account creation but may be in the
   future so accounts can be prepared before qualification becomes effective.
 - Bulk user changes are manager-only, limited to sanitary accounts, validated

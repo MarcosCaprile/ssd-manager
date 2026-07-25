@@ -18,6 +18,34 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 SSD Manager is a solid MVP/V1 prototype, but it is not production-ready yet. The repository already contains the Flutter app, PHP backend, database schema, seed data, cron job, documentation, and first tests.
 
+Latest verified implementation on 2026-07-25:
+
+- Production diagnostics showed that all seven attempted sick-report pushes
+  failed at FCM while normal announcement pushes had successful deliveries.
+  The sick payload used FCM's reserved custom-data key `message_type`. The
+  backend now removes all reserved FCM data keys centrally, and regression
+  tests cover the sick-report payload and the full reserved-key set.
+- Railway still has no scheduled cron service, and production diagnostics
+  found one past assignment left in `planned`. Duty-history and
+  profile-statistics reads now transaction-safely materialize matching past
+  planned assignments as `completed`; the existing cron remains necessary for
+  unattended completion, 48-hour reminders, and maintenance.
+- Live refreshes for announcements, duties, the Sani list, profiles, devices,
+  storage, and user details retain their last successful payload and update
+  cached data without replacing the screen's completed `Future`. The unread
+  badge watches its provider inside the navigation icon only, so a new
+  announcement cannot rebuild the whole home shell and flash the current
+  Android panel white.
+- Verification passed with clean Flutter analysis, all 42 Flutter tests, all
+  PHP syntax checks, 9 backend rule tests, the dedicated duty-completion smoke
+  test, and the local read/write/duty-management API smoke suites.
+- A Railway-targeted Android release APK was built successfully with package
+  `com.minutmate.ssdmanager`, minSdk 24, targetSdk 36, valid Android-v2 debug
+  signing, and SHA-256
+  `0187f1e40c6db4f4871b15baca6477bc0f141ddb223049bd633a91f2fe79652b`.
+  Real-device acceptance of the sick push and visually stable Android refresh
+  still requires the updated backend deployment and installation/test build.
+
 Verified on the original Windows development machine:
 
 - `flutter analyze` completed cleanly.
@@ -526,7 +554,9 @@ Technical gaps:
 - Android release signing is not set up.
 - Development signing and physical iPhone installation are operational. App
   Store distribution, archive validation, and TestFlight remain outstanding.
-- Deployment still needs cron setup, backups, and centralized log/alert handling.
+- Deployment still needs a Railway cron service, backups, and centralized
+  log/alert handling. Opportunistic reads now keep displayed completed-duty
+  data correct, but they do not replace scheduled reminders and maintenance.
 
 Product and policy gaps:
 

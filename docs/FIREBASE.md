@@ -59,6 +59,12 @@ Repository liegen.
 Auch die nativen App-Konfigurationsdateien und APNs-/Firebase-Einstellungen
 müssen vom Projektinhaber im echten Firebase-/Apple-Konto eingerichtet werden.
 
+FCM reserviert unter anderem die Custom-Data-Schlüssel `from`,
+`message_type` sowie Präfixe `google.` und `gcm.`. Das Backend entfernt diese
+Schlüssel deshalb zentral vor jedem Versand. Projektspezifisches Routing
+verwendet ausschließlich eigene Felder wie `notification_type`,
+`system_type`, `route` und `date`.
+
 ## Aktueller Einrichtungsstand
 
 - Android ist mit `com.minutmate.ssdmanager` registriert; die ignorierte
@@ -71,9 +77,11 @@ müssen vom Projektinhaber im echten Firebase-/Apple-Konto eingerichtet werden.
   Android-v2-Signatur.
 - Reale normale Ankündigungs-Pushes wurden auf dem verbundenen Samsung
   erfolgreich empfangen. Der separate Krankmeldungs-Kanal benötigt nach dem
-  Backend-Deployment noch einen gezielten Akzeptanztest.
-- iOS benötigt weiterhin `GoogleService-Info.plist`, APNs-Konfiguration und
-  einen Test auf einem echten Apple-Gerät.
+  Reserved-Key-Fix und Backend-Deployment noch einen gezielten Akzeptanztest.
+- Die ignorierte iOS-`GoogleService-Info.plist`, APNs-Konfiguration, Signing,
+  Push Capability und App Group sind eingerichtet. Normale Ankündigungs-Pushes
+  funktionieren auf dem echten iPhone; Krankmeldungen benötigen nach dem
+  Backend-Deployment einen erneuten End-to-End-Test.
 
 ## Notification Routing
 

@@ -65,6 +65,7 @@ final class FirebaseMessagingService
         bool $isAnnouncement,
         bool $isSickReport,
     ): array {
+        $data = $this->withoutReservedDataKeys($data);
         return [
             'message' => [
                 'token' => $token,
@@ -91,6 +92,28 @@ final class FirebaseMessagingService
                 ],
             ],
         ];
+    }
+
+    /**
+     * FCM rejects the complete message when custom data contains a reserved
+     * key. Keep this boundary defensive even if a future caller adds one.
+     *
+     * @param array<string,string> $data
+     * @return array<string,string>
+     */
+    private function withoutReservedDataKeys(array $data): array
+    {
+        return array_filter(
+            $data,
+            static function (string $key): bool {
+                $normalized = strtolower($key);
+                return $normalized !== 'from'
+                    && $normalized !== 'message_type'
+                    && !str_starts_with($normalized, 'google.')
+                    && !str_starts_with($normalized, 'gcm.');
+            },
+            ARRAY_FILTER_USE_KEY
+        );
     }
 
     private function accessToken(): string

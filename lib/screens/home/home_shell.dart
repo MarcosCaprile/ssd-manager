@@ -80,8 +80,6 @@ class _HomeShellState extends ConsumerState<HomeShell>
     ref.listen<int>(announcementRevisionProvider, (previous, next) {
       if (previous != next) _syncAnnouncements();
     });
-    final unreadAnnouncements = ref.watch(announcementUnreadProvider);
-
     return Scaffold(
       body: IndexedStack(
         index: _index,
@@ -121,14 +119,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
             label: 'Dienstplan',
           ),
           BottomNavigationBarItem(
-            icon: _AnnouncementNavigationIcon(
-              icon: Icons.campaign_outlined,
-              unreadCount: unreadAnnouncements,
-            ),
-            activeIcon: _AnnouncementNavigationIcon(
-              icon: Icons.campaign,
-              unreadCount: unreadAnnouncements,
-            ),
+            icon: _AnnouncementNavigationIcon(icon: Icons.campaign_outlined),
+            activeIcon: _AnnouncementNavigationIcon(icon: Icons.campaign),
             label: 'Ankündigungen',
           ),
           const BottomNavigationBarItem(
@@ -281,17 +273,14 @@ class _HomeShellState extends ConsumerState<HomeShell>
   }
 }
 
-class _AnnouncementNavigationIcon extends StatelessWidget {
-  const _AnnouncementNavigationIcon({
-    required this.icon,
-    required this.unreadCount,
-  });
+class _AnnouncementNavigationIcon extends ConsumerWidget {
+  const _AnnouncementNavigationIcon({required this.icon});
 
   final IconData icon;
-  final int unreadCount;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadCount = ref.watch(announcementUnreadProvider);
     return Badge.count(
       count: unreadCount,
       isLabelVisible: unreadCount > 0,

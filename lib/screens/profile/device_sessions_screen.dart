@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,29 +18,36 @@ class DeviceSessionsScreen extends ConsumerStatefulWidget {
 
 class _DeviceSessionsScreenState extends ConsumerState<DeviceSessionsScreen> {
   late Future<List<DeviceSession>> _future;
+  List<DeviceSession>? _cachedDevices;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadInitial();
   }
 
-  Future<List<DeviceSession>> _load() {
+  Future<List<DeviceSession>> _fetch() {
     return ref.read(userRepositoryProvider).devices();
   }
 
+  Future<List<DeviceSession>> _loadInitial() async {
+    final devices = List<DeviceSession>.unmodifiable(await _fetch());
+    _cachedDevices = devices;
+    return devices;
+  }
+
   Future<void> _refresh({bool preserveOnError = false}) async {
-    if (preserveOnError) {
+    if (_cachedDevices != null || preserveOnError) {
       try {
-        final devices = await _load();
-        if (mounted) setState(() => _future = SynchronousFuture(devices));
+        final devices = List<DeviceSession>.unmodifiable(await _fetch());
+        if (mounted) setState(() => _cachedDevices = devices);
       } catch (_) {
         // Die Abmeldung war erfolgreich; ein fehlgeschlagenes Nachladen
         // ändert dieses Ergebnis nicht.
       }
       return;
     }
-    final next = _load();
+    final next = _loadInitial();
     setState(() => _future = next);
     await next;
   }
@@ -53,15 +59,15 @@ class _DeviceSessionsScreenState extends ConsumerState<DeviceSessionsScreen> {
       body: FutureBuilder<List<DeviceSession>>(
         future: _future,
         builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
+          final devices = _cachedDevices ?? snapshot.data;
+          if (devices == null) {
+            if (snapshot.hasError) {
+              return ErrorView(error: snapshot.error, onRetry: _refresh);
+            }
             return const DelayedLoadingView(
               message: 'Geräte werden geladen ...',
             );
           }
-          if (snapshot.hasError) {
-            return ErrorView(error: snapshot.error, onRetry: _refresh);
-          }
-          final devices = snapshot.data ?? [];
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(

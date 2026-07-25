@@ -11,11 +11,13 @@ final class UserService
 {
     private AuthService $authFormatter;
     private AuditLogger $audit;
+    private DutyCompletionService $completion;
 
     public function __construct(private readonly PDO $pdo)
     {
         $this->authFormatter = new AuthService($pdo, new RateLimiter($pdo));
         $this->audit = new AuditLogger($pdo);
+        $this->completion = new DutyCompletionService($pdo);
     }
 
     /**
@@ -179,6 +181,7 @@ final class UserService
             Response::error('Keine Berechtigung für diese Statistik.', 403);
         }
         $this->findInSchool($auth->schoolId(), $userId);
+        $this->completion->markPastPlannedAsCompleted($auth->schoolId(), $userId);
         $statement = $this->pdo->prepare(
             'SELECT da.status, dd.duty_date
              FROM duty_assignments da

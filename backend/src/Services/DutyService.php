@@ -12,6 +12,7 @@ final class DutyService
 {
     private DutyRules $rules;
     private AuditLogger $audit;
+    private DutyCompletionService $completion;
 
     public function __construct(
         private readonly PDO $pdo,
@@ -19,6 +20,7 @@ final class DutyService
     ) {
         $this->rules = new DutyRules(Config::env('SCHOOL_TIMEZONE', 'Europe/Berlin') ?? 'Europe/Berlin');
         $this->audit = new AuditLogger($pdo);
+        $this->completion = new DutyCompletionService($pdo);
     }
 
     /**
@@ -48,6 +50,7 @@ final class DutyService
      */
     public function history(AuthContext $auth, ?string $date = null): array
     {
+        $this->completion->markPastPlannedAsCompleted($auth->schoolId());
         $dateFilter = $date === null ? '' : ' AND duty_date = :date';
         $statement = $this->pdo->prepare(
             'SELECT id FROM duty_days
@@ -577,7 +580,6 @@ final class DutyService
                     'route' => 'announcements',
                     'date' => $date,
                     'priority' => 'high',
-                    'message_type' => 'system',
                     'system_type' => 'duty_sick_reported',
                 ]
             );
@@ -651,14 +653,7 @@ final class DutyService
 
     public function markPastPlannedAsCompleted(): int
     {
-        $statement = $this->pdo->prepare(
-            'UPDATE duty_assignments da
-             JOIN duty_days dd ON dd.id = da.duty_day_id
-             SET da.status = "completed", da.completed_at = UTC_TIMESTAMP(), da.updated_at = UTC_TIMESTAMP()
-             WHERE da.status = "planned" AND dd.duty_date < CURRENT_DATE'
-        );
-        $statement->execute();
-        return $statement->rowCount();
+        return $this->completion->markPastPlannedAsCompleted();
     }
 
     public function send48HourReminders(): int

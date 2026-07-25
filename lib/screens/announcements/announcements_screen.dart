@@ -89,12 +89,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
       do {
         _refreshQueued = false;
         try {
-          final items = await _load();
-          if (mounted) {
-            setState(
-              () => _future = SynchronousFuture(List.unmodifiable(items)),
-            );
-          }
+          await _load();
         } catch (_) {
           // Bereits sichtbare Ankündigungen bleiben erhalten. Der nächste
           // Push, Live-Abgleich oder Pull-to-refresh versucht es erneut.
@@ -171,7 +166,6 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     setState(() {
       _pending.clear();
       _items = updated;
-      _future = SynchronousFuture(List.unmodifiable(_items));
     });
     ref.read(announcementFeedProvider.notifier).replace(updated);
     await _refreshAfterSend();

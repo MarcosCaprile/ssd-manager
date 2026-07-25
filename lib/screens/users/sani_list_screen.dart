@@ -63,8 +63,7 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
       try {
         final users = List<User>.unmodifiable(await _fetch());
         if (!mounted || listEquals(_cachedUsers, users)) return;
-        _cachedUsers = users;
-        setState(() => _future = SynchronousFuture(users));
+        setState(() => _cachedUsers = users);
       } catch (_) {
         if (!preserveOnError) rethrow;
         // Sichtbare Daten bleiben bei einem fehlgeschlagenen Live-Abgleich
