@@ -98,10 +98,10 @@ https://ssd-api-production.up.railway.app
 
 ## Aktueller Produktionsstand
 
-GitHub-Commit `807dc83` ist seit 2026-07-24 über Railway-Deployment
-`6784d52f-2f54-44f9-9e32-7ae54da223ec` produktiv. Der Pre-Deploy-Schritt hat
-die Migrationen `001` bis `007` bestätigt. Apache startete normal und der
-öffentliche datenbankgestützte Healthcheck antwortete mit HTTP 200.
+GitHub-Commit `8062e99` ist seit 2026-07-25 über Railway-Deployment
+`13ec223e-07a3-46ef-b752-4b9036de021c` produktiv. Das Deployment war
+erfolgreich, Apache startete normal und der öffentliche datenbankgestützte
+Healthcheck antwortete mit HTTP 200.
 
 `FCM_ENABLED`, `FIREBASE_PROJECT_ID` und die geschützte
 `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64`-Variable sind im `ssd-api`-Service

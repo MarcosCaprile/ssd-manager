@@ -117,10 +117,10 @@ The production deployment target is a dedicated SSD Manager project in the owner
 
 The live Railway API healthcheck is `https://ssd-api-production.up.railway.app/api/v1/health`. Railway's runtime enabled `mpm_event` in addition to PHP Apache's required `mpm_prefork`; keep the Bookworm image pin and the runtime MPM enforcement in `backend/docker/railway-entrypoint.sh`. The fix is on GitHub `main`; Railway associated the merge commit with the service and skipped a redundant rebuild because the identical watched files were already live from the verified CLI deployment.
 
-GitHub `main` commit `807dc83` is live on Railway through deployment
-`6784d52f-2f54-44f9-9e32-7ae54da223ec` from 2026-07-24. Its pre-deploy step
-confirmed migrations `001` through `007`, and the database-backed healthcheck
-returned HTTP 200. FCM is enabled with the protected Base64 service account,
+GitHub `main` commit `8062e99` is live on Railway through deployment
+`13ec223e-07a3-46ef-b752-4b9036de021c` from 2026-07-25. The deployment
+succeeded and the database-backed healthcheck returned HTTP 200. FCM is
+enabled with the protected Base64 service account,
 and OAuth authentication was verified inside the running container without
 printing the credential or token.
 

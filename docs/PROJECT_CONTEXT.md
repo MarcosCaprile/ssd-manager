@@ -43,8 +43,10 @@ Latest verified implementation on 2026-07-25:
   `com.minutmate.ssdmanager`, minSdk 24, targetSdk 36, valid Android-v2 debug
   signing, and SHA-256
   `0187f1e40c6db4f4871b15baca6477bc0f141ddb223049bd633a91f2fe79652b`.
-  Real-device acceptance of the sick push and visually stable Android refresh
-  still requires the updated backend deployment and installation/test build.
+- Commit `8062e99` is live through Railway deployment
+  `13ec223e-07a3-46ef-b752-4b9036de021c`; the database-backed production
+  healthcheck returned HTTP 200. Real-device sick-push acceptance and the
+  updated Android installation/visual refresh test remain.
 
 Verified on the original Windows development machine:
 
