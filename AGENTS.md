@@ -22,8 +22,9 @@ The current repository is the source of truth. Historical Codex chats are local 
 - REST API under `/api/v1`.
 - Firebase Cloud Messaging is configured for Android and the Railway backend.
   The ignored iOS client plist is installed locally, APNs is configured in
-  Firebase, and development signing plus a physical release install work. Real
-  iOS notification delivery still needs final acceptance testing.
+  Firebase, and development signing plus a physical release install work.
+  Normal and separate sick-report notifications have passed real-device
+  acceptance on Android and iOS.
 
 ## Important Paths
 

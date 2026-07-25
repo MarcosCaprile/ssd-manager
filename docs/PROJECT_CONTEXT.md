@@ -45,8 +45,7 @@ Latest verified implementation on 2026-07-25:
   `0187f1e40c6db4f4871b15baca6477bc0f141ddb223049bd633a91f2fe79652b`.
 - Commit `8062e99` is live through Railway deployment
   `13ec223e-07a3-46ef-b752-4b9036de021c`; the database-backed production
-  healthcheck returned HTTP 200. Real-device sick-push acceptance and the
-  updated Android installation/visual refresh test remain.
+  healthcheck returned HTTP 200.
 - A release-only Android notification outage was traced to the optimizer
   removing `ic_stat_ssd_manager`, which had been referenced only by its runtime
   resource name. Firebase's default-notification-icon manifest metadata now
@@ -55,6 +54,11 @@ Latest verified implementation on 2026-07-25:
   was installed through the data-preserving ADB update path, exposes the normal
   importance-4 and sick-report importance-5 channels, and registered its new
   device token against Railway with HTTP 200.
+- Final real-device acceptance is complete. Normal announcements and separate
+  urgent sick-report notifications arrive on Android and iOS; sick reports
+  also appear as red system messages in the shared chat. A past planned duty
+  appears as completed in history/profile statistics, and Android live updates
+  no longer produce the previous white-screen flash.
 
 Verified on the original Windows development machine:
 
@@ -422,23 +426,18 @@ The repository already contains:
 
 Technical gaps:
 
-- The new weekend-event, tombstone, inactive-account, device-session, delayed
-  loading, compact-bubble, profile-navigation, live-refresh, bulk, system-
-  message, launcher-icon, and notification-grouping UX still needs an
-  interactive acceptance run in the iOS simulator and on the Android test
-  phone.
 - Railway API, MySQL, automatic migration, secret-backed variables, container build, and public HTTPS healthcheck are operational. Production still needs the first real school and teacher account, a backup schedule, the Railway cron service, and optionally a custom API domain.
-- The corrected Android test APK points to the live Railway HTTPS API, but it still needs an end-to-end run on the owner's physical phone.
+- The corrected Android test APK points to the live Railway HTTPS API and
+  passed its end-to-end run on the owner's physical phone.
 - The authenticated iOS journey for the production test teacher is verified across the main read paths. Mutating duty and account workflows that require a separate student target still need end-to-end testing after additional test accounts exist.
 - Further automated coverage is still useful for cron behavior, notification delivery, and complete Flutter UI-to-API journeys.
 - `open_filex` currently uses CocoaPods on iOS and does not yet support
   Flutter's Swift Package Manager integration. Flutter 3.44 only warns, but a
   future Flutter version may require a plugin update or replacement.
-- Firebase setup is complete for the Android client and Railway backend. The
-  ignored iOS `GoogleService-Info.plist` is installed for
-  `com.minutmate.ssdmanager`, and the owner configured APNs in Firebase. Final
-  normal-message and sick-report push acceptance on the physical iPhone is
-  still pending.
+- Firebase setup is complete for the Android and iOS clients and Railway
+  backend. The ignored iOS `GoogleService-Info.plist` is installed for
+  `com.minutmate.ssdmanager`, the owner configured APNs in Firebase, and normal
+  plus sick-report pushes were accepted on the physical iPhone.
 - The Android Firebase configuration for `com.minutmate.ssdmanager` is
   installed locally at the ignored `android/app/google-services.json` path and
   was validated against the permanent application ID. The matching iOS
@@ -489,9 +488,9 @@ Technical gaps:
   against the Railway HTTPS API, verified with Android v2 signing, and
   installed successfully over USB on the Samsung test phone. Its SHA-256 is
   `8bf51d0ec5b057138089b863d0a01daea17970c58e84b756599e79501a727a6c`.
-- Separate sick-report delivery still needs one real acceptance action against
-  the updated live backend. iOS APNs is configured, but normal and sick-report
-  delivery still need end-to-end acceptance on the real device.
+- Separate sick-report delivery against the updated live backend is accepted
+  on Android and iOS, including the red system-chat message and the dedicated
+  urgent notification channel/thread.
 - Firebase initialization and token registration now retry after transient
   startup failures. Android notification channels are explicitly created, and
   local notification operations have a timeout so one stalled platform call
@@ -552,7 +551,8 @@ Technical gaps:
 - The corrected Railway-connected Android debug APK was installed as an update
   on the Samsung with app data preserved. Its SHA-256 is
   `832309b7fd8c38b62a48e8de4ca6069c0dbbfd2c9b285213ddb90a34cc18469f`.
-  Final open-chat two-account acceptance remains pending.
+  Open-chat two-account acceptance is complete; provider updates render in the
+  already visible conversation without navigation or a blank frame.
 - GitHub `main` commit `d348185` deployed successfully to Railway as deployment
   `0531daeb-c509-409a-9aa2-bcbe966b71d5`. Migrations 001–007 were already
   applied, Apache started normally, and the public database-backed healthcheck

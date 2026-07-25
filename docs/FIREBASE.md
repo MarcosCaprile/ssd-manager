@@ -81,13 +81,11 @@ verwendet ausschließlich eigene Felder wie `notification_type`,
 - Eine Firebase-konfigurierte Android-Debug-APK enthält `google_app_id` und
   `gcm_defaultSenderId`, verwendet die Railway-HTTPS-API und hat eine gültige
   Android-v2-Signatur.
-- Reale normale Ankündigungs-Pushes wurden auf dem verbundenen Samsung
-  erfolgreich empfangen. Der separate Krankmeldungs-Kanal benötigt nach dem
-  Reserved-Key-Fix und Backend-Deployment noch einen gezielten Akzeptanztest.
+- Reale normale Ankündigungs-Pushes und separate dringende Krankmeldungs-Pushes
+  wurden auf dem Samsung erfolgreich empfangen.
 - Die ignorierte iOS-`GoogleService-Info.plist`, APNs-Konfiguration, Signing,
   Push Capability und App Group sind eingerichtet. Normale Ankündigungs-Pushes
-  funktionieren auf dem echten iPhone; Krankmeldungen benötigen nach dem
-  Backend-Deployment einen erneuten End-to-End-Test.
+  und separate Krankmeldungs-Pushes funktionieren auf dem echten iPhone.
 
 ## Notification Routing
 
