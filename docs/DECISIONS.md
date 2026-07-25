@@ -6,6 +6,17 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-25
 
+### Keep the Android notification icon through release shrinking
+
+Decision: Android manifest metadata references `ic_stat_ssd_manager` as
+Firebase's default notification icon in addition to the runtime local-
+notification configuration. Release acceptance verifies the resource inside
+the APK before installation.
+
+Reason: Android's release optimizer removed the icon when it was referenced
+only by a Dart resource-name string. Local notification initialization then
+failed before channel creation and Firebase token registration.
+
 ### Keep all FCM custom data free of reserved keys
 
 Decision: The backend sanitizes every FCM custom `data` payload centrally and

@@ -26,6 +26,12 @@ einzigen Notification-Stack; beim Öffnen des Ankündigungsbereichs wird er
 gelöscht. Ist dieser Bereich im Vordergrund sichtbar, wird der normale
 Telefon-Push unterdrückt und nur der Chat sofort aktualisiert.
 
+Das Drawable `ic_stat_ssd_manager` ist zusätzlich über
+`com.google.firebase.messaging.default_notification_icon` im Android-Manifest
+referenziert. Diese statische Referenz darf nicht entfernt werden, weil der
+Release-Optimizer das ansonsten nur dynamisch benannte Symbol entfernt und die
+gesamte lokale Push-Initialisierung vor Kanal- und Tokenanlage abbricht.
+
 Krankmeldungen tragen `system_type=duty_sick_reported` und
 `notification_type=announcement_system_sick`. Sie werden nicht in den normalen
 Chat-Stack aufgenommen, sondern als eigene dringende Android-Benachrichtigung

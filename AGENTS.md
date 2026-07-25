@@ -191,6 +191,10 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   notification; iOS uses the shared `ssd-announcements` thread. Native Firebase
   config files and Railway FCM service-account variables must never be
   committed.
+- Android release shrinking can remove a notification icon referenced only by
+  its runtime resource name. Keep `ic_stat_ssd_manager` referenced through
+  Firebase's `default_notification_icon` manifest metadata, and verify the
+  resource inside every release APK before device acceptance.
 - Push deduplication is per user and distinct Firebase token. Multiple active
   sessions may contain stale tokens after reinstallations; a failed stale
   token must never suppress delivery to a current token of the same user.

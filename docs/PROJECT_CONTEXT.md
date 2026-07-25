@@ -36,7 +36,7 @@ Latest verified implementation on 2026-07-25:
   badge watches its provider inside the navigation icon only, so a new
   announcement cannot rebuild the whole home shell and flash the current
   Android panel white.
-- Verification passed with clean Flutter analysis, all 42 Flutter tests, all
+- Verification passed with clean Flutter analysis, all 43 Flutter tests, all
   PHP syntax checks, 9 backend rule tests, the dedicated duty-completion smoke
   test, and the local read/write/duty-management API smoke suites.
 - A Railway-targeted Android release APK was built successfully with package
@@ -47,6 +47,14 @@ Latest verified implementation on 2026-07-25:
   `13ec223e-07a3-46ef-b752-4b9036de021c`; the database-backed production
   healthcheck returned HTTP 200. Real-device sick-push acceptance and the
   updated Android installation/visual refresh test remain.
+- A release-only Android notification outage was traced to the optimizer
+  removing `ic_stat_ssd_manager`, which had been referenced only by its runtime
+  resource name. Firebase's default-notification-icon manifest metadata now
+  keeps it in the release APK. The rebuilt APK has SHA-256
+  `34a74a38a57f7a406713e267cb52f1dfdd981a51e70412b583c92016791b3b49`,
+  was installed through the data-preserving ADB update path, exposes the normal
+  importance-4 and sick-report importance-5 channels, and registered its new
+  device token against Railway with HTTP 200.
 
 Verified on the original Windows development machine:
 
