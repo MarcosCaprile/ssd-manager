@@ -20,10 +20,10 @@ The current repository is the source of truth. Historical Codex chats are local 
 - PHP 8.2+ backend without a required Composer setup.
 - MySQL/MariaDB schema and seed data in `backend/database`.
 - REST API under `/api/v1`.
-- Android Firebase Cloud Messaging is configured end to end: the ignored native
-  Android config is installed locally and Railway has the protected backend
-  service account with FCM enabled. iOS still requires its native plist, APNs
-  configuration, and real-device verification.
+- Firebase Cloud Messaging is configured for Android and the Railway backend.
+  The ignored iOS client plist is installed locally, APNs is configured in
+  Firebase, and development signing plus a physical release install work. Real
+  iOS notification delivery still needs final acceptance testing.
 
 ## Important Paths
 
@@ -167,6 +167,10 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - A successful mutation must not be reported as failed only because its
   follow-up refresh failed. Keep already loaded panel content cached, refresh it
   explicitly when needed, and delay full loading indicators for two seconds.
+- Foreground polling must compare semantically equal payloads and publish UI
+  state only when data actually changed. Never replace already visible content
+  with an asynchronously completed `Future`; preserved `FutureBuilder` updates
+  use cached data or `SynchronousFuture` so no blank frame is rendered.
 - Sanitary start dates are immutable after account creation but may be in the
   future so accounts can be prepared before qualification becomes effective.
 - Bulk user changes are manager-only, limited to sanitary accounts, validated

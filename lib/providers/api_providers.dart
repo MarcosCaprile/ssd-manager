@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/api/api_client.dart';
@@ -110,6 +111,7 @@ class AnnouncementFeedController extends Notifier<List<Announcement>?> {
   List<Announcement>? build() => null;
 
   void replace(List<Announcement> announcements) {
+    if (listEquals(state, announcements)) return;
     state = List.unmodifiable(announcements);
   }
 }

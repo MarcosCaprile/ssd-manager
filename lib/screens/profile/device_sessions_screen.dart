@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -33,7 +34,7 @@ class _DeviceSessionsScreenState extends ConsumerState<DeviceSessionsScreen> {
     if (preserveOnError) {
       try {
         final devices = await _load();
-        if (mounted) setState(() => _future = Future.value(devices));
+        if (mounted) setState(() => _future = SynchronousFuture(devices));
       } catch (_) {
         // Die Abmeldung war erfolgreich; ein fehlgeschlagenes Nachladen
         // ändert dieses Ergebnis nicht.

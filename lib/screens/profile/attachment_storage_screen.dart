@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -35,7 +36,7 @@ class _AttachmentStorageScreenState
     if (preserveOnError) {
       try {
         final storage = await _load();
-        if (mounted) setState(() => _future = Future.value(storage));
+        if (mounted) setState(() => _future = SynchronousFuture(storage));
       } catch (_) {
         // Das Löschen bleibt erfolgreich, auch wenn die aktualisierte
         // Speicherübersicht erst beim nächsten Öffnen geladen werden kann.

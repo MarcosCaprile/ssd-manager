@@ -38,6 +38,26 @@ void main() {
     expect(find.text('Erste Live-Nachricht'), findsOneWidget);
     expect(find.text('Zweite Live-Nachricht'), findsOneWidget);
   });
+
+  test('equivalent live feeds do not emit redundant state updates', () {
+    final container = ProviderContainer();
+    var notifications = 0;
+    final subscription = container.listen<List<Announcement>?>(
+      announcementFeedProvider,
+      (_, _) => notifications++,
+    );
+
+    container.read(announcementFeedProvider.notifier).replace([
+      _announcement(1, 'Unverändert'),
+    ]);
+    container.read(announcementFeedProvider.notifier).replace([
+      _announcement(1, 'Unverändert'),
+    ]);
+
+    expect(notifications, 1);
+    subscription.close();
+    container.dispose();
+  });
 }
 
 Announcement _announcement(int id, String message) {

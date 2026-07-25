@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -92,7 +91,9 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
         try {
           final items = await _load();
           if (mounted) {
-            setState(() => _future = Future.value(List.unmodifiable(items)));
+            setState(
+              () => _future = SynchronousFuture(List.unmodifiable(items)),
+            );
           }
         } catch (_) {
           // Bereits sichtbare Ankündigungen bleiben erhalten. Der nächste
@@ -170,7 +171,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     setState(() {
       _pending.clear();
       _items = updated;
-      _future = Future.value(List.unmodifiable(_items));
+      _future = SynchronousFuture(List.unmodifiable(_items));
     });
     ref.read(announcementFeedProvider.notifier).replace(updated);
     await _refreshAfterSend();

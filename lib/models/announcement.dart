@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../utils/json_date_time.dart';
 
 class AnnouncementAttachment {
@@ -16,6 +18,22 @@ class AnnouncementAttachment {
   final int sizeBytes;
   final bool isImage;
   final bool isDeleted;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is AnnouncementAttachment &&
+            id == other.id &&
+            fileName == other.fileName &&
+            mimeType == other.mimeType &&
+            sizeBytes == other.sizeBytes &&
+            isImage == other.isImage &&
+            isDeleted == other.isDeleted;
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, fileName, mimeType, sizeBytes, isImage, isDeleted);
 
   factory AnnouncementAttachment.fromJson(Map<String, dynamic> json) {
     return AnnouncementAttachment(
@@ -53,6 +71,34 @@ class Announcement {
   final List<AnnouncementAttachment> attachments;
 
   bool get isSystem => messageType == 'system';
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is Announcement &&
+            id == other.id &&
+            senderUserId == other.senderUserId &&
+            senderName == other.senderName &&
+            senderRole == other.senderRole &&
+            message == other.message &&
+            messageType == other.messageType &&
+            systemType == other.systemType &&
+            createdAt == other.createdAt &&
+            listEquals(attachments, other.attachments);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    senderUserId,
+    senderName,
+    senderRole,
+    message,
+    messageType,
+    systemType,
+    createdAt,
+    Object.hashAll(attachments),
+  );
 
   factory Announcement.fromJson(Map<String, dynamic> json) {
     return Announcement(

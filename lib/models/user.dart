@@ -67,6 +67,34 @@ class User {
   bool canManageRoleOf(User target) =>
       role.canManageRoles && id != target.id && target.role.isSanitaryRole;
 
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is User &&
+            id == other.id &&
+            firstName == other.firstName &&
+            lastName == other.lastName &&
+            username == other.username &&
+            email == other.email &&
+            role == other.role &&
+            sanitaeterSince == other.sanitaeterSince &&
+            status == other.status &&
+            mustChangePassword == other.mustChangePassword;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    firstName,
+    lastName,
+    username,
+    email,
+    role,
+    sanitaeterSince,
+    status,
+    mustChangePassword,
+  );
+
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: (json['id'] as num).toInt(),

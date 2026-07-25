@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -182,6 +183,7 @@ class _DutyList extends ConsumerStatefulWidget {
 class _DutyListState extends ConsumerState<_DutyList>
     with AutomaticKeepAliveClientMixin {
   late Future<List<DutyDay>> _future;
+  List<DutyDay>? _cachedDays;
   DateTime? _historyDate;
 
   @override
@@ -190,10 +192,10 @@ class _DutyListState extends ConsumerState<_DutyList>
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadInitial();
   }
 
-  Future<List<DutyDay>> _load() async {
+  Future<List<DutyDay>> _fetch() async {
     final repository = ref.read(dutyRepositoryProvider);
     final days = widget.mode == _DutyListMode.upcoming
         ? await repository.upcoming()
@@ -201,18 +203,27 @@ class _DutyListState extends ConsumerState<_DutyList>
     return days;
   }
 
+  Future<List<DutyDay>> _loadInitial() async {
+    final days = List<DutyDay>.unmodifiable(await _fetch());
+    _cachedDays = days;
+    return days;
+  }
+
   Future<void> refresh({bool preserveOnError = false}) async {
-    if (preserveOnError) {
+    if (_cachedDays != null || preserveOnError) {
       try {
-        final days = await _load();
-        if (mounted) setState(() => _future = Future.value(days));
+        final days = List<DutyDay>.unmodifiable(await _fetch());
+        if (!mounted || listEquals(_cachedDays, days)) return;
+        _cachedDays = days;
+        setState(() => _future = SynchronousFuture(days));
       } catch (_) {
-        // Die Speicherung war erfolgreich. Ein fehlgeschlagenes Nachladen
-        // darf nicht nachträglich als fehlgeschlagene Aktion erscheinen.
+        if (!preserveOnError) rethrow;
+        // Sichtbare Daten bleiben bei einem fehlgeschlagenen Live-Abgleich
+        // erhalten. Der nächste Hintergrundlauf versucht es erneut.
       }
       return;
     }
-    final next = _load();
+    final next = _loadInitial();
     setState(() {
       _future = next;
     });
@@ -243,16 +254,17 @@ class _DutyListState extends ConsumerState<_DutyList>
     return FutureBuilder<List<DutyDay>>(
       future: _future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        final days = _cachedDays ?? snapshot.data;
+        if (days == null && snapshot.connectionState != ConnectionState.done) {
           return const DelayedLoadingView(
             message: 'Dienstplan wird geladen ...',
           );
         }
-        if (snapshot.hasError) {
+        if (days == null && snapshot.hasError) {
           return ErrorView(error: snapshot.error, onRetry: refresh);
         }
-        final days = snapshot.data ?? [];
-        if (days.isEmpty) {
+        final visibleDays = days ?? const <DutyDay>[];
+        if (visibleDays.isEmpty) {
           return EmptyView(
             icon: Icons.event_busy_outlined,
             title: widget.mode == _DutyListMode.upcoming
@@ -273,13 +285,13 @@ class _DutyListState extends ConsumerState<_DutyList>
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
             itemBuilder: (context, index) => _DutyDayCard(
-              day: days[index],
+              day: visibleDays[index],
               currentUser: user,
               readOnly: widget.mode == _DutyListMode.history,
               onChanged: () => refresh(preserveOnError: true),
             ),
             separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemCount: days.length,
+            itemCount: visibleDays.length,
           ),
         );
       },
@@ -305,14 +317,16 @@ class _DutyListState extends ConsumerState<_DutyList>
     if (selected == null) return;
     setState(() {
       _historyDate = selected;
-      _future = _load();
+      _cachedDays = null;
+      _future = _loadInitial();
     });
   }
 
   void _clearHistoryDate() {
     setState(() {
       _historyDate = null;
-      _future = _load();
+      _cachedDays = null;
+      _future = _loadInitial();
     });
   }
 }

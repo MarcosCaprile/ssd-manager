@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,7 +38,7 @@ class _ProfileStatisticsScreenState
   Future<void> _refreshPreservingContent() async {
     try {
       final next = await _load();
-      if (mounted) setState(() => _future = Future.value(next));
+      if (mounted) setState(() => _future = SynchronousFuture(next));
     } catch (_) {
       // Bereits sichtbare Statistiken bleiben bei einem kurzen
       // Verbindungsproblem erhalten.

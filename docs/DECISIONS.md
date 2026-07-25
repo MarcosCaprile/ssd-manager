@@ -4,6 +4,30 @@ This file records durable project decisions so they are available across local C
 
 Do not store secrets, credentials, tokens, signing keys, real student data, or private account details here.
 
+## 2026-07-25
+
+### Keep live synchronization visually stable
+
+Decision: Foreground polling keeps the last successfully loaded duty and user
+payload visible while the next request runs. Model values are compared
+semantically, unchanged responses publish no new Riverpod/Future state, and
+preserved detail/profile/chat updates use cached or synchronously completed
+data rather than re-entering a loading snapshot.
+
+Reason: Replacing a completed `FutureBuilder` future every one or two seconds
+created a blank frame even when the server returned identical data. Live data
+must update promptly without making the interface visibly reload.
+
+### Install release builds for standalone physical-iPhone testing
+
+Decision: Physical iPhone acceptance builds use signed release mode with an
+explicit Railway `SSD_API_BASE_URL`. Debug builds remain for attached Flutter
+or Xcode sessions only.
+
+Reason: On iOS 14 and newer, a Flutter debug engine cannot be launched later
+from the Home Screen without Flutter tooling or Xcode attached. A release build
+behaves like the independently launched app users will test.
+
 ## 2026-07-24
 
 ### Deduplicate push delivery per distinct device token

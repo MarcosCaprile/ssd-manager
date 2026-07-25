@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,6 +27,7 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
   static const _liveRefreshInterval = Duration(seconds: 2);
 
   late Future<List<User>> _future;
+  List<User>? _cachedUsers;
   final _searchController = TextEditingController();
   String _query = '';
   Timer? _liveRefreshTimer;
@@ -34,14 +36,20 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _future = _loadInitial();
     _liveRefreshTimer = Timer.periodic(
       _liveRefreshInterval,
       (_) => _liveRefresh(),
     );
   }
 
-  Future<List<User>> _load() => ref.read(userRepositoryProvider).users();
+  Future<List<User>> _fetch() => ref.read(userRepositoryProvider).users();
+
+  Future<List<User>> _loadInitial() async {
+    final users = List<User>.unmodifiable(await _fetch());
+    _cachedUsers = users;
+    return users;
+  }
 
   @override
   void dispose() {
@@ -51,17 +59,20 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
   }
 
   Future<void> _refresh({bool preserveOnError = false}) async {
-    if (preserveOnError) {
+    if (_cachedUsers != null || preserveOnError) {
       try {
-        final users = await _load();
-        if (mounted) setState(() => _future = Future.value(users));
+        final users = List<User>.unmodifiable(await _fetch());
+        if (!mounted || listEquals(_cachedUsers, users)) return;
+        _cachedUsers = users;
+        setState(() => _future = SynchronousFuture(users));
       } catch (_) {
-        // Eine erfolgreiche Änderung bleibt erfolgreich, auch wenn das
-        // anschließende Aktualisieren der Liste kurzzeitig fehlschlägt.
+        if (!preserveOnError) rethrow;
+        // Sichtbare Daten bleiben bei einem fehlgeschlagenen Live-Abgleich
+        // erhalten. Der nächste Hintergrundlauf versucht es erneut.
       }
       return;
     }
-    final next = _load();
+    final next = _loadInitial();
     setState(() => _future = next);
     await next;
   }
@@ -171,16 +182,18 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
             child: FutureBuilder<List<User>>(
               future: _future,
               builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
+                final users = _cachedUsers ?? snapshot.data;
+                if (users == null &&
+                    snapshot.connectionState != ConnectionState.done) {
                   return const DelayedLoadingView(
                     message: 'Sani-Liste wird geladen ...',
                   );
                 }
-                if (snapshot.hasError) {
+                if (users == null && snapshot.hasError) {
                   return ErrorView(error: snapshot.error, onRetry: _refresh);
                 }
-                final users = snapshot.data ?? [];
-                if (users.isEmpty) {
+                final visibleUsers = users ?? const <User>[];
+                if (visibleUsers.isEmpty) {
                   return const EmptyView(
                     icon: Icons.groups_outlined,
                     title: 'Noch keine Personen',
@@ -189,8 +202,8 @@ class _SaniListScreenState extends ConsumerState<SaniListScreen> {
                   );
                 }
                 final filtered = _query.isEmpty
-                    ? users
-                    : users
+                    ? visibleUsers
+                    : visibleUsers
                           .where(
                             (user) =>
                                 user.fullName.toLowerCase().contains(_query),

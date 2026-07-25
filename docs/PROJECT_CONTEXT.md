@@ -388,12 +388,15 @@ Technical gaps:
 - `open_filex` currently uses CocoaPods on iOS and does not yet support
   Flutter's Swift Package Manager integration. Flutter 3.44 only warns, but a
   future Flutter version may require a plugin update or replacement.
-- Firebase setup is complete for the Android client and Railway backend but
-  not yet for iOS.
+- Firebase setup is complete for the Android client and Railway backend. The
+  ignored iOS `GoogleService-Info.plist` is installed for
+  `com.minutmate.ssdmanager`, and the owner configured APNs in Firebase. Final
+  normal-message and sick-report push acceptance on the physical iPhone is
+  still pending.
 - The Android Firebase configuration for `com.minutmate.ssdmanager` is
   installed locally at the ignored `android/app/google-services.json` path and
-  was validated against the permanent application ID. The iOS Firebase plist
-  is still outstanding.
+  was validated against the permanent application ID. The matching iOS
+  Firebase plist is installed locally at its ignored native path.
 - The downloaded Firebase Admin service account was validated locally against
   the same Firebase project without exposing its private key. Production can
   now load this credential directly from the protected
@@ -427,6 +430,12 @@ Technical gaps:
   duty/Sani-list panels synchronize every two seconds. Dynamic JSON requests/
   responses use explicit no-cache headers, and foreground push refresh no
   longer waits for local notification presentation.
+- Periodic duty and Sani-list synchronization now retains the last visible
+  payload while a request is running, compares model values semantically, and
+  publishes only real changes. Preserved chat, profile, device, attachment, and
+  detail refreshes use synchronously completed state. This removes the white
+  one-frame reload that previously appeared on every two-second polling tick;
+  regression tests cover cached content and redundant feed suppression.
 - Announcement history now shows one date divider above the first message of
   each populated day. Consecutive messages across midnight therefore start a
   new visible day and sender group.
@@ -435,8 +444,8 @@ Technical gaps:
   installed successfully over USB on the Samsung test phone. Its SHA-256 is
   `8bf51d0ec5b057138089b863d0a01daea17970c58e84b756599e79501a727a6c`.
 - Separate sick-report delivery still needs one real acceptance action against
-  the updated live backend. iOS push delivery remains unconfigured and untested
-  on a real device.
+  the updated live backend. iOS APNs is configured, but normal and sick-report
+  delivery still need end-to-end acceptance on the real device.
 - Firebase initialization and token registration now retry after transient
   startup failures. Android notification channels are explicitly created, and
   local notification operations have a timeout so one stalled platform call
@@ -444,9 +453,10 @@ Technical gaps:
 - Android exposes SSD Manager for native `SEND` and `SEND_MULTIPLE` sharing.
   iOS has a compiled Share Extension using
   `com.minutmate.ssdmanager.ShareExtension` and the shared App Group
-  `group.com.minutmate.ssdmanager`. The iOS simulator build with the extension
-  completed successfully; real-device use requires the owner to enable that App
-  Group for both identifiers in the Apple Developer account.
+  `group.com.minutmate.ssdmanager`. Both Runner and ShareExtension use automatic
+  signing with the same Apple Developer team. Simulator and physical-device
+  builds complete, and the ShareExtension resolves valid `1.0.0+1` bundle
+  versions.
 - Photo previews start aspect-fit over a black full-screen canvas, support
   pinch/double-tap zoom across the complete viewport, and expose the system
   share sheet. File cards also expose the system share sheet.
@@ -506,7 +516,8 @@ Technical gaps:
   database-backed healthcheck returned HTTP 200 with the separate
   sick-report-push backend active.
 - Android release signing is not set up.
-- Apple Developer Team and iOS signing are not finalized.
+- Development signing and physical iPhone installation are operational. App
+  Store distribution, archive validation, and TestFlight remain outstanding.
 - Deployment still needs cron setup, backups, and centralized log/alert handling.
 
 Product and policy gaps:
@@ -526,13 +537,14 @@ Product and policy gaps:
 
 The project owner must handle tasks that require external accounts, legal responsibility, or real credentials:
 
-- Manage the Firebase project and provide the remaining iOS configuration and
-  APNs setup.
+- Safeguard and rotate the APNs authentication key when required; never commit
+  it to the repository.
 - Provide the real school name and first teacher's identity/login details for the initial production accounts.
 - Clarify school approval and privacy/legal requirements.
 - Handle Apple Developer and Google Play or internal distribution setup.
 - Create and safeguard Android signing keys.
-- Handle iOS signing and provisioning.
+- Handle App Store Connect contracts, distribution provisioning, and
+  TestFlight/App Store release steps.
 - Provide real user lists and role assignments.
 - Test on real school devices or provide test devices.
 

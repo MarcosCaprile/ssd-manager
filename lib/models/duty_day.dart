@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../utils/json_date_time.dart';
 
 class DutyAssignment {
@@ -21,6 +23,30 @@ class DutyAssignment {
 
   bool get occupiesSlot => status == 'planned' || status == 'completed';
   bool get isSick => status == 'sick_reported';
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is DutyAssignment &&
+            id == other.id &&
+            userId == other.userId &&
+            fullName == other.fullName &&
+            status == other.status &&
+            assignmentType == other.assignmentType &&
+            assignedAt == other.assignedAt &&
+            sickReportedAt == other.sickReportedAt;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    userId,
+    fullName,
+    status,
+    assignmentType,
+    assignedAt,
+    sickReportedAt,
+  );
 
   factory DutyAssignment.fromJson(Map<String, dynamic> json) {
     return DutyAssignment(
@@ -71,6 +97,30 @@ class DutyDay {
     }
     return null;
   }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is DutyDay &&
+            date == other.date &&
+            capacity == other.capacity &&
+            isActive == other.isActive &&
+            isClosed == other.isClosed &&
+            title == other.title &&
+            description == other.description &&
+            listEquals(assignments, other.assignments);
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    date,
+    capacity,
+    isActive,
+    isClosed,
+    title,
+    description,
+    Object.hashAll(assignments),
+  );
 
   factory DutyDay.fromJson(Map<String, dynamic> json) {
     return DutyDay(

@@ -38,4 +38,28 @@ void main() {
     expect(day.isActive, isTrue);
     expect(day.isClosed, isFalse);
   });
+
+  test('equivalent duty payloads compare equal for silent refreshes', () {
+    DutyDay parse() => DutyDay.fromJson({
+      'date': '2026-10-07',
+      'title': 'Projekttag',
+      'description': 'Ganztägige Betreuung',
+      'capacity': 5,
+      'is_active': true,
+      'is_closed': false,
+      'assignments': [
+        {
+          'id': 10,
+          'user_id': 20,
+          'full_name': 'Test Sani',
+          'status': 'planned',
+          'assignment_type': 'self',
+          'assigned_at': '2026-10-01T08:00:00Z',
+        },
+      ],
+    });
+
+    expect(parse(), parse());
+    expect(parse().hashCode, parse().hashCode);
+  });
 }

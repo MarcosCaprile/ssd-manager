@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -36,7 +37,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     if (preserveOnError) {
       try {
         final data = await _load();
-        if (mounted) setState(() => _future = Future.value(data));
+        if (mounted) setState(() => _future = SynchronousFuture(data));
       } catch (_) {
         // Die vorherige Detailansicht bleibt erhalten, wenn nur das
         // Nachladen nach einer erfolgreichen Änderung scheitert.
