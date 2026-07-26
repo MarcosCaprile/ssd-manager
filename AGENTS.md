@@ -125,6 +125,12 @@ enabled with the protected Base64 service account,
 and OAuth authentication was verified inside the running container without
 printing the credential or token.
 
+Railway also has the `ssd-cron` service in EU West. It uses
+`/railway.cron.json`, runs `php cron/run_due_jobs.php` every 15 minutes, and
+inherits production configuration through Railway references to `ssd-api`.
+Keep it without a public domain or web healthcheck. Its first production run
+completed successfully on 2026-07-26.
+
 Every simulator/device build must set `SSD_API_BASE_URL` explicitly and record
 whether it targets local development or Railway. The production test account
 exists only in Railway; a simulator build compiled with

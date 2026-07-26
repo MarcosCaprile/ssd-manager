@@ -25,11 +25,11 @@ Latest verified implementation on 2026-07-25:
   The sick payload used FCM's reserved custom-data key `message_type`. The
   backend now removes all reserved FCM data keys centrally, and regression
   tests cover the sick-report payload and the full reserved-key set.
-- Railway still has no scheduled cron service, and production diagnostics
-  found one past assignment left in `planned`. Duty-history and
-  profile-statistics reads now transaction-safely materialize matching past
-  planned assignments as `completed`; the existing cron remains necessary for
-  unattended completion, 48-hour reminders, and maintenance.
+- Railway now has the scheduled `ssd-cron` service in EU West. It uses
+  `/railway.cron.json`, runs `php cron/run_due_jobs.php` every 15 minutes, has
+  no public domain or web healthcheck, and receives production settings only
+  through references to `ssd-api`. Its first manual production run completed
+  successfully on 2026-07-26.
 - Live refreshes for announcements, duties, the Sani list, profiles, devices,
   storage, and user details retain their last successful payload and update
   cached data without replacing the screen's completed `Future`. The unread
@@ -426,7 +426,10 @@ The repository already contains:
 
 Technical gaps:
 
-- Railway API, MySQL, automatic migration, secret-backed variables, container build, and public HTTPS healthcheck are operational. Production still needs the first real school and teacher account, a backup schedule, the Railway cron service, and optionally a custom API domain.
+- Railway API, MySQL, automatic migration, secret-backed variables, container
+  build, public HTTPS healthcheck, and the scheduled maintenance service are
+  operational. Production still needs the first real school and teacher
+  account, a backup schedule, and optionally a custom API domain.
 - The corrected Android test APK points to the live Railway HTTPS API and
   passed its end-to-end run on the owner's physical phone.
 - The authenticated iOS journey for the production test teacher is verified across the main read paths. Mutating duty and account workflows that require a separate student target still need end-to-end testing after additional test accounts exist.
@@ -564,9 +567,8 @@ Technical gaps:
 - Android release signing is not set up.
 - Development signing and physical iPhone installation are operational. App
   Store distribution, archive validation, and TestFlight remain outstanding.
-- Deployment still needs a Railway cron service, backups, and centralized
-  log/alert handling. Opportunistic reads now keep displayed completed-duty
-  data correct, but they do not replace scheduled reminders and maintenance.
+- Deployment still needs backups and centralized log/alert handling. The
+  Railway cron service is active and its first production execution succeeded.
 
 Product and policy gaps:
 

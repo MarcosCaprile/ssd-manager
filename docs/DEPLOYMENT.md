@@ -111,21 +111,23 @@ temporär registrierte Railway-SSH-Schlüssel wurde anschließend entfernt.
 
 ## Railway-Cronjob
 
-Für `backend/cron/run_due_jobs.php` wird später ein separater Railway-Service
-aus demselben Image benötigt. Er erhält dieselben Datenbank- und
-Firebase-Variablen, den Startbefehl `php cron/run_due_jobs.php` und einen
-passenden Cron-Zeitplan. Der Web-Service selbst bleibt dauerhaft aktiv.
+Der separate Railway-Service `ssd-cron` läuft in EU West aus demselben
+GitHub-Repository und verwendet `/railway.cron.json`. Er startet alle 15
+Minuten (Railway-Zeitplan `*/15 * * * *`, UTC) kurzzeitig mit
+`php cron/run_due_jobs.php` und beendet sich danach. Datenbank- und
+Firebase-Konfiguration werden ausschließlich über Railway-Referenzvariablen
+vom `ssd-api`-Service übernommen; der Cron-Service besitzt keine öffentliche
+Domain und keinen Web-Healthcheck.
 
-Bis dieser Service eingerichtet ist, materialisieren die API-Lesewege für
-Diensthistorie und Profilstatistik vergangene `planned`-Einträge automatisch
-als `completed`. Das hält sichtbare Statistiken korrekt, ersetzt aber weder
-48-Stunden-Erinnerungen noch unbeaufsichtigte Wartungsaufgaben; der Cron-Service
-bleibt daher ein offener Produktionsschritt.
+Der erste manuell angestoßene Produktionslauf vom 2026-07-26 wurde von Railway
+als erfolgreich abgeschlossen. Er erreichte die Produktionsdatenbank, prüfte
+zwei Erinnerungsgruppen und führte alle weiteren Wartungsschritte ohne Fehler
+aus. Der jeweils nächste Lauf ist im Railway-Bereich `Cron Runs` sichtbar.
 
 Der Job verarbeitet außerdem fällige 30-Tage-Accountlöschungen, löscht
 unbeanspruchte Uploads sowie Login-/Notification-Logs nach 90 Tagen und
-Audit-Logs nach 12 Monaten. Vor realen Kontolöschungen muss dieser Cron-Service
-eingerichtet und überwacht werden.
+Audit-Logs nach 12 Monaten. Fehlgeschlagene oder ausgelassene Ausführungen sind
+über `ssd-cron` → `Cron Runs` und die Deployment-Logs zu kontrollieren.
 
 ## Backend installieren
 
