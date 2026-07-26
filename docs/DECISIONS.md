@@ -4,6 +4,20 @@ This file records durable project decisions so they are available across local C
 
 Do not store secrets, credentials, tokens, signing keys, real student data, or private account details here.
 
+## 2026-07-26
+
+### Publish publicly but provision schools manually
+
+Decision: SSD Manager will be distributed publicly through the Apple App Store
+and Google Play so additional schools can discover and install it. There is no
+open registration or self-service school creation. A school must contact the
+operator, after which the operator creates and explicitly enables its isolated
+school environment and initial administrative access.
+
+Reason: Public distribution makes the product available to more schools while
+manual onboarding prevents unknown users from creating uncontrolled tenants
+or gaining access before organizational and privacy requirements are agreed.
+
 ## 2026-07-25
 
 ### Keep the Android notification icon through release shrinking

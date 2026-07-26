@@ -570,6 +570,11 @@ Technical gaps:
 
 Product and policy gaps:
 
+- Store distribution is public on Apple App Store and Google Play, but school
+  onboarding remains closed. Interested schools contact the operator, who
+  manually creates and enables an isolated school environment and its initial
+  administrative access; the app has no open registration or self-service
+  tenant creation.
 - Final deletion/anonymization after 30 days is not implemented yet.
 - Final product wording and acceptance testing for event days, holidays, and
   the compact schedule layout still need confirmation on real school devices.
@@ -602,13 +607,12 @@ Codex can help integrate config files, prepare builds, run checks, fix bugs, pre
 
 Resolve these before production deployment:
 
-1. Should V1 be distributed internally only, through Play Store/App Store, or both?
-2. Which roles may send announcements?
-3. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
-4. May a normal first-aider see historical duties of other users?
-5. What is the final deletion/anonymization policy?
-6. Is push notification support mandatory for V1 or optional?
-7. How long should announcement texts and attachments be retained, and who may
+1. Which roles may send announcements?
+2. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
+3. May a normal first-aider see historical duties of other users?
+4. What is the final deletion/anonymization policy?
+5. Is push notification support mandatory for V1 or optional?
+6. How long should announcement texts and attachments be retained, and who may
    moderate/delete them?
 
 ## MacBook Handoff Notes
