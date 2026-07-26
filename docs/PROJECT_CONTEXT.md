@@ -580,6 +580,11 @@ Product and policy gaps:
   and DSFA-precheck operating model. The actual processor contracts and TOMs
   remain external records and must be reconciled with the real provider
   documents before onboarding another school.
+- The existing private StudyConnect contract archive was reviewed as a source.
+  `docs/PROVIDER_COMPLIANCE.md` records which Railway and Google/Firebase
+  evidence can be revalidated for SSD Manager and explicitly excludes
+  StudyConnect-only Vercel, Resend, ALL-INKL and Firebase Storage processing.
+  Signed contracts and provider PDFs remain outside the public repository.
 - Final deletion/anonymization after 30 days is not implemented yet.
 - Final product wording and acceptance testing for event days, holidays, and
   the compact schedule layout still need confirmation on real school devices.

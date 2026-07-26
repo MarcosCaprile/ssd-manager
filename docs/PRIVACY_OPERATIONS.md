@@ -134,3 +134,5 @@ Vor realem Mehrschulbetrieb müssen die tatsächlichen Railway-, Firebase-,
 Apple- und Google-Verträge sowie TOMs geprüft und in ein versionsgeführtes
 Unterauftragnehmerverzeichnis übertragen werden. Vertragskopien und
 unterschriebene Dokumente bleiben außerhalb des öffentlichen Repositories.
+Die produktspezifische Übernahmeprüfung aus der vorhandenen
+StudyConnect-Vertragsakte ist in `docs/PROVIDER_COMPLIANCE.md` dokumentiert.
