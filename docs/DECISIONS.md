@@ -569,3 +569,9 @@ Reason: This reuses the owner's established StudyConnect backup provider while
 keeping the two products isolated and ensuring the storage provider cannot read
 student data. Thirty daily generations cover delayed discovery and routine
 recovery without indefinite duplication of personal data.
+
+Operational status: Configured on 2026-07-26 with a dedicated FTP account rooted
+at `/ssd-manager-backups/`, a daily 03:35 KAS task, and failure notifications to
+the MinutMate administration mailbox. The first encrypted production backup was
+uploaded and successfully authenticated, decrypted, and gzip-validated in a
+local restore drill. StudyConnect configuration was not changed.

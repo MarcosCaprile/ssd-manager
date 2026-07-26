@@ -685,6 +685,11 @@ contains generated output only and is not committed.
   and authenticates/encrypts it, then uploads only `.sql.gz.enc` data and a
   checksum manifest to a dedicated All-Inkl FTPS account. Remote generations
   expire after 30 days and backup run records after 90 days. The separate
-  StudyConnect FTP account and cron remain untouched. Production still needs
-  the dedicated All-Inkl account, protected Railway variables, daily KAS cron,
-  and one verified restore drill before this control is operational.
+  StudyConnect FTP account and cron remain untouched. The dedicated restricted
+  account and protected Railway variables are configured. KAS task `Daily
+  Backup SSD Manager` runs daily at 03:35 Europe/Berlin and filters failure
+  mail to `verwaltung@minutmate.com`; the mailbox confirmation requested by
+  All-Inkl must still be accepted. The first production run on 2026-07-26
+  uploaded a 5,384,595-byte encrypted dump plus manifest. A downloaded copy
+  passed authenticated decryption and gzip validation, after which all local
+  test copies and the temporary key file were removed.
