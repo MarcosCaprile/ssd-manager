@@ -2,6 +2,11 @@
 
 Stand: 2026-07-26
 
+- SSD-Manager-Kontakt: `info@ssd-manager.minutmate.com`
+- SSD-Manager-Support: `support@ssd-manager.minutmate.com`
+- MinutMate-Verwaltung: `verwaltung@minutmate.com`
+- MinutMate-Datenschutz: `datenschutz@minutmate.com`
+
 ## Herkunft und Ablage
 
 Die für StudyConnect abgelegten Vertrags- und Anbieternachweise wurden als

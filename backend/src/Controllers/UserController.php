@@ -85,6 +85,30 @@ final class UserController
         Response::json(['ok' => true]);
     }
 
+    /** @param array<string,string> $params */
+    public function dataExport(Request $request, array $params, AuthContext $auth): never
+    {
+        Response::json($this->users->dataExport($auth, (int) $params['id']));
+    }
+
+    /** @param array<string,string> $params */
+    public function dataExportArchive(Request $request, array $params, AuthContext $auth): never
+    {
+        $archive = $this->users->dataExportArchive($auth, (int) $params['id']);
+        $path = $archive['path'];
+        try {
+            http_response_code(200);
+            header('Content-Type: application/zip');
+            header('Content-Length: ' . filesize($path));
+            header('Content-Disposition: attachment; filename="' . $archive['file_name'] . '"');
+            header('Cache-Control: private, no-store');
+            readfile($path);
+        } finally {
+            @unlink($path);
+        }
+        exit;
+    }
+
     /**
      * @param array<string,string> $params
      */

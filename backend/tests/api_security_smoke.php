@@ -263,6 +263,19 @@ try {
         'other-school profile is inaccessible'
     );
     expect_security_status(
+        security_request('GET', "users/{$crossSchoolUserId}/data-export", accessToken: $teacherToken),
+        404,
+        'other-school data export is inaccessible'
+    );
+    $crossSchoolExportArchive = security_binary_request(
+        "users/{$crossSchoolUserId}/data-export/archive",
+        $teacherToken
+    );
+    if ($crossSchoolExportArchive['status'] !== 404) {
+        throw new RuntimeException('Data export archive leaked another school.');
+    }
+    echo '[OK] other-school data export archive is inaccessible' . PHP_EOL;
+    expect_security_status(
         security_request(
             'PATCH',
             "users/{$crossSchoolUserId}/role",

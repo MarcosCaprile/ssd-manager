@@ -122,6 +122,11 @@ als `completed`. Das hält sichtbare Statistiken korrekt, ersetzt aber weder
 48-Stunden-Erinnerungen noch unbeaufsichtigte Wartungsaufgaben; der Cron-Service
 bleibt daher ein offener Produktionsschritt.
 
+Der Job verarbeitet außerdem fällige 30-Tage-Accountlöschungen, löscht
+unbeanspruchte Uploads sowie Login-/Notification-Logs nach 90 Tagen und
+Audit-Logs nach 12 Monaten. Vor realen Kontolöschungen muss dieser Cron-Service
+eingerichtet und überwacht werden.
+
 ## Backend installieren
 
 Die folgenden Schritte gelten für ein generisches PHP-Hosting außerhalb von

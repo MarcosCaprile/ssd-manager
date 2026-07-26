@@ -85,6 +85,8 @@ $router->add('PATCH', 'users/{id}', [$userController, 'update']);
 $router->add('POST', 'users/{id}/deactivate', [$userController, 'deactivate']);
 $router->add('POST', 'users/{id}/reactivate', [$userController, 'reactivate']);
 $router->add('POST', 'users/{id}/mark-deletion', [$userController, 'markDeletion']);
+$router->add('GET', 'users/{id}/data-export', [$userController, 'dataExport']);
+$router->add('GET', 'users/{id}/data-export/archive', [$userController, 'dataExportArchive']);
 $router->add('PATCH', 'users/{id}/role', [$userController, 'changeRole']);
 
 try {

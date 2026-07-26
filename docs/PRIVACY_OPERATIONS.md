@@ -2,6 +2,10 @@
 
 Stand: 2026-07-26
 
+- Produktkontakt: `info@ssd-manager.minutmate.com`
+- Produktsupport: `support@ssd-manager.minutmate.com`
+- MinutMate-Datenschutzkontakt: `datenschutz@minutmate.com`
+
 Dieses Dokument beschreibt den vorgesehenen Betriebsstandard. Es ersetzt keine
 Prüfung durch die verantwortliche Schule, ihren Datenschutzbeauftragten oder
 eine Rechtsberatung nach dem jeweils geltenden Landesrecht.

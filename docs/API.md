@@ -179,6 +179,8 @@ als frei wählbarer Client-Absender akzeptiert.
 | POST | `/users/{id}/deactivate` | Account deaktivieren |
 | POST | `/users/{id}/reactivate` | Account reaktivieren |
 | POST | `/users/{id}/mark-deletion` | 30-Tage-Löschvormerkung |
+| GET | `/users/{id}/data-export` | Strukturierte Datenauskunft (Manager) |
+| GET | `/users/{id}/data-export/archive` | ZIP-Datenauskunft inklusive eigener Anhänge (Manager) |
 | PATCH | `/users/{id}/role` | Rolle ändern |
 
 Beim Erstellen eines `sanitaeter`- oder `sani_leitung`-Accounts ist zusätzlich

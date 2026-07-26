@@ -70,6 +70,29 @@ function api_request(string $method, string $path, ?array $payload = null, ?stri
     return ['status' => $status, 'body' => $body];
 }
 
+/** @return array{status:int,body:string,content_type:string} */
+function api_binary_request(string $path, string $accessToken): array
+{
+    global $baseUrl;
+    $handle = curl_init($baseUrl . '/' . ltrim($path, '/'));
+    curl_setopt_array($handle, [
+        CURLOPT_HTTPHEADER => ['Accept: application/zip', 'Authorization: Bearer ' . $accessToken],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT => 20,
+    ]);
+    $body = curl_exec($handle);
+    if ($body === false) {
+        throw new RuntimeException('Binary HTTP request failed: ' . curl_error($handle));
+    }
+    $result = [
+        'status' => (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE),
+        'body' => (string) $body,
+        'content_type' => (string) curl_getinfo($handle, CURLINFO_CONTENT_TYPE),
+    ];
+    curl_close($handle);
+    return $result;
+}
+
 function expect_status(array $response, int $expected, string $label): array
 {
     if ($response['status'] !== $expected) {
@@ -549,6 +572,34 @@ try {
     }
     echo '[OK] re-login keeps only one active entry for the same device' . PHP_EOL;
     $reactivated = $sameDeviceAfterLogout;
+    $dataExport = expect_status(
+        api_request('GET', "users/{$testUserId}/data-export", accessToken: $teacher['access_token']),
+        200,
+        'teacher exports a school-verified user data copy'
+    );
+    $exportPayload = $dataExport['body']['data'] ?? [];
+    if (
+        ($exportPayload['user']['username'] ?? null) !== $testUsername
+        || array_key_exists('password_hash', $exportPayload['user'] ?? [])
+        || !in_array('firebase_tokens', $exportPayload['excluded_secrets'] ?? [], true)
+    ) {
+        throw new RuntimeException('Data export is incomplete or exposes secrets.');
+    }
+    echo '[OK] manager data export includes user data without secrets' . PHP_EOL;
+    $archiveExport = api_binary_request("users/{$testUserId}/data-export/archive", $teacher['access_token']);
+    if (
+        $archiveExport['status'] !== 200
+        || $archiveExport['content_type'] !== 'application/zip'
+        || !str_starts_with($archiveExport['body'], "PK")
+    ) {
+        throw new RuntimeException('Data export archive is not a valid ZIP response.');
+    }
+    echo '[OK] manager data export archive is downloadable' . PHP_EOL;
+    expect_status(
+        api_request('GET', "users/{$testUserId}/data-export", accessToken: $reactivated['access_token']),
+        403,
+        'ordinary user cannot export another account'
+    );
     expect_status(
         api_request('POST', "users/{$testUserId}/mark-deletion", accessToken: $teacher['access_token']),
         200,

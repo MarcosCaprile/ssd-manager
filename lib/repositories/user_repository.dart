@@ -93,6 +93,14 @@ class UserRepository {
   Future<void> reactivate(int id) => _api.post('users/$id/reactivate');
   Future<void> markDeletion(int id) => _api.post('users/$id/mark-deletion');
 
+  Future<Map<String, dynamic>> dataExport(int id) async {
+    return await _api.get('users/$id/data-export') as Map<String, dynamic>;
+  }
+
+  Future<List<int>> dataExportArchive(int id) async {
+    return await _api.getBytes('users/$id/data-export/archive');
+  }
+
   Future<void> changeRole(int id, UserRole role) {
     return _api.patch('users/$id/role', body: {'role': role.toJson()});
   }

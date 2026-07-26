@@ -16,6 +16,7 @@
 | Accounts erstellen | Nein | Nur Sanis | Alle Rollen | Nein |
 | Accounts deaktivieren/reaktivieren | Nein | Ja | Ja | Nein |
 | Accounts zur Löschung vormerken | Nein | Ja | Ja | Nein |
+| Datenauskunft für Accounts erzeugen | Nein | Ja | Ja | Nein |
 | Rolle Sani ↔ Sani-Leitung ändern | Nein | Ja | Ja | Nein |
 | Lehrer-/Sekretariatsrolle ändern | Nein | Nein | Nein | Nein |
 | Eigene Geräte und Cloud-Dateien verwalten | Ja | Ja | Ja | Ja |
@@ -43,3 +44,7 @@ Serverseitige Regeln:
   Listenende.
 - Das Deaktivieren oder Vormerken zur Löschung widerruft alle aktiven Sitzungen
   des betroffenen Accounts sofort.
+- Nach 30 Tagen anonymisiert der Wartungsjob fällige Accounts, entfernt
+  Geräte-/Token-/Dateidaten und erhält historische Dienste und Nachrichtentexte
+  unter `Gelöschter Nutzer`. Eine Reaktivierung innerhalb der Frist hebt die
+  Fälligkeit vollständig auf.

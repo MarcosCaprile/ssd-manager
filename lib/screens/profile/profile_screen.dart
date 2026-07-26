@@ -9,6 +9,7 @@ import '../../widgets/status_views.dart';
 import '../auth/change_password_screen.dart';
 import 'appearance_screen.dart';
 import 'attachment_storage_screen.dart';
+import 'contact_screen.dart';
 import 'device_sessions_screen.dart';
 import 'profile_statistics_screen.dart';
 
@@ -68,6 +69,12 @@ class ProfileScreen extends ConsumerWidget {
                   title: 'Angemeldete Geräte',
                   subtitle: 'Aktive Sitzungen ansehen und abmelden',
                   onTap: () => _open(context, const DeviceSessionsScreen()),
+                ),
+                _SettingsTile(
+                  icon: Icons.support_agent_outlined,
+                  title: 'Kontakt und Support',
+                  subtitle: 'SSD Manager erreichen oder Schule freischalten',
+                  onTap: () => _open(context, const ContactScreen()),
                   showDivider: false,
                 ),
               ],

@@ -137,6 +137,11 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 
 ## Working Rules
 
+- SSD Manager product/onboarding contact is
+  `info@ssd-manager.minutmate.com`; product support is
+  `support@ssd-manager.minutmate.com`. MinutMate-wide contacts retain their
+  `@minutmate.com` addresses and must be labeled as company contacts, never as
+  StudyConnect-specific SSD Manager contacts.
 - Do not commit secrets or local environment files. Keep `backend/.env`, Firebase config files, service-account JSON files, signing keys, and local build output out of Git.
 - After completing and verifying an implementation task, automatically commit
   and push the task's intended changes to the current branch unless the user

@@ -74,6 +74,10 @@ Moderationsregel festlegen.
   Passwort-Hash, Geräte-/Sitzungsdaten, Push-Tokens und sonstige direkte
   Accountkennzeichen. Vergangene Dienstzuweisungen und Nachrichtentexte bleiben
   ohne Nutzerbezug sichtbar und verwenden `Gelöschter Nutzer`.
+- Lehreraufsicht und Sani-Leitung können vor der Löschung eine ZIP-
+  Datenauskunft mit strukturiertem JSON und den noch vorhandenen eigenen
+  Anhängen erstellen. Passwörter, Token, Hashes und fremde Daten sind
+  ausgeschlossen; der Export wird auditiert.
 - Alle vom gelöschten Account hochgeladenen Anhänge verlieren Inhalt und
   personenbezogene Dateimetadaten. Bereits versendete Anhänge bleiben nur als
   nicht herunterladbarer Tombstone im Gespräch erkennbar.

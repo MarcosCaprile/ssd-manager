@@ -6,6 +6,19 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-26
 
+### Separate SSD Manager product contacts from MinutMate company contacts
+
+Decision: SSD Manager uses `info@ssd-manager.minutmate.com` for product and
+school-onboarding inquiries and `support@ssd-manager.minutmate.com` for
+technical support. General company matters use the existing MinutMate addresses
+`info@minutmate.com`, `verwaltung@minutmate.com`,
+`datenschutz@minutmate.com`, and `marcos.caprile@minutmate.com`, always labeled
+as MinutMate contacts. StudyConnect's support mailbox is not reused.
+
+Reason: Product support and school onboarding must be unambiguous without
+misrepresenting MinutMate-wide company and privacy contacts as belonging to a
+different product.
+
 ### Retain the active school conversation without promising permanent storage
 
 Decision: Announcement text remains available while its school environment is

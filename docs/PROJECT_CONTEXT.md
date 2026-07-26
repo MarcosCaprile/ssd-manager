@@ -585,7 +585,12 @@ Product and policy gaps:
   evidence can be revalidated for SSD Manager and explicitly excludes
   StudyConnect-only Vercel, Resend, ALL-INKL and Firebase Storage processing.
   Signed contracts and provider PDFs remain outside the public repository.
-- Final deletion/anonymization after 30 days is not implemented yet.
+- Final deletion/anonymization after 30 days is implemented in the shared due
+  job. It removes identity, credentials, sessions, tokens and uploaded bytes,
+  tombstones claimed attachments, removes future planned duties, retains
+  historical duties/messages as `Gelöschter Nutzer`, and cleans operational
+  logs at the documented 90-day/12-month limits. Manager-only ZIP data exports
+  include JSON plus the user's still available attachments without secrets.
 - Final product wording and acceptance testing for event days, holidays, and
   the compact schedule layout still need confirmation on real school devices.
 - The 48-hour rule currently depends on the duty day boundary; decide whether it should use midnight or the real duty start time.
@@ -620,10 +625,7 @@ Resolve these before production deployment:
 1. Which roles may send announcements?
 2. Should the 48-hour rule be calculated from midnight or from the actual duty start time?
 3. May a normal first-aider see historical duties of other users?
-4. What is the final deletion/anonymization policy?
-5. Is push notification support mandatory for V1 or optional?
-6. How long should announcement texts and attachments be retained, and who may
-   moderate/delete them?
+4. Is push notification support mandatory for V1 or optional?
 
 ## MacBook Handoff Notes
 

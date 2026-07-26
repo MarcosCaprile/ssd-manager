@@ -316,6 +316,7 @@ final class UserBulkService
                 'UPDATE users
                  SET status = :status,
                      deactivated_at = CASE WHEN :status_for_date = "inactive" THEN UTC_TIMESTAMP() ELSE NULL END,
+                     permanent_deletion_due_at = NULL,
                      updated_at = UTC_TIMESTAMP()
                  WHERE id = :id AND school_id = :school_id'
             )->execute([

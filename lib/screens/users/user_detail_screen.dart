@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../models/profile_statistics.dart';
 import '../../models/user.dart';
@@ -130,6 +134,11 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                               ),
                               label: const Text('Rolle verwalten'),
                             ),
+                          OutlinedButton.icon(
+                            onPressed: () => _exportData(context, user),
+                            icon: const Icon(Icons.download_outlined),
+                            label: const Text('Datenauskunft exportieren'),
+                          ),
                           if (user.status == 'active')
                             OutlinedButton.icon(
                               onPressed: () => _deactivate(context, user),
@@ -211,7 +220,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
       context,
       title: 'Löschung vormerken?',
       message:
-          '${user.fullName} wird mit 30 Tagen Frist zur endgültigen Löschung vorgemerkt.',
+          '${user.fullName} wird 30 Tage vorgemerkt. Danach werden Identität, Geräte und Dateien gelöscht. Historische Dienste und Nachrichten bleiben als „Gelöschter Nutzer“ erhalten.',
       confirmLabel: 'Vormerken',
       destructive: true,
     );
@@ -227,6 +236,40 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
           const SnackBar(content: Text('Löschung wurde vorgemerkt.')),
         );
       }
+    }
+  }
+
+  Future<void> _exportData(BuildContext context, User user) async {
+    final succeeded = await _runAction(context, () async {
+      final bytes = await ref
+          .read(userRepositoryProvider)
+          .dataExportArchive(user.id);
+      final directory = await getTemporaryDirectory();
+      final file = File(
+        '${directory.path}/ssd-manager-datenauskunft-${user.id}.zip',
+      );
+      try {
+        await file.writeAsBytes(bytes, flush: true);
+        if (!context.mounted) return;
+        final box = context.findRenderObject() as RenderBox?;
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path, mimeType: 'application/zip')],
+            fileNameOverrides: ['SSD-Manager-Datenauskunft-${user.id}.zip'],
+            subject: 'SSD Manager – Datenauskunft',
+            sharePositionOrigin: box == null
+                ? null
+                : box.localToGlobal(Offset.zero) & box.size,
+          ),
+        );
+      } finally {
+        if (await file.exists()) await file.delete();
+      }
+    });
+    if (succeeded && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Datenauskunft wurde erstellt.')),
+      );
     }
   }
 
