@@ -575,6 +575,11 @@ Product and policy gaps:
   manually creates and enables an isolated school environment and its initial
   administrative access; the app has no open registration or self-service
   tenant creation.
+- `docs/PRIVACY_OPERATIONS.md` defines the agreed school onboarding,
+  data-subject request, deletion/anonymization, 30-day backup, security-incident
+  and DSFA-precheck operating model. The actual processor contracts and TOMs
+  remain external records and must be reconciled with the real provider
+  documents before onboarding another school.
 - Final deletion/anonymization after 30 days is not implemented yet.
 - Final product wording and acceptance testing for event days, holidays, and
   the compact schedule layout still need confirmation on real school devices.

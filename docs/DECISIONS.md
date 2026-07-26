@@ -6,6 +6,42 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 ## 2026-07-26
 
+### Retain the active school conversation without promising permanent storage
+
+Decision: Announcement text remains available while its school environment is
+active and is not removed by an automatic calendar-based expiry. Each school
+must confirm the continuing operational need at least annually. The complete
+conversation is deleted when the school environment ends. Attachments remain
+until the uploader's account is permanently processed or the school
+environment ends, whichever occurs first.
+
+Reason: The shared conversation should preserve operational context like a
+messenger, but an unconditional "forever" promise conflicts with storage
+limitation and the need to review whether personal data remains necessary.
+
+### Anonymize history and remove account-linked files after deletion
+
+Decision: Only teacher supervision and Sani-Leitung may initiate account
+deletion, following a request handled through the school. After the 30-day
+pending period, identifying account, credential, session, token, device and
+file data is erased. Historical duty records and message text remain but show
+`Gelöschter Nutzer`; every attachment uploaded by that account loses its bytes
+and becomes an unavailable-content tombstone in the chat.
+
+Reason: School history and conversation continuity remain understandable
+without retaining the deleted person's direct identifiers or cloud files.
+
+### Expire encrypted rolling backups after 30 days
+
+Decision: Production uses encrypted daily backups with a rolling maximum age
+of 30 days. Deletions take effect immediately in the live system and disappear
+from ordinary backup rotation within 30 days. A protected deletion ledger is
+reapplied before a restored backup may return to service.
+
+Reason: Thirty days provides a practical disaster-recovery window without
+turning backups into indefinite shadow storage or allowing a restore to undo a
+completed erasure.
+
 ### Publish publicly but provision schools manually
 
 Decision: SSD Manager will be distributed publicly through the Apple App Store

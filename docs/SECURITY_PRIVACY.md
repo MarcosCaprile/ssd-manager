@@ -67,4 +67,20 @@ Moderationsregel festlegen.
 
 - `mark-deletion` setzt `status = pending_deletion` und `permanent_deletion_due_at = now + 30 days`.
 - Sitzungen und Push-Tokens werden sofort widerrufen.
-- Die endgültige Löschung/anonymisierte historische Aufbewahrung sollte als separater Wartungsjob ergänzt werden, sobald die schulische Aufbewahrungsregel feststeht.
+- Nur Lehreraufsicht und Sani-Leitung dürfen eine von der Schule geprüfte
+  Löschung vormerken. Betroffene Schülerkonten werden nicht aufgrund einer
+  unbestätigten direkten Nachricht an den Betreiber gelöscht.
+- Nach 30 Tagen entfernt der Wartungsjob Namen, E-Mail, Benutzername,
+  Passwort-Hash, Geräte-/Sitzungsdaten, Push-Tokens und sonstige direkte
+  Accountkennzeichen. Vergangene Dienstzuweisungen und Nachrichtentexte bleiben
+  ohne Nutzerbezug sichtbar und verwenden `Gelöschter Nutzer`.
+- Alle vom gelöschten Account hochgeladenen Anhänge verlieren Inhalt und
+  personenbezogene Dateimetadaten. Bereits versendete Anhänge bleiben nur als
+  nicht herunterladbarer Tombstone im Gespräch erkennbar.
+- Ankündigungstexte verfallen während einer aktiven Schulumgebung nicht
+  automatisch. Die Schule überprüft ihre weitere Erforderlichkeit mindestens
+  jährlich; bei Beendigung der Schulumgebung wird der Gesprächsbestand
+  gelöscht. Anhänge enden früher mit der Löschung ihres Uploaders.
+- Verschlüsselte tägliche Backups werden höchstens 30 Tage rollierend
+  aufbewahrt. Eine Wiederherstellung darf erst produktiv gehen, nachdem ein
+  separat geschütztes Löschregister erneut angewendet wurde.
