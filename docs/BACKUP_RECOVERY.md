@@ -11,6 +11,10 @@
   run. Database run records older than 90 days are also removed.
 - The encryption key must be retained outside All-Inkl. Losing that key makes
   every backup unrecoverable.
+- On the owner's MacBook, the current recovery credentials are also stored in
+  the Git-ignored `local-secrets/ssd-manager-backup-recovery.env` with local
+  user-only permissions. This local copy is not a substitute for an independent
+  password-manager copy and must never be committed or synced publicly.
 
 ## Daily verification
 

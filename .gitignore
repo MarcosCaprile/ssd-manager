@@ -52,3 +52,6 @@ app.*.map.json
 **/*firebase-adminsdk*.json
 /android/app/google-services.json
 /ios/Runner/GoogleService-Info.plist
+
+# Local production credentials and recovery keys (never commit)
+/local-secrets/
