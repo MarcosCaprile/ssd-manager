@@ -693,3 +693,16 @@ contains generated output only and is not committed.
   uploaded a 5,384,595-byte encrypted dump plus manifest. A downloaded copy
   passed authenticated decryption and gzip validation, after which all local
   test copies and the temporary key file were removed.
+- A complete editable legal/release working package now lives in
+  `docs/legal-release-package/`. It contains 16 rendered and visually checked
+  Word documents: register/StudyConnect comparison, imprint, privacy notice,
+  terms, school SaaS contract, Art. 28 DPA, TOMs, subprocessors, retention,
+  DPIA template, records of processing, data-subject and incident procedures,
+  confidentiality form, school onboarding approval, and App Store privacy
+  worksheet. The active Railway, Google/Firebase, and All-Inkl provider
+  evidence was copied into a Git-ignored private subfolder; StudyConnect-only
+  Vercel, Resend, and Firebase Storage claims were not reused. These remain
+  review drafts pending lawyer, school/controller, DPO, state-school-law, and
+  provider-account evidence review.
+- The All-Inkl notification address was confirmed by the owner after setup;
+  backup failure e-mails are therefore active.

@@ -55,3 +55,5 @@ app.*.map.json
 
 # Local production credentials and recovery keys (never commit)
 /local-secrets/
+/docs/legal-release-package/provider-evidence-private/
+/docs/legal-release-package/qa/

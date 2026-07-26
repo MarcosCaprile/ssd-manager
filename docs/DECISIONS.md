@@ -575,3 +575,18 @@ at `/ssd-manager-backups/`, a daily 03:35 KAS task, and failure notifications to
 the MinutMate administration mailbox. The first encrypted production backup was
 uploaded and successfully authenticated, decrypted, and gzip-validated in a
 local restore drill. StudyConnect configuration was not changed.
+
+### Maintain a separate SSD Manager legal package
+
+Decision: SSD Manager keeps its editable school-contract, privacy, security,
+retention, DPIA, operational-process, onboarding, and store-disclosure drafts in
+`docs/legal-release-package/`. StudyConnect supplies reusable MinutMate company
+facts, contract structure, and provider evidence only. Product functions,
+data categories, active processors, storage, deletion, and security statements
+must be verified against SSD Manager itself and may not be copied by renaming.
+Private signed/provider evidence remains Git-ignored.
+
+Reason: The two products have different purposes, data flows, vendors, and
+risks. A product-specific package supports school procurement and GDPR
+accountability without importing false StudyConnect claims into a public
+repository.
