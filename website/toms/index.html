@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Technische und organisatorische Maßnahmen · SSD Manager</title>
+  <meta name="description" content="Technische und organisatorische Maßnahmen für SSD Manager von MinutMate.">
+  <link rel="icon" href="/assets/app-icon.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/"><img src="/assets/app-icon.png" alt=""><span>SSD Manager</span></a><nav aria-label="Hauptnavigation"><a href="/#funktionen">Funktionen</a><a href="/#schulen">Für Schulen</a><a href="/support/">Support</a></nav></header>
+  <main class="legal-page">
+    <div class="eyebrow">Rechtliches</div>
+    <h1>Technische und organisatorische Maßnahmen</h1>
+    <p class="legal-intro">Stand: 26. Juli 2026 · Die schulbezogenen Angaben werden bei Einrichtung der jeweiligen Schulumgebung ergänzt.</p>
+    <article class="legal-card"><p>SSD Manager – Art. 28 Abs. 3 und Art. 32 DSGVO</p>
+<h2>1. Governance und Risikoorientierung</h2>
+<p class="list-item">Mindestens halbjährliche sowie anlassbezogene Überprüfung.</p>
+<p class="list-item">Berechtigungs- und Restore-Prüfungen mindestens halbjährlich; erster Restore-Test erfolgreich durchgeführt.</p>
+<p class="list-item">Geheimnisse ausschließlich in geschützten Produktionsvariablen und lokalen, Git-ausgeschlossenen Recovery-Ablagen.</p>
+<p class="list-item">Vertraulichkeitsverpflichtung für Personen mit administrativem Zugriff.</p>
+<h2>2. Physische und lokale Sicherheit</h2>
+<p class="list-item">Produktive Systeme in vertraglich gebundenen Rechenzentren der Dienstleister.</p>
+<p class="list-item">Lokale Administrationsgeräte mit Betriebssystemanmeldung, Gerätesperre, Festplattenverschlüsselung, Updates und Malware-Schutz.</p>
+<p class="list-item">Keine produktiven Daten auf privaten Wechselmedien; temporäre Restore-Dateien werden nach Prüfung gelöscht.</p>
+<h2>3. Authentifizierung und Zugang</h2>
+<p class="list-item">Passwort-Hashing; keine Klartextpasswörter in der Datenbank.</p>
+<p class="list-item">Kurzlebige Zugriffstoken und widerrufbare, serverseitig gehashte Refresh-Sitzungen.</p>
+<p class="list-item">Persistente zufällige Installationskennung ersetzt veraltete Sitzungen derselben Installation.</p>
+<p class="list-item">Login-Rate-Limits und sichere, generische Fehlermeldungen.</p>
+<p class="list-item">Deaktivierung und Löschvormerkung widerrufen alle Sitzungen.</p>
+<h2>4. Rollen, Zugriff und Mandantentrennung</h2>
+<p class="list-item">Serverseitige Schulgrenzen über school_id und rollenbezogene Autorisierung.</p>
+<p class="list-item">Rollen Schulsanitäter, Sani-Leitung, Lehreraufsicht und Sekretariat mit minimalen Rechten.</p>
+<p class="list-item">Kontolöschung nur durch Lehreraufsicht oder Sani-Leitung.</p>
+<p class="list-item">Dateizugriffe authentifiziert, uploader- und schulbezogen; 100-MB-Nutzerquote und maximal vier Anhänge a 8 MB je Nachricht.</p>
+<p class="list-item">Berechtigungen werden bei Rollenwechsel, Ausscheiden und Vertragsende entzogen.</p>
+<h2>5. Verschlüsselung und Übertragung</h2>
+<p class="list-item">Produktive API ausschließlich über HTTPS/TLS.</p>
+<p class="list-item">Datenbank nicht öffentlich exponiert; API und MySQL im selben privaten Railway-Projekt und in derselben EU-Region.</p>
+<p class="list-item">Tägliche SQL-Sicherungen werden komprimiert und mit XChaCha20-Poly1305 authentifiziert verschlüsselt; All-Inkl erhält keinen Schlüssel.</p>
+<p class="list-item">FTPS-Übertragung mit Zertifikatsprüfung; dedizierter, auf /ssd-manager-backups/ beschränkter FTP-Nutzer.</p>
+<h2>6. Protokollierung und Datenminimierung</h2>
+<p class="list-item">Auditierung administrativer und sicherheitsrelevanter Vorgänge.</p>
+<p class="list-item">Keine Roh-Exceptions, SQL-, Token-, Passwort- oder Antwortinhalte in Nutzerfehlermeldungen.</p>
+<p class="list-item">FCM-Payloads enthalten nur erforderliche technische Routinginformationen.</p>
+<p class="list-item">Keine Werbung, Marketinganalyse oder offene Registrierung.</p>
+<p class="list-item">Medizinische Falldokumentation ist organisatorisch und vertraglich ausgeschlossen.</p>
+<h2>7. Verfügbarkeit, Backup und Wiederherstellung</h2>
+<p class="list-item">Railway API und MySQL in EU West (Amsterdam).</p>
+<p class="list-item">Separater 15-Minuten-Wartungsjob für Statusübergänge, Erinnerungen, verwaiste Uploads, Löschungen und Logrotation.</p>
+<p class="list-item">Tägliches Offsite-Backup um 03:35 Uhr Europe/Berlin; 30-Tage-Rotation.</p>
+<p class="list-item">Erster realer Backup-, Download-, Authentifizierungs-, Entschlüsselungs- und gzip-Test erfolgreich.</p>
+<p class="list-item">Zielwerte RPO/RTO jeweils 24 Stunden; Abweichungen und Wiederanlauf werden dokumentiert.</p>
+<h2>8. Incident Response und Überprüfung</h2>
+<p>Vorfall erkennen, eindämmen und Beweismittel zugriffsgeschützt sichern.</p>
+<p>Betroffene Systeme, Daten, Schulen, Personen und Zeiträume bestimmen.</p>
+<p>Schlüssel/Tokens rotieren und unberechtigte Sitzungen widerrufen.</p>
+<p>Betroffene verantwortliche Schule unverzüglich mit verfügbaren Informationen informieren.</p>
+<p>Ursache beheben, kontrolliert wiederherstellen und Wirksamkeit prüfen.</p>
+<p>Entscheidungen, Meldungen und Verbesserungen dokumentieren.</p></article>
+    <a class="download-link" href="/downloads/06_SSD_Manager_TOMs.docx" download>Bearbeitbare Word-Fassung herunterladen</a>
+  </main>
+  <footer><div><strong>SSD Manager</strong><br>Ein Produkt von MinutMate</div><div class="footer-links"><a href="/impressum/">Impressum</a><a href="/datenschutz/">Datenschutz</a><a href="/nutzungsbedingungen/">Nutzungsbedingungen</a><a href="/avv/">AVV</a><a href="/toms/">TOMs</a><a href="/unterauftragnehmer/">Unterauftragnehmer</a></div></footer>
+</body>
+</html>

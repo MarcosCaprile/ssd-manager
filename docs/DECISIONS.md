@@ -590,3 +590,25 @@ Reason: The two products have different purposes, data flows, vendors, and
 risks. A product-specific package supports school procurement and GDPR
 accountability without importing false StudyConnect claims into a public
 repository.
+## 2026-07-26: School-specific commercial terms
+
+Decision: SSD Manager has no standard price, contract term, notice period, or
+pilot-model conditions in its reusable legal package. These terms are agreed
+individually with each school or school authority and recorded in the specific
+offer or contract attachment. Public distribution does not change the closed,
+manually approved school-onboarding model.
+
+Reason: School scope, support needs, pilot structure, responsible authority,
+and commercial framework can differ materially. A fixed reusable default would
+create avoidable contradictions with individually negotiated agreements.
+
+## 2026-07-26: Public SSD Manager website paths
+
+Decision: The canonical product origin is `https://ssd-manager.minutmate.com`.
+The stable public paths are `/impressum/`, `/datenschutz/`,
+`/nutzungsbedingungen/`, `/avv/`, `/toms/`, `/unterauftragnehmer/`,
+`/loeschkonzept/`, `/konto-loeschen/`, and `/support/`. Static source files live in `website/` and
+are published by the owner after local review.
+
+Reason: Apple App Store, Google Play, schools, and data-protection materials
+need durable, product-specific URLs before release submission.

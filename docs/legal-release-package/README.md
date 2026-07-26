@@ -11,6 +11,8 @@ umbenannt.
 - `provider-evidence-private/`: lokale, von Git ausgeschlossene Kopien der
   vorhandenen DPA-/AVV-Nachweise für aktive SSD-Manager-Dienstleister.
 - `qa/`: lokale Renderbilder für die Dokumentenprüfung; von Git ausgeschlossen.
+- `../../website/`: hochladbare statische Website mit öffentlichen
+  Rechtsseiten, Supportseite, anonymisierten App-Screenshots und Word-Downloads.
 
 ## Rechtlicher Status
 
@@ -34,7 +36,10 @@ werden.
 
 ## Aktualisierung
 
-Nach inhaltlichen Änderungen `build_legal_package.py` mit dem gebündelten
-Workspace-Python ausführen und danach sämtliche DOCX-Dateien erneut rendern und
-visuell prüfen. Veröffentlichte Fassungen erhalten eine eindeutige Version und
-ein Freigabedatum.
+Die manuell geprüften Word-Dateien dürfen nicht erneut mit
+`build_legal_package.py` überschrieben werden. Eng begrenzte, nachvollziehbare
+Finalisierungen erfolgen über `finalize_reviewed_documents.py`; anschließend
+erzeugt `../../website/generate_legal_pages.py` die öffentlichen HTML-Fassungen
+und Downloads neu. Danach sämtliche DOCX-Dateien erneut rendern und visuell
+prüfen. Veröffentlichte Fassungen erhalten eine eindeutige Version und ein
+Freigabedatum.

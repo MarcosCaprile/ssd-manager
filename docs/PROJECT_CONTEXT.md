@@ -18,6 +18,15 @@ Do not store secrets, credentials, tokens, signing keys, real student data, or p
 
 SSD Manager is a solid MVP/V1 prototype, but it is not production-ready yet. The repository already contains the Flutter app, PHP backend, database schema, seed data, cron job, documentation, and first tests.
 
+The repository now also contains `website/`, a ready-to-upload static public
+site for `ssd-manager.minutmate.com`. It includes product and onboarding
+information, anonymized iPhone screenshots, support contacts, public HTML legal
+pages, and downloadable reviewed Word versions. The owner still needs to
+publish this folder and verify every canonical HTTPS URL before store
+submission. Reusable legal documents intentionally contain no standard price,
+term, notice period, or pilot conditions; each school receives individually
+agreed commercial terms.
+
 Latest verified implementation on 2026-07-25:
 
 - Production diagnostics showed that all seven attempted sick-report pushes

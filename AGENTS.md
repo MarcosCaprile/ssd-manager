@@ -148,6 +148,11 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   `support@ssd-manager.minutmate.com`. MinutMate-wide contacts retain their
   `@minutmate.com` addresses and must be labeled as company contacts, never as
   StudyConnect-specific SSD Manager contacts.
+- The public SSD Manager website source is `website/` and is intended for
+  `https://ssd-manager.minutmate.com`. Keep its stable legal/support paths in
+  sync with the Word package and app-store metadata. Commercial price, term,
+  notice, and pilot terms are always school-specific and must not be turned into
+  reusable defaults without a new explicit user decision.
 - Do not commit secrets or local environment files. Keep `backend/.env`, Firebase config files, service-account JSON files, signing keys, and local build output out of Git.
 - After completing and verifying an implementation task, automatically commit
   and push the task's intended changes to the current branch unless the user
