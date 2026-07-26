@@ -567,7 +567,7 @@ Technical gaps:
 - Android release signing is not set up.
 - Development signing and physical iPhone installation are operational. App
   Store distribution, archive validation, and TestFlight remain outstanding.
-- Deployment still needs backups and centralized log/alert handling. The
+- Centralized log/alert handling still needs a final production review. The
   Railway cron service is active and its first production execution succeeded.
 
 Product and policy gaps:
@@ -680,3 +680,11 @@ flutter build apk --debug --dart-define=SSD_API_BASE_URL=https://ssd-api-product
 
 Always remove the `build` symlink after the build. The temporary directory
 contains generated output only and is not committed.
+- The SSD Manager off-site database backup path is implemented for All-Inkl.
+  A secret-protected Railway endpoint creates a consistent SQL dump, compresses
+  and authenticates/encrypts it, then uploads only `.sql.gz.enc` data and a
+  checksum manifest to a dedicated All-Inkl FTPS account. Remote generations
+  expire after 30 days and backup run records after 90 days. The separate
+  StudyConnect FTP account and cron remain untouched. Production still needs
+  the dedicated All-Inkl account, protected Railway variables, daily KAS cron,
+  and one verified restore drill before this control is operational.

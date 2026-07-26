@@ -6,6 +6,7 @@ require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Controllers\AnnouncementController;
 use App\Controllers\AuthController;
+use App\Controllers\BackupController;
 use App\Controllers\DutyController;
 use App\Controllers\MeController;
 use App\Controllers\UserController;
@@ -14,6 +15,8 @@ use App\Core\Response;
 use App\Core\Router;
 use App\Services\AnnouncementAttachmentService;
 use App\Services\AuthService;
+use App\Services\DatabaseBackupService;
+use App\Services\FtpsBackupStorage;
 use App\Services\DutyService;
 use App\Services\FirebaseMessagingService;
 use App\Services\NotificationService;
@@ -35,12 +38,15 @@ $meController = new MeController($userService, $authService, $attachmentService)
 $dutyController = new DutyController($dutyService);
 $announcementController = new AnnouncementController($pdo, $notifications, $attachmentService);
 $userController = new UserController($userService, $authService, $userBulkService);
+$backupController = new BackupController($pdo, new DatabaseBackupService($pdo, new FtpsBackupStorage()));
 
 $router = new Router($authService);
 
 $router->add('GET', 'health', static function (): never {
     Response::json(['status' => 'ok']);
 }, false);
+$router->add('GET', 'ops/backup/run', [$backupController, 'run'], false);
+$router->add('GET', 'ops/backup/status', [$backupController, 'status'], false);
 
 $router->add('POST', 'auth/login', [$authController, 'login'], false);
 $router->add('POST', 'auth/refresh', [$authController, 'refresh'], false);

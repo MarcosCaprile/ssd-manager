@@ -217,6 +217,11 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   `FIREBASE_SERVICE_ACCOUNT_JSON_BASE64` variable. Never print, log, commit, or
   persist its decoded private-key content. Local development may use the
   ignored `FIREBASE_SERVICE_ACCOUNT` file path instead.
+- All-Inkl is the off-site backup destination. Keep SSD Manager in its own
+  restricted FTP account and never reuse or modify StudyConnect credentials.
+  Upload only authenticated encrypted backups, keep the encryption key outside
+  All-Inkl, retain 30 daily generations, and verify restoration after setup and
+  periodically thereafter.
 
 ## Project Memory Protocol
 

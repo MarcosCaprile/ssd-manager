@@ -553,3 +553,19 @@ Status: Superseded by the Railway deployment decision below. The empty All-Inkl 
 Decision: SSD Manager will use a separate Railway project in the owner's existing workspace. The PHP API and a Railway MySQL service will run in the same project and EU region. StudyConnect remains an independent Railway project.
 
 Reason: Keeping API and MySQL together provides private service-to-service networking and avoids exposing the All-Inkl database to an external API host. The existing All-Inkl schema contains no production data and can be recreated on Railway from the repository migration.
+## 2026-07-26
+
+### Store encrypted off-site backups at All-Inkl
+
+Decision: All-Inkl triggers the SSD Manager database backup through a dedicated,
+secret-protected Railway HTTPS endpoint each day. Railway creates a consistent
+SQL dump, compresses it, encrypts it with authenticated XChaCha20-Poly1305 and
+uploads only the encrypted file plus a non-sensitive checksum manifest over
+FTPS to a dedicated SSD Manager account. Remote files are retained for 30 days;
+operational run records are retained for 90 days. The recovery key is stored
+separately from All-Inkl.
+
+Reason: This reuses the owner's established StudyConnect backup provider while
+keeping the two products isolated and ensuring the storage provider cannot read
+student data. Thirty daily generations cover delayed discovery and routine
+recovery without indefinite duplication of personal data.

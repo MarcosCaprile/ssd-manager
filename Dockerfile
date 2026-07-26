@@ -1,7 +1,7 @@
 FROM php:8.4-apache-bookworm
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libcurl4-openssl-dev libonig-dev libzip-dev \
+    && apt-get install -y --no-install-recommends default-mysql-client libcurl4-openssl-dev libonig-dev libzip-dev \
     && docker-php-ext-install -j"$(nproc)" curl mbstring pdo_mysql zip \
     && a2dismod -f mpm_event mpm_worker \
     && a2enmod mpm_prefork rewrite \

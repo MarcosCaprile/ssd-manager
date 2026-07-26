@@ -5,6 +5,7 @@ declare(strict_types=1);
 require dirname(__DIR__) . '/src/bootstrap.php';
 
 use App\Services\DutyRules;
+use App\Services\BackupCrypto;
 use App\Services\FirebaseMessagingService;
 use App\Services\NotificationService;
 
@@ -85,6 +86,41 @@ test_case('Firebase service account loads from a base64 environment secret', fun
         } else {
             $_ENV['FIREBASE_SERVICE_ACCOUNT'] = $previousPath;
         }
+    }
+});
+
+test_case('backup encryption round-trips and detects tampering', function (): void {
+    $directory = sys_get_temp_dir() . '/ssd-backup-test-' . bin2hex(random_bytes(5));
+    mkdir($directory, 0700);
+    $plain = $directory . '/plain';
+    $encrypted = $directory . '/encrypted';
+    $decrypted = $directory . '/decrypted';
+    $key = random_bytes(SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_KEYBYTES);
+    $content = random_bytes(1024 * 1024);
+    file_put_contents($plain, $content);
+    try {
+        BackupCrypto::encryptFile($plain, $encrypted, $key);
+        assert_true(file_get_contents($encrypted) !== $content, 'Backup was not encrypted.');
+        BackupCrypto::decryptFile($encrypted, $decrypted, $key);
+        assert_true(hash_file('sha256', $plain) === hash_file('sha256', $decrypted), 'Backup round-trip changed data.');
+
+        $handle = fopen($encrypted, 'r+b');
+        fseek($handle, -1, SEEK_END);
+        $byte = fread($handle, 1);
+        fseek($handle, -1, SEEK_END);
+        fwrite($handle, chr(ord($byte) ^ 1));
+        fclose($handle);
+        try {
+            BackupCrypto::decryptFile($encrypted, $decrypted, $key);
+            throw new RuntimeException('Tampered backup was accepted.');
+        } catch (RuntimeException $exception) {
+            assert_true($exception->getMessage() === 'backup_authentication_failed');
+        }
+    } finally {
+        foreach ([$plain, $encrypted, $decrypted] as $file) {
+            if (is_file($file)) unlink($file);
+        }
+        rmdir($directory);
     }
 });
 
