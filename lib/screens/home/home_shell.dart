@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/push/push_service.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/deep_link_provider.dart';
 import '../announcements/announcements_screen.dart';
@@ -27,12 +28,14 @@ class _HomeShellState extends ConsumerState<HomeShell>
   Timer? _announcementSyncTimer;
   bool _announcementSyncRunning = false;
   bool _notificationPermissionChecked = false;
+  late final PushService _pushService;
 
   @override
   void initState() {
     super.initState();
+    _pushService = ref.read(pushServiceProvider);
     WidgetsBinding.instance.addObserver(this);
-    ref.read(pushServiceProvider).setAnnouncementsVisible(false);
+    _pushService.setAnnouncementsVisible(false);
     _announcementSyncTimer = Timer.periodic(
       _announcementSyncInterval,
       (_) => _syncAnnouncements(),
@@ -51,7 +54,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
   @override
   void dispose() {
     _announcementSyncTimer?.cancel();
-    ref.read(pushServiceProvider).setAnnouncementsVisible(false);
+    _pushService.setAnnouncementsVisible(false);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
