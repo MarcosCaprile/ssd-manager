@@ -73,7 +73,7 @@ class ProfileScreen extends ConsumerWidget {
                 _SettingsTile(
                   icon: Icons.support_agent_outlined,
                   title: 'Kontakt und Support',
-                  subtitle: 'SSD Manager erreichen oder Schule freischalten',
+                  subtitle: 'Allgemeine Fragen und technische Unterstützung',
                   onTap: () => _open(context, const ContactScreen()),
                   showDivider: false,
                 ),

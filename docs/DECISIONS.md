@@ -301,16 +301,19 @@ immutable afterwards, but may be a valid past or future calendar date.
 Reason: Schools need to prepare accounts shortly before a student officially
 qualifies without later editing historical profile data.
 
-### Manage sanitary accounts through atomic XLSX bulk operations
+### Create new school accounts through a seven-column XLSX import
 
-Decision: Teacher supervision and Sani-Leitung receive a dedicated bulk page
-for template download, XLSX import, row validation, transactional create/
-update/deactivate/reactivate/delete-marking, and selected-user export. Bulk
-operations are limited to sanitary profiles, never export passwords, and apply
-no rows if any row is invalid.
+Decision: The visible bulk workflow is exclusively for creating new accounts.
+Its worksheet contains exactly Vorname, Nachname, Benutzername, Schul-E-Mail,
+Temporäres Startpasswort, Rolle and Startdatum. Sanitary dates use DD/MM/YYYY;
+teacher supervision and secretariat use `N/A`. The bundled template shows one
+example per role. Editing, deactivation, deletion marking and data export stay
+in the normal account-management screens and are not encoded as spreadsheet
+actions.
 
-Reason: Cohorts should be manageable efficiently without weakening school,
-role, session-revocation, uniqueness, or audit rules.
+Reason: A simple create-only roster is understandable to schools and avoids
+mixing destructive account administration with initial cohort import. The
+server still validates every row and applies the file transactionally.
 
 ### Group announcement pushes as one conversation
 

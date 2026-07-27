@@ -16,13 +16,13 @@ class ContactScreen extends StatelessWidget {
         children: [
           Text('SSD Manager', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
-          const Text(
-            'Für neue Schulen, allgemeine Fragen und die manuelle Freischaltung einer Schulumgebung:',
-          ),
+          const Text('Für allgemeine Fragen zur Nutzung von SSD Manager:'),
           const SizedBox(height: 8),
           _EmailTile(label: 'Allgemeiner Kontakt', email: infoEmail),
           const SizedBox(height: 12),
-          const Text('Für technische Probleme mit der App:'),
+          const Text(
+            'Für technische Probleme oder Fehlermeldungen in der App:',
+          ),
           const SizedBox(height: 8),
           _EmailTile(label: 'Support', email: supportEmail),
           const SizedBox(height: 24),

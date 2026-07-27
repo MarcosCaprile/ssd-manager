@@ -200,10 +200,12 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   cron completion job as the unattended maintenance path and for reminders.
 - Sanitary start dates are immutable after account creation but may be in the
   future so accounts can be prepared before qualification becomes effective.
-- Bulk user changes are manager-only, limited to sanitary accounts, validated
-  in full, and applied transactionally. Keep the bundled XLSX template
-  compatible with the Flutter `excel` parser and run
-  `test/user_bulk_spreadsheet_test.dart` after changing it.
+- The visible bulk workflow is a manager-only, create-only XLSX account import
+  for all four roles. It uses exactly seven columns; sanitary dates are
+  DD/MM/YYYY and teacher/secretariat dates are `N/A`. Validate every row and
+  apply the file transactionally. Keep the bundled template compatible with
+  the Flutter `excel` parser and run `test/user_bulk_spreadsheet_test.dart`
+  after changing it.
 - Android announcement pushes are data messages rendered as one local inbox
   notification; iOS uses the shared `ssd-announcements` thread. Native Firebase
   config files and Railway FCM service-account variables must never be

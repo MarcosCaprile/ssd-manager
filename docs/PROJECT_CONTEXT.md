@@ -289,11 +289,11 @@ Verified on the MacBook through 2026-07-23:
 - New sanitary accounts accept an immutable `sanitaeter_since` date in the
   past or future. The creation picker supports advance preparation, and both
   single-account and bulk API tests verify future dates.
-- Managers have a dedicated Sani bulk page with a bundled, visually verified
-  XLSX template, local plus server-side row validation, transactional
-  all-or-nothing create/update/deactivate/reactivate/delete-marking, and
-  selected-user export in the same format. Passwords are never exported, and
-  deactivation/delete-marking immediately revokes sessions.
+- Managers have a dedicated create-only XLSX account import with seven columns:
+  Vorname, Nachname, Benutzername, Schul-E-Mail, Temporäres Startpasswort,
+  Rolle and Startdatum. Sanitary dates use DD/MM/YYYY; staff rows require
+  `N/A`. The bundled template contains one example for each role, while local
+  and server validation keep every import transactional and all-or-nothing.
 - Migration `007_system_announcements.sql` adds typed announcements. A sick
   report transaction now stores a red system-chat message naming the user,
   date, and remaining planned Sani count before push delivery is attempted.
@@ -377,8 +377,8 @@ The Flutter app currently includes:
 - Live in-place synchronization after successful user, duty, attachment, and
   announcement mutations, push-driven chat refresh, and visible-screen
   foreground fallback synchronization.
-- Manager-only XLSX bulk import, validation, atomic account changes, template
-  download, and selected-Sani export.
+- Manager-only seven-column XLSX account creation, validation and template
+  download with transactional all-or-nothing application.
 - Grouped local announcement notifications and typed red sick-report system
   messages.
 - SSD Manager launcher and in-app logo assets for Android and iOS.

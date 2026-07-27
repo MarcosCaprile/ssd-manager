@@ -1,13 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ssd_manager/core/files/bulk_user_spreadsheet_service.dart';
-import 'package:ssd_manager/models/user.dart';
 import 'package:ssd_manager/models/user_bulk.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('bundled Excel template maps its example row', () async {
+  test('bundled Excel template maps one valid example per role', () async {
     final data = await rootBundle.load(
       BulkUserSpreadsheetService.templateAsset,
     );
@@ -15,45 +16,47 @@ void main() {
       data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
     );
 
-    expect(rows, isNotEmpty);
-    expect(rows.first.action, UserBulkAction.create);
-    expect(rows.first.role, 'sanitaeter');
-    expect(rows.first.sanitaeterSince, isNotEmpty);
-    expect(rows.first.localErrors, isEmpty);
+    expect(rows, hasLength(4));
+    expect(rows.every((row) => row.action == UserBulkAction.create), isTrue);
+    expect(rows.map((row) => row.role).toSet(), {
+      'sanitaeter',
+      'sani_leitung',
+      'teacher',
+      'sekretariat',
+    });
+    expect(rows.every((row) => row.localErrors.isEmpty), isTrue);
+    expect(rows.first.sanitaeterSince, matches(r'^\d{4}-\d{2}-\d{2}$'));
   });
 
-  test('spreadsheet action aliases map to explicit API actions', () {
-    expect(UserBulkAction.fromSpreadsheet('hinzufügen'), UserBulkAction.create);
-    expect(
-      UserBulkAction.fromSpreadsheet('entfernen'),
-      UserBulkAction.deactivate,
-    );
-    expect(
-      UserBulkAction.fromSpreadsheet('löschung_vormerken'),
-      UserBulkAction.markDeletion,
-    );
-  });
+  test(
+    'German role labels and DD/MM/YYYY are normalized for the API',
+    () async {
+      final data = await rootBundle.load(
+        BulkUserSpreadsheetService.templateAsset,
+      );
+      final rows = BulkUserSpreadsheetService().parse(
+        data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+      );
 
-  test('selected Sanis export in the same importable format', () async {
-    const user = User(
-      id: 17,
-      firstName: 'Tina',
-      lastName: 'Test',
-      username: 'tina.t',
-      email: 'tina@example.test',
-      role: UserRole.saniLeitung,
-      status: 'active',
-      mustChangePassword: false,
-    );
-    final service = BulkUserSpreadsheetService();
-    final exportedRows = service.parse(await service.exportBytes([user]));
+      expect(rows.first.role, 'sanitaeter');
+      expect(rows.first.sanitaeterSince, '2025-09-01');
+      expect(rows[2].role, 'teacher');
+      expect(rows[2].sanitaeterSince, isEmpty);
+    },
+  );
 
-    expect(exportedRows, hasLength(1));
-    expect(exportedRows.single.action, UserBulkAction.update);
-    expect(exportedRows.single.id, 17);
-    expect(exportedRows.single.username, 'tina.t');
-    expect(exportedRows.single.role, 'sani_leitung');
-    expect(exportedRows.single.temporaryPassword, isEmpty);
-    expect(exportedRows.single.localErrors, isEmpty);
+  test('demo school workbook contains 37 valid funny-name accounts', () async {
+    final bytes = await File(
+      'outputs/ssd-manager-demo-school/SSD_Manager_Demo_Schule_Bulk_Import.xlsx',
+    ).readAsBytes();
+    final rows = BulkUserSpreadsheetService().parse(bytes);
+
+    expect(rows, hasLength(37));
+    expect(rows.where((row) => row.role == 'sanitaeter'), hasLength(30));
+    expect(rows.where((row) => row.role == 'sani_leitung'), hasLength(3));
+    expect(rows.where((row) => row.role == 'teacher'), hasLength(2));
+    expect(rows.where((row) => row.role == 'sekretariat'), hasLength(2));
+    expect(rows.every((row) => row.localErrors.isEmpty), isTrue);
+    expect(rows.first.displayName, 'Tomas Tomate');
   });
 }

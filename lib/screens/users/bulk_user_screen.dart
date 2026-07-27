@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 
-import '../../models/user.dart';
 import '../../models/user_bulk.dart';
 import '../../providers/api_providers.dart';
 import '../../utils/user_error_message.dart';
 import '../../widgets/confirm_dialog.dart';
-import '../../widgets/status_views.dart';
 
 class BulkUserScreen extends ConsumerStatefulWidget {
   const BulkUserScreen({super.key});
@@ -18,25 +16,10 @@ class BulkUserScreen extends ConsumerStatefulWidget {
 }
 
 class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
-  late Future<List<User>> _usersFuture;
   List<UserBulkRow> _rows = [];
   UserBulkValidation? _validation;
-  final Set<int> _selectedUserIds = {};
   String? _selectedFileName;
   bool _working = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _usersFuture = _loadUsers();
-  }
-
-  Future<List<User>> _loadUsers() async {
-    final users = await ref.read(userRepositoryProvider).users();
-    return users
-        .where((user) => user.isActive && user.role.isSanitaryRole)
-        .toList();
-  }
 
   Future<void> _downloadTemplate() async {
     await _run(() async {
@@ -81,10 +64,10 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
     if (validation == null || !validation.valid || _rows.isEmpty) return;
     final confirmed = await showConfirmDialog(
       context,
-      title: '${_rows.length} Bulk-Aktionen anwenden?',
+      title: '${_rows.length} Accounts erstellen?',
       message:
-          'Alle geprüften Zeilen werden gemeinsam angewendet. Wenn sich die Daten inzwischen geändert haben, wird keine Teilmenge gespeichert.',
-      confirmLabel: 'Jetzt anwenden',
+          'Alle geprüften Accounts werden gemeinsam erstellt. Wenn eine Zeile inzwischen ungültig ist, wird kein Account aus der Datei angelegt.',
+      confirmLabel: 'Accounts erstellen',
     );
     if (!confirmed || !mounted) return;
 
@@ -96,27 +79,8 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
         _message('Die Datei enthält noch Fehler und wurde nicht angewendet.');
         return;
       }
-      _message('${result.appliedCount} Account-Aktionen wurden angewendet.');
+      _message('${result.appliedCount} Accounts wurden erstellt.');
       Navigator.of(context).pop(true);
-    });
-  }
-
-  Future<void> _exportSelected(List<User> users) async {
-    final selected = users
-        .where((user) => _selectedUserIds.contains(user.id))
-        .toList();
-    if (selected.isEmpty) {
-      _message('Bitte wähle mindestens einen Sani für den Export aus.');
-      return;
-    }
-    await _run(() async {
-      final file = await ref
-          .read(bulkUserSpreadsheetServiceProvider)
-          .exportUsers(selected);
-      await OpenFilex.open(file.path);
-      if (mounted) {
-        _message('${selected.length} Sanis wurden im Importformat exportiert.');
-      }
     });
   }
 
@@ -144,7 +108,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sani-Bulkverwaltung')),
+      appBar: AppBar(title: const Text('Accounts per Excel importieren')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -160,7 +124,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Lade die geprüfte Vorlage herunter. Sie enthält alle Spalten, erlaubte Aktionen, Rollen und verständliche Hinweise.',
+                    'Die Vorlage zeigt genau die sieben Importspalten und je ein ausgefülltes Beispiel für Sanitäter, Sani-Leitung, Lehreraufsicht und Sekretariat.',
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
@@ -185,7 +149,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Die Datei wird zuerst in ein Mapping übersetzt und vollständig geprüft. Es werden keine Teiländerungen gespeichert.',
+                    'Jede ausgefüllte Zeile erstellt einen neuen Account. Startdatum wird für Sanitäter und Sani-Leitung als DD/MM/YYYY angegeben, bei Lehreraufsicht und Sekretariat als N/A. Die Datei wird vollständig geprüft; Teilimporte sind ausgeschlossen.',
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
@@ -212,112 +176,9 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
                           ? _applyImport
                           : null,
                       icon: const Icon(Icons.fact_check_outlined),
-                      label: const Text('Geprüfte Aktionen anwenden'),
+                      label: const Text('Geprüfte Accounts erstellen'),
                     ),
                   ],
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    '3. Bestehende Sanis exportieren',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Wähle Accounts aus. Der Export nutzt exakt dasselbe Format wie die Importvorlage; Passwörter werden niemals exportiert.',
-                  ),
-                  const SizedBox(height: 10),
-                  FutureBuilder<List<User>>(
-                    future: _usersFuture,
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState != ConnectionState.done) {
-                        return const SizedBox(
-                          height: 120,
-                          child: DelayedLoadingView(
-                            message: 'Sanis werden geladen ...',
-                          ),
-                        );
-                      }
-                      if (snapshot.hasError) {
-                        return ErrorView(
-                          error: snapshot.error,
-                          onRetry: () {
-                            setState(() => _usersFuture = _loadUsers());
-                          },
-                        );
-                      }
-                      final users = snapshot.data ?? [];
-                      if (users.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Text('Keine aktiven Sanis für den Export.'),
-                        );
-                      }
-                      final allSelected = users.every(
-                        (user) => _selectedUserIds.contains(user.id),
-                      );
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          CheckboxListTile(
-                            contentPadding: EdgeInsets.zero,
-                            value: allSelected,
-                            title: const Text('Alle auswählen'),
-                            onChanged: _working
-                                ? null
-                                : (selected) {
-                                    setState(() {
-                                      if (selected == true) {
-                                        _selectedUserIds.addAll(
-                                          users.map((user) => user.id),
-                                        );
-                                      } else {
-                                        _selectedUserIds.clear();
-                                      }
-                                    });
-                                  },
-                          ),
-                          const Divider(height: 1),
-                          for (final user in users)
-                            CheckboxListTile(
-                              contentPadding: EdgeInsets.zero,
-                              value: _selectedUserIds.contains(user.id),
-                              title: Text(user.fullName),
-                              subtitle: Text(user.role.label),
-                              onChanged: _working
-                                  ? null
-                                  : (selected) {
-                                      setState(() {
-                                        if (selected == true) {
-                                          _selectedUserIds.add(user.id);
-                                        } else {
-                                          _selectedUserIds.remove(user.id);
-                                        }
-                                      });
-                                    },
-                            ),
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            onPressed: _working
-                                ? null
-                                : () => _exportSelected(users),
-                            icon: const Icon(Icons.file_download_outlined),
-                            label: Text(
-                              '${_selectedUserIds.length} ausgewählte Sanis exportieren',
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
@@ -415,9 +276,7 @@ class _ValidationRowTile extends StatelessWidget {
         row.valid ? Icons.check_circle_outline : Icons.error_outline,
         color: row.valid ? Colors.green : scheme.error,
       ),
-      title: Text(
-        'Zeile ${row.rowNumber}: ${row.action?.label ?? 'Ungültige Aktion'}',
-      ),
+      title: Text('Zeile ${row.rowNumber}: Neuer Account'),
       subtitle: Text(
         row.displayName.isEmpty ? 'Keine Person erkannt' : row.displayName,
       ),

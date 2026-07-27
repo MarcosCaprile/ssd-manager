@@ -1,39 +1,34 @@
 import 'dart:io';
-
 import 'package:excel/excel.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../../models/user.dart';
 import '../../models/user_bulk.dart';
 
 class BulkUserSpreadsheetService {
   static const templateAsset =
       'assets/templates/ssd_manager_sani_bulk_template.xlsx';
   static const _headers = [
-    'Aktion',
-    'ID',
     'Vorname',
     'Nachname',
     'Benutzername',
-    'E-Mail',
-    'Temporäres Passwort',
+    'Schul-E-Mail',
+    'Temporäres Startpasswort',
     'Rolle',
-    'Sanitäter seit',
-    'Hinweis',
+    'Startdatum',
   ];
 
   Future<File> saveTemplate() async {
     final data = await rootBundle.load(templateAsset);
     return _writeFile(
-      'SSD-Manager-Sani-Bulk-Template.xlsx',
+      'SSD-Manager-Bulk-Import-Vorlage.xlsx',
       data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
     );
   }
 
   List<UserBulkRow> parse(Uint8List bytes) {
     final excel = Excel.decodeBytes(bytes);
-    final sheet = excel.tables['Sanis'] ?? excel.tables.values.firstOrNull;
+    final sheet = excel.tables['Accounts'] ?? excel.tables.values.firstOrNull;
     if (sheet == null) {
       throw const FormatException(
         'Die Excel-Datei enthält kein Tabellenblatt.',
@@ -42,7 +37,7 @@ class BulkUserSpreadsheetService {
     final headerRowIndex = _findHeaderRow(sheet);
     if (headerRowIndex == null) {
       throw const FormatException(
-        'Die erwarteten Spaltenüberschriften wurden nicht gefunden.',
+        'Die erwarteten sieben Spaltenüberschriften wurden nicht gefunden.',
       );
     }
     final headerMap = <String, int>{};
@@ -51,7 +46,7 @@ class BulkUserSpreadsheetService {
       final name = _cellText(headerRow[index]?.value).trim().toLowerCase();
       if (name.isNotEmpty) headerMap[name] = index;
     }
-    for (final header in _headers.take(9)) {
+    for (final header in _headers) {
       if (!headerMap.containsKey(header.toLowerCase())) {
         throw FormatException('Die Spalte „$header“ fehlt.');
       }
@@ -71,41 +66,30 @@ class BulkUserSpreadsheetService {
             : '';
       }
 
-      final rawAction = value('Aktion');
-      final allEmpty = _headers
-          .take(9)
-          .every((header) => value(header).isEmpty);
-      if (allEmpty) continue;
-
-      final action = UserBulkAction.fromSpreadsheet(rawAction);
-      final rawId = value('ID');
-      final id = int.tryParse(rawId);
+      if (_headers.every((header) => value(header).isEmpty)) continue;
       final firstName = value('Vorname');
       final lastName = value('Nachname');
       final username = value('Benutzername');
-      final email = value('E-Mail').toLowerCase();
-      final temporaryPassword = value('Temporäres Passwort');
-      final role = value('Rolle').toLowerCase();
-      final sanitaeterSince = value('Sanitäter seit');
+      final email = value('Schul-E-Mail').toLowerCase();
+      final temporaryPassword = value('Temporäres Startpasswort');
+      final role = _normalizeRole(value('Rolle'));
+      final rawStartDate = value('Startdatum');
+      final sanitaeterSince = _apiStartDate(rawStartDate, role);
       final errors = _localErrors(
-        action: action,
-        rawAction: rawAction,
-        rawId: rawId,
-        id: id,
         firstName: firstName,
         lastName: lastName,
         username: username,
         email: email,
         temporaryPassword: temporaryPassword,
         role: role,
+        rawStartDate: rawStartDate,
         sanitaeterSince: sanitaeterSince,
       );
       rows.add(
         UserBulkRow(
           rowNumber: rowIndex + 1,
-          action: action,
-          rawAction: rawAction,
-          id: id,
+          action: UserBulkAction.create,
+          rawAction: UserBulkAction.create.apiValue,
           firstName: firstName,
           lastName: lastName,
           username: username,
@@ -118,231 +102,9 @@ class BulkUserSpreadsheetService {
       );
     }
     if (rows.isEmpty) {
-      throw const FormatException('Die Excel-Datei enthält keine Aktionen.');
+      throw const FormatException('Die Excel-Datei enthält keine Accounts.');
     }
     return _appendDuplicateErrors(rows);
-  }
-
-  Future<File> exportUsers(List<User> users) async {
-    final bytes = await exportBytes(users);
-    final stamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(':', '-')
-        .split('.')
-        .first;
-    return _writeFile('SSD-Manager-Sani-Export-$stamp.xlsx', bytes);
-  }
-
-  Future<Uint8List> exportBytes(List<User> users) async {
-    final excel = Excel.createExcel();
-    excel.rename(excel.getDefaultSheet()!, 'Sanis');
-    final sheet = excel['Sanis'];
-    final notes = excel['Hinweise'];
-    final navy = '#123B73'.excelColor;
-    final blue = '#2563EB'.excelColor;
-    final paleBlue = '#E8F1FB'.excelColor;
-    final white = '#FFFFFF'.excelColor;
-    final darkText = '#374151'.excelColor;
-    final titleStyle = CellStyle(
-      backgroundColorHex: navy,
-      fontColorHex: white,
-      bold: true,
-      fontSize: 18,
-      verticalAlign: VerticalAlign.Center,
-    );
-    final subtitleStyle = CellStyle(
-      backgroundColorHex: paleBlue,
-      fontColorHex: navy,
-      italic: true,
-      textWrapping: TextWrapping.WrapText,
-    );
-    final infoStyle = CellStyle(
-      fontColorHex: darkText,
-      textWrapping: TextWrapping.WrapText,
-    );
-    final headerStyle = CellStyle(
-      backgroundColorHex: blue,
-      fontColorHex: white,
-      bold: true,
-      verticalAlign: VerticalAlign.Center,
-      textWrapping: TextWrapping.WrapText,
-    );
-    final dataStyle = CellStyle(verticalAlign: VerticalAlign.Top);
-    final noteStyle = CellStyle(
-      verticalAlign: VerticalAlign.Top,
-      textWrapping: TextWrapping.WrapText,
-    );
-    final dateStyle = CellStyle(
-      verticalAlign: VerticalAlign.Top,
-      numberFormat: NumFormat.custom(formatCode: 'yyyy-mm-dd'),
-    );
-
-    _mergeWithValue(
-      sheet,
-      startColumn: 0,
-      endColumn: 9,
-      row: 0,
-      value: 'SSD Manager – Sani Bulk-Export',
-      style: titleStyle,
-    );
-    sheet.setRowHeight(0, 34);
-    _mergeWithValue(
-      sheet,
-      startColumn: 0,
-      endColumn: 9,
-      row: 1,
-      value:
-          'Ausgewählte Accounts im Format der Importvorlage. '
-          'Passwörter werden niemals exportiert.',
-      style: subtitleStyle,
-    );
-    sheet.setRowHeight(1, 30);
-    _mergeWithValue(
-      sheet,
-      startColumn: 0,
-      endColumn: 9,
-      row: 3,
-      value:
-          'Aktion bei Bedarf ändern: bearbeiten, deaktivieren, reaktivieren '
-          'oder löschung_vormerken.',
-      style: infoStyle,
-    );
-    _mergeWithValue(
-      sheet,
-      startColumn: 0,
-      endColumn: 9,
-      row: 4,
-      value:
-          'Die exportierte ID nicht verändern. „Sanitäter seit“ bleibt bei '
-          'bestehenden Accounts unveränderlich.',
-      style: infoStyle,
-    );
-    for (var column = 0; column < _headers.length; column++) {
-      final cell = sheet.cell(
-        CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 7),
-      );
-      cell.value = TextCellValue(_headers[column]);
-      cell.cellStyle = headerStyle;
-    }
-    sheet.setRowHeight(7, 34);
-
-    const widths = <double>[22, 10, 17, 19, 20, 31, 29, 20, 20, 43];
-    for (var column = 0; column < widths.length; column++) {
-      sheet.setColumnWidth(column, widths[column]);
-    }
-
-    for (var index = 0; index < users.length; index++) {
-      final user = users[index];
-      final row = 8 + index;
-      final values = <CellValue?>[
-        TextCellValue(UserBulkAction.update.spreadsheetValue),
-        IntCellValue(user.id),
-        TextCellValue(user.firstName),
-        TextCellValue(user.lastName),
-        TextCellValue(user.username),
-        TextCellValue(user.email),
-        null,
-        TextCellValue(user.role.toJson()),
-        user.sanitaeterSince == null
-            ? null
-            : DateCellValue(
-                year: user.sanitaeterSince!.year,
-                month: user.sanitaeterSince!.month,
-                day: user.sanitaeterSince!.day,
-              ),
-        TextCellValue(
-          'Rolle, Name, Benutzername oder E-Mail bearbeiten; '
-          '„Sanitäter seit“ bleibt unverändert.',
-        ),
-      ];
-      for (var column = 0; column < values.length; column++) {
-        final cell = sheet.cell(
-          CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row),
-        );
-        cell.value = values[column];
-        cell.cellStyle = column == 8
-            ? dateStyle
-            : column == 9
-            ? noteStyle
-            : dataStyle;
-      }
-    }
-
-    _mergeWithValue(
-      notes,
-      startColumn: 0,
-      endColumn: 3,
-      row: 0,
-      value: 'SSD Manager – Hinweise zum Bulk-Export',
-      style: titleStyle,
-    );
-    const noteRows = <List<String>>[
-      ['Aktion', 'Bedeutung', 'ID', 'Passwort'],
-      [
-        'bearbeiten',
-        'Name, Benutzername, E-Mail oder Sani-Rolle aktualisieren',
-        'Unverändert lassen',
-        'Bleibt leer',
-      ],
-      [
-        'deaktivieren',
-        'Account deaktivieren und alle Sitzungen widerrufen',
-        'Erforderlich',
-        'Bleibt leer',
-      ],
-      [
-        'reaktivieren',
-        'Einen deaktivierten Account wieder aktivieren',
-        'Erforderlich',
-        'Bleibt leer',
-      ],
-      [
-        'löschung_vormerken',
-        'Account zur späteren Löschung vormerken',
-        'Erforderlich',
-        'Bleibt leer',
-      ],
-    ];
-    for (var row = 0; row < noteRows.length; row++) {
-      for (var column = 0; column < noteRows[row].length; column++) {
-        final cell = notes.cell(
-          CellIndex.indexByColumnRow(columnIndex: column, rowIndex: row + 2),
-        );
-        cell.value = TextCellValue(noteRows[row][column]);
-        cell.cellStyle = row == 0 ? headerStyle : noteStyle;
-      }
-    }
-    for (var column = 0; column < 4; column++) {
-      notes.setColumnWidth(column, const [24.0, 52.0, 22.0, 20.0][column]);
-    }
-
-    final bytes = excel.save();
-    if (bytes == null) {
-      throw const FileSystemException(
-        'Die Excel-Datei konnte nicht erstellt werden.',
-      );
-    }
-    return Uint8List.fromList(bytes);
-  }
-
-  void _mergeWithValue(
-    Sheet sheet, {
-    required int startColumn,
-    required int endColumn,
-    required int row,
-    required String value,
-    required CellStyle style,
-  }) {
-    final start = CellIndex.indexByColumnRow(
-      columnIndex: startColumn,
-      rowIndex: row,
-    );
-    sheet.merge(
-      start,
-      CellIndex.indexByColumnRow(columnIndex: endColumn, rowIndex: row),
-      customValue: TextCellValue(value),
-    );
-    sheet.setMergedCellStyle(start, style);
   }
 
   Future<File> _writeFile(String name, Uint8List bytes) async {
@@ -355,14 +117,11 @@ class BulkUserSpreadsheetService {
   }
 
   int? _findHeaderRow(Sheet sheet) {
-    final scanRows = sheet.rows.take(20).toList();
-    for (var index = 0; index < scanRows.length; index++) {
-      final values = scanRows[index]
+    for (var index = 0; index < sheet.rows.take(20).length; index++) {
+      final values = sheet.rows[index]
           .map((cell) => _cellText(cell?.value).trim().toLowerCase())
           .toSet();
-      if (values.contains('aktion') &&
-          values.contains('benutzername') &&
-          values.contains('e-mail')) {
+      if (_headers.every((header) => values.contains(header.toLowerCase()))) {
         return index;
       }
     }
@@ -381,71 +140,79 @@ class BulkUserSpreadsheetService {
             : value.value.toString(),
       BoolCellValue() => value.value ? 'true' : 'false',
       DateCellValue() =>
-        '${value.year.toString().padLeft(4, '0')}-'
-            '${value.month.toString().padLeft(2, '0')}-'
-            '${value.day.toString().padLeft(2, '0')}',
+        '${value.day.toString().padLeft(2, '0')}/'
+            '${value.month.toString().padLeft(2, '0')}/'
+            '${value.year.toString().padLeft(4, '0')}',
       DateTimeCellValue() =>
-        '${value.year.toString().padLeft(4, '0')}-'
-            '${value.month.toString().padLeft(2, '0')}-'
-            '${value.day.toString().padLeft(2, '0')}',
+        '${value.day.toString().padLeft(2, '0')}/'
+            '${value.month.toString().padLeft(2, '0')}/'
+            '${value.year.toString().padLeft(4, '0')}',
       TimeCellValue() => value.asDuration().toString(),
     };
   }
 
+  String _normalizeRole(String value) {
+    final normalized = value.trim().toLowerCase();
+    return switch (normalized) {
+      'sanitäter' || 'sanitaeter' || 'schulsanitäter' => 'sanitaeter',
+      'sani-leitung' || 'sani_leitung' || 'sanileitung' => 'sani_leitung',
+      'lehreraufsicht' || 'teacher' || 'lehrer' => 'teacher',
+      'sekretariat' || 'sekretärin' || 'sekretaerin' => 'sekretariat',
+      _ => normalized,
+    };
+  }
+
+  String _apiStartDate(String value, String role) {
+    if (!_isSanitaryRole(role)) return '';
+    final match = RegExp(r'^(\d{2})/(\d{2})/(\d{4})$').firstMatch(value);
+    if (match == null) return value;
+    return '${match.group(3)}-${match.group(2)}-${match.group(1)}';
+  }
+
   List<String> _localErrors({
-    required UserBulkAction? action,
-    required String rawAction,
-    required String rawId,
-    required int? id,
     required String firstName,
     required String lastName,
     required String username,
     required String email,
     required String temporaryPassword,
     required String role,
+    required String rawStartDate,
     required String sanitaeterSince,
   }) {
     final errors = <String>[];
-    if (action == null) {
-      errors.add('Aktion „$rawAction“ ist unbekannt.');
-      return errors;
+    if (firstName.isEmpty ||
+        lastName.isEmpty ||
+        username.isEmpty ||
+        email.isEmpty) {
+      errors.add(
+        'Vorname, Nachname, Benutzername und Schul-E-Mail sind erforderlich.',
+      );
     }
-    if (action == UserBulkAction.create) {
-      if (rawId.isNotEmpty) {
-        errors.add('Beim Hinzufügen muss die ID leer bleiben.');
-      }
-      if (temporaryPassword.length < 10) {
-        errors.add('Das temporäre Passwort benötigt mindestens 10 Zeichen.');
-      }
-      if (_isSanitaryRole(role) && !_isValidDate(sanitaeterSince)) {
-        errors.add('„Sanitäter seit“ muss als YYYY-MM-DD angegeben werden.');
-      }
-      if (!_isSanitaryRole(role) && sanitaeterSince.isNotEmpty) {
-        errors.add('„Sanitäter seit“ muss bei Lehreraufsicht und Sekretariat leer bleiben.');
-      }
-    } else if (id == null || id < 1) {
-      errors.add('Für diese Aktion ist eine gültige exportierte ID nötig.');
+    if (!email.contains('@') || email.startsWith('@') || email.endsWith('@')) {
+      errors.add('Die Schul-E-Mail-Adresse ist nicht plausibel.');
     }
-    if (action == UserBulkAction.create || action == UserBulkAction.update) {
-      if (firstName.isEmpty ||
-          lastName.isEmpty ||
-          username.isEmpty ||
-          email.isEmpty) {
-        errors.add(
-          'Vorname, Nachname, Benutzername und E-Mail sind erforderlich.',
-        );
+    if (temporaryPassword.length < 10) {
+      errors.add('Das temporäre Startpasswort benötigt mindestens 10 Zeichen.');
+    }
+    if (!const {
+      'sanitaeter',
+      'sani_leitung',
+      'teacher',
+      'sekretariat',
+    }.contains(role)) {
+      errors.add(
+        'Rolle muss Sanitäter, Sani-Leitung, Lehreraufsicht oder Sekretariat sein.',
+      );
+    }
+    if (_isSanitaryRole(role)) {
+      if (!_isValidApiDate(sanitaeterSince) ||
+          !RegExp(r'^\d{2}/\d{2}/\d{4}$').hasMatch(rawStartDate)) {
+        errors.add('Startdatum muss als DD/MM/YYYY angegeben werden.');
       }
-      if (!email.contains('@') ||
-          email.startsWith('@') ||
-          email.endsWith('@')) {
-        errors.add('Die E-Mail-Adresse ist nicht plausibel.');
-      }
-      if (!const {'sanitaeter', 'sani_leitung', 'teacher', 'sekretariat'}.contains(role)) {
-        errors.add('Rolle muss sanitaeter, sani_leitung, teacher oder sekretariat sein.');
-      }
-      if (action == UserBulkAction.update && !_isSanitaryRole(role)) {
-        errors.add('Bestehende Accounts können per Bulk nur als Sanitäter oder Sani-Leitung geführt werden.');
-      }
+    } else if (rawStartDate.trim().toUpperCase() != 'N/A') {
+      errors.add(
+        'Bei Lehreraufsicht und Sekretariat muss Startdatum N/A sein.',
+      );
     }
     return errors;
   }
@@ -454,10 +221,6 @@ class BulkUserSpreadsheetService {
     final usernameCounts = <String, int>{};
     final emailCounts = <String, int>{};
     for (final row in rows) {
-      if (row.action != UserBulkAction.create &&
-          row.action != UserBulkAction.update) {
-        continue;
-      }
       usernameCounts.update(
         row.username.toLowerCase(),
         (count) => count + 1,
@@ -475,7 +238,6 @@ class BulkUserSpreadsheetService {
           rowNumber: row.rowNumber,
           action: row.action,
           rawAction: row.rawAction,
-          id: row.id,
           firstName: row.firstName,
           lastName: row.lastName,
           username: row.username,
@@ -490,13 +252,13 @@ class BulkUserSpreadsheetService {
               'Benutzername kommt mehrfach in der Datei vor.',
             if (row.email.isNotEmpty &&
                 (emailCounts[row.email.toLowerCase()] ?? 0) > 1)
-              'E-Mail kommt mehrfach in der Datei vor.',
+              'Schul-E-Mail kommt mehrfach in der Datei vor.',
           ],
         ),
     ];
   }
 
-  bool _isValidDate(String value) {
+  bool _isValidApiDate(String value) {
     final match = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(value);
     if (match == null) return false;
     final date = DateTime.tryParse(value);
