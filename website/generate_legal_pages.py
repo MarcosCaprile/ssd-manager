@@ -2,6 +2,7 @@
 
 from html import escape
 from pathlib import Path
+import re
 import shutil
 
 from docx import Document
@@ -10,6 +11,10 @@ from docx import Document
 ROOT = Path(__file__).resolve().parent
 DOCS = ROOT.parent / "docs" / "legal-release-package" / "word"
 DOWNLOADS = ROOT / "downloads"
+PRODUCT_ORIGIN = "https://ssd-manager.minutmate.com"
+LINK_TOKEN = re.compile(
+    r"https://[^\s<>]+|[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)+"
+)
 
 PAGES = {
     "impressum": ("01_SSD_Manager_Impressum.docx", "Impressum"),
@@ -23,13 +28,24 @@ PAGES = {
 
 
 def linkify(value: str) -> str:
-    escaped = escape(value)
-    for url in sorted({part.rstrip(".,·") for part in value.split() if part.startswith("https://")}, key=len, reverse=True):
-        escaped_url = escape(url)
-        escaped = escaped.replace(escaped_url, f'<a href="{escaped_url}">{escaped_url}</a>')
-    for address in ("info@ssd-manager.minutmate.com", "support@ssd-manager.minutmate.com", "info@minutmate.com", "verwaltung@minutmate.com", "datenschutz@minutmate.com"):
-        escaped = escaped.replace(address, f'<a href="mailto:{address}">{address}</a>')
-    return escaped.replace("\n", "<br>")
+    """Escape text and turn each URL or email address into exactly one link."""
+    parts = []
+    position = 0
+    for match in LINK_TOKEN.finditer(value):
+        parts.append(escape(value[position:match.start()]))
+        token = match.group(0)
+        bare = token.rstrip(".,;:·")
+        suffix = token[len(bare):]
+        if bare.startswith(PRODUCT_ORIGIN):
+            href = bare[len(PRODUCT_ORIGIN):] or "/"
+        elif bare.startswith("https://"):
+            href = bare
+        else:
+            href = f"mailto:{bare}"
+        parts.append(f'<a href="{escape(href, quote=True)}">{escape(bare)}</a>{escape(suffix)}')
+        position = match.end()
+    parts.append(escape(value[position:]))
+    return "".join(parts).replace("\n", "<br>")
 
 
 def is_internal(paragraph: str) -> bool:
@@ -88,7 +104,7 @@ def shell(title: str, body: str, download: str) -> str:
     <article class="legal-card">{body}</article>
     <a class="download-link" href="/downloads/{escape(download)}" download>Bearbeitbare Word-Fassung herunterladen</a>
   </main>
-  <footer><div><strong>SSD Manager</strong><br>Ein Produkt von MinutMate</div><div class="footer-links"><a href="/impressum/">Impressum</a><a href="/datenschutz/">Datenschutz</a><a href="/nutzungsbedingungen/">Nutzungsbedingungen</a><a href="/avv/">AVV</a><a href="/toms/">TOMs</a><a href="/unterauftragnehmer/">Unterauftragnehmer</a></div></footer>
+  <footer><div><strong>SSD Manager</strong><br>Ein Produkt von MinutMate</div><div class="footer-links"><a href="/impressum/">Impressum</a><a href="/datenschutz/">Datenschutz</a><a href="/nutzungsbedingungen/">Nutzungsbedingungen</a><a href="/konto-loeschen/">Kontolöschung</a><a href="/avv/">AVV</a><a href="/toms/">TOMs</a><a href="/unterauftragnehmer/">Unterauftragnehmer</a><a href="/loeschkonzept/">Löschkonzept</a></div></footer>
 </body>
 </html>'''
 
