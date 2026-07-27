@@ -304,12 +304,24 @@ try {
         404,
         'other-school duty assignment cannot be removed'
     );
-    expect_security_status(security_request('POST', 'auth/login', [
+    $crossSchoolLogin = expect_security_status(security_request('POST', 'auth/login', [
         'identifier' => $crossSchoolUsername,
         'password' => 'CrossSchoolPassword!2026',
         'device_name' => 'Backend API security smoke test',
         'platform' => 'cli',
-    ]), 401, 'default-school login cannot authenticate another school');
+    ]), 200, 'active account can authenticate in its own school');
+    $crossSchoolToken = $crossSchoolLogin['body']['data']['access_token'] ?? null;
+    if (!is_string($crossSchoolToken)) {
+        throw new RuntimeException('Other-school login response contains no access token.');
+    }
+    $crossSchoolUsers = expect_security_status(
+        security_request('GET', 'users', accessToken: $crossSchoolToken),
+        200,
+        'other-school account receives its own school user list'
+    );
+    if (contains_id($crossSchoolUsers, $teacherUserId)) {
+        throw new RuntimeException('Other-school login leaked the default-school teacher.');
+    }
 
     expect_security_status(
         security_request('GET', 'duties/not-a-date', accessToken: $teacherToken),

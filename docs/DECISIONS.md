@@ -90,6 +90,18 @@ existing sanitary profiles, preserving the existing staff-role safeguards.
 Reason: A school can set up a complete isolated environment in one reviewed,
 atomic import without opening later staff-role changes through the bulk path.
 
+### Resolve login accounts across active school environments
+
+Decision: Login searches matching usernames and e-mail addresses across all
+active schools and authenticates only when the supplied password identifies
+exactly one account. Every resulting session keeps that account's `school_id`;
+all authenticated reads and writes remain school-scoped. Ambiguous credentials
+receive the same generic login failure as unknown credentials.
+
+Reason: Public distribution with manually provisioned school environments
+requires users from every enabled school to reach their own tenant without an
+open registration flow or a hard-coded default school.
+
 ### Keep the Android notification icon through release shrinking
 
 Decision: Android manifest metadata references `ic_stat_ssd_manager` as

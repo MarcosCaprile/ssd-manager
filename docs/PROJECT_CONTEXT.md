@@ -252,6 +252,9 @@ Verified on the MacBook through 2026-07-23:
   change their role or permissions. Teacher supervision can bulk-create a full
   school setup including teacher and secretariat accounts; their sanitary date
   stays empty while it remains mandatory for sanitary roles.
+- Login now resolves credentials across all active manually provisioned school
+  environments. A successful password must identify exactly one account, and
+  the created session retains that account's `school_id` for all tenant checks.
 - Main navigation panels are loaded lazily and retained after their first
   visit. Full loading indicators are delayed for two seconds, existing content
   remains visible during refreshes, and successful mutations are no longer

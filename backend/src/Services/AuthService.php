@@ -36,19 +36,25 @@ final class AuthService
         }
 
         $statement = $this->pdo->prepare(
-            'SELECT * FROM users
-             WHERE school_id = :school_id
-             AND (LOWER(email) = :email_identifier OR LOWER(username) = :username_identifier)
-             AND deleted_at IS NULL
-             LIMIT 1'
+            'SELECT u.* FROM users u
+             JOIN schools s ON s.id = u.school_id
+             WHERE (LOWER(u.email) = :email_identifier OR LOWER(u.username) = :username_identifier)
+               AND u.deleted_at IS NULL
+               AND s.active = 1'
         );
         $statement->execute([
-            'school_id' => Config::int('DEFAULT_SCHOOL_ID', 1),
             'email_identifier' => $identifier,
             'username_identifier' => $identifier,
         ]);
-        $user = $statement->fetch();
-        if (!$user || !password_verify($password, (string) $user['password_hash'])) {
+        $passwordMatches = array_values(array_filter(
+            $statement->fetchAll(),
+            static fn (array $candidate): bool => password_verify(
+                $password,
+                (string) $candidate['password_hash']
+            )
+        ));
+        $user = count($passwordMatches) === 1 ? $passwordMatches[0] : null;
+        if ($user === null) {
             $this->rateLimiter->recordLogin($identifier, $ip, false);
             Response::error('E-Mail/Benutzername oder Passwort ist nicht korrekt.', 401);
         }
