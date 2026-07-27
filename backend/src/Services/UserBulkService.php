@@ -153,7 +153,7 @@ final class UserBulkService
                 if (mb_strlen($password) < 10 || mb_strlen($password) > 255) {
                     $errors[] = 'Das temporäre Passwort muss 10–255 Zeichen haben.';
                 }
-                $this->validateSanitaeterSince($sanitaeterSince, $errors);
+                $this->validateSanitaeterSinceForRole($role, $sanitaeterSince, $errors);
                 if ($auth->role() === 'sani_leitung' && $role !== 'sanitaeter') {
                     $errors[] = 'Die Sani-Leitung darf neue Accounts nur als Schulsanitäter anlegen.';
                 }
@@ -182,6 +182,9 @@ final class UserBulkService
                         $role,
                         $errors
                     );
+                    if (!in_array($role, ['sanitaeter', 'sani_leitung'], true)) {
+                        $errors[] = 'Bestehende Accounts können per Bulk nur als Sanitäter oder Sani-Leitung geführt werden.';
+                    }
                     $this->validateUniqueOwner($usernameOwners, $username, $targetId, 'Benutzername', $errors);
                     $this->validateUniqueOwner($emailOwners, $email, $targetId, 'E-Mail', $errors);
                     if ($errors === []) {
@@ -367,16 +370,22 @@ final class UserBulkService
         if (mb_strlen($email) > 180 || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             $errors[] = 'Die E-Mail-Adresse ist ungültig.';
         }
-        if (!in_array($role, ['sanitaeter', 'sani_leitung'], true)) {
-            $errors[] = 'Die Rolle muss sanitaeter oder sani_leitung sein.';
+        if (!in_array($role, ['sanitaeter', 'sani_leitung', 'teacher', 'sekretariat'], true)) {
+            $errors[] = 'Die Rolle muss sanitaeter, sani_leitung, teacher oder sekretariat sein.';
         }
     }
 
     /**
      * @param array<int,string> $errors
      */
-    private function validateSanitaeterSince(string $value, array &$errors): void
+    private function validateSanitaeterSinceForRole(string $role, string $value, array &$errors): void
     {
+        if (!in_array($role, ['sanitaeter', 'sani_leitung'], true)) {
+            if ($value !== '') {
+                $errors[] = '„Sanitäter seit“ muss bei Lehreraufsicht und Sekretariat leer bleiben.';
+            }
+            return;
+        }
         $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $value);
         $dateErrors = \DateTimeImmutable::getLastErrors();
         if (

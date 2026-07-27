@@ -69,6 +69,27 @@ or gaining access before organizational and privacy requirements are agreed.
 
 ## 2026-07-25
 
+### Mark new first-aiders orange for their first 150 days
+
+Decision: A `sanitaeter` account is displayed in orange in the Sani list and
+in duty-assignment rows from its `sanitaeter_since` calendar date through day
+149. From day 150 it returns to the normal blue display. Sani-Leitung remains
+green. This is a visual orientation marker only; roles, permissions and duty
+eligibility do not change.
+
+Reason: Teams can immediately recognize inexperienced first-aiders on the
+roster and duty plan without treating them as a separate or restricted role.
+
+### Allow initial full-school creation through bulk import
+
+Decision: Bulk creation by teacher supervision may include all four school
+roles. `sanitaeter_since` remains required for sanitary roles and must stay
+empty for teacher supervision and secretariat. Bulk updates remain limited to
+existing sanitary profiles, preserving the existing staff-role safeguards.
+
+Reason: A school can set up a complete isolated environment in one reviewed,
+atomic import without opening later staff-role changes through the bulk path.
+
 ### Keep the Android notification icon through release shrinking
 
 Decision: Android manifest metadata references `ic_stat_ssd_manager` as

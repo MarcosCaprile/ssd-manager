@@ -247,6 +247,11 @@ Verified on the MacBook through 2026-07-23:
   Sani-Leitung/teachers in a separate bottom section. Account deactivation and
   deletion marking revoke every session; inactive login returns a safe,
   actionable explanation.
+- Schulsanitäter are now orange in the Sani list and duty plan for their first
+  150 calendar days from `sanitaeter_since`; this is display-only and does not
+  change their role or permissions. Teacher supervision can bulk-create a full
+  school setup including teacher and secretariat accounts; their sanitary date
+  stays empty while it remains mandatory for sanitary roles.
 - Main navigation panels are loaded lazily and retained after their first
   visit. Full loading indicators are delayed for two seconds, existing content
   remains visible during refreshes, and successful mutations are no longer

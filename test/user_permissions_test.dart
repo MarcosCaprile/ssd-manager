@@ -82,4 +82,23 @@ void main() {
     expect(user.sanitaeterSince, DateTime(2024, 3, 15));
     expect(user.toJson()['sanitaeter_since'], '2024-03-15');
   });
+
+  test('first-aiders are beginners for exactly their first 150 days', () {
+    final sani = User(
+      id: 6,
+      firstName: 'Neu',
+      lastName: 'Sani',
+      username: 'neu.sani',
+      email: 'neu.sani@example.test',
+      role: UserRole.sanitaeter,
+      sanitaeterSince: DateTime(2026, 1, 1),
+      status: 'active',
+      mustChangePassword: false,
+    );
+
+    expect(sani.isBeginnerSanitaeter(onDate: DateTime(2026, 1, 1)), isTrue);
+    expect(sani.isBeginnerSanitaeter(onDate: DateTime(2026, 5, 30)), isTrue);
+    expect(sani.isBeginnerSanitaeter(onDate: DateTime(2026, 5, 31)), isFalse);
+    expect(lead.isBeginnerSanitaeter(onDate: DateTime(2026, 1, 2)), isFalse);
+  });
 }

@@ -63,6 +63,25 @@ class User {
 
   String get fullName => '$firstName $lastName'.trim();
   bool get isActive => status == 'active';
+
+  /// A first-aider is visually marked as a beginner for their first 150
+  /// calendar days. This never changes permissions or the assigned role.
+  bool isBeginnerSanitaeter({DateTime? onDate}) {
+    if (role != UserRole.sanitaeter || sanitaeterSince == null) return false;
+    final reference = onDate ?? DateTime.now();
+    final today = DateTime(reference.year, reference.month, reference.day);
+    final start = DateTime(
+      sanitaeterSince!.year,
+      sanitaeterSince!.month,
+      sanitaeterSince!.day,
+    );
+    return !today.isBefore(start) &&
+        DateTime.utc(today.year, today.month, today.day)
+                .difference(DateTime.utc(start.year, start.month, start.day))
+                .inDays <
+            150;
+  }
+
   bool canManageAccount(User target) => role.canManageUsers && id != target.id;
   bool canManageRoleOf(User target) =>
       role.canManageRoles && id != target.id && target.role.isSanitaryRole;

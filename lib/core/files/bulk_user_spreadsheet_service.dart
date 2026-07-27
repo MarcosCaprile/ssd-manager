@@ -417,8 +417,11 @@ class BulkUserSpreadsheetService {
       if (temporaryPassword.length < 10) {
         errors.add('Das temporäre Passwort benötigt mindestens 10 Zeichen.');
       }
-      if (!_isValidDate(sanitaeterSince)) {
+      if (_isSanitaryRole(role) && !_isValidDate(sanitaeterSince)) {
         errors.add('„Sanitäter seit“ muss als YYYY-MM-DD angegeben werden.');
+      }
+      if (!_isSanitaryRole(role) && sanitaeterSince.isNotEmpty) {
+        errors.add('„Sanitäter seit“ muss bei Lehreraufsicht und Sekretariat leer bleiben.');
       }
     } else if (id == null || id < 1) {
       errors.add('Für diese Aktion ist eine gültige exportierte ID nötig.');
@@ -437,8 +440,11 @@ class BulkUserSpreadsheetService {
           email.endsWith('@')) {
         errors.add('Die E-Mail-Adresse ist nicht plausibel.');
       }
-      if (role != 'sanitaeter' && role != 'sani_leitung') {
-        errors.add('Rolle muss sanitaeter oder sani_leitung sein.');
+      if (!const {'sanitaeter', 'sani_leitung', 'teacher', 'sekretariat'}.contains(role)) {
+        errors.add('Rolle muss sanitaeter, sani_leitung, teacher oder sekretariat sein.');
+      }
+      if (action == UserBulkAction.update && !_isSanitaryRole(role)) {
+        errors.add('Bestehende Accounts können per Bulk nur als Sanitäter oder Sani-Leitung geführt werden.');
       }
     }
     return errors;
@@ -499,4 +505,7 @@ class BulkUserSpreadsheetService {
         date.month == int.parse(match.group(2)!) &&
         date.day == int.parse(match.group(3)!);
   }
+
+  bool _isSanitaryRole(String role) =>
+      role == 'sanitaeter' || role == 'sani_leitung';
 }

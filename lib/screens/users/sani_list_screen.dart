@@ -339,6 +339,8 @@ class _UserTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final roleColor = switch (user.role) {
+      UserRole.sanitaeter when user.isBeginnerSanitaeter() =>
+        const Color(0xFFF59E0B),
       UserRole.sanitaeter => const Color(0xFF2563EB),
       UserRole.saniLeitung => const Color(0xFF16A34A),
       _ => null,

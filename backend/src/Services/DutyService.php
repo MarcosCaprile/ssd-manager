@@ -823,7 +823,7 @@ final class DutyService
     {
         $day = $this->locklessDutyDay($dayId, $schoolId);
         $statement = $this->pdo->prepare(
-            'SELECT da.*, CONCAT(u.first_name, " ", u.last_name) AS full_name
+            'SELECT da.*, CONCAT(u.first_name, " ", u.last_name) AS full_name, u.role, u.sanitaeter_since
              FROM duty_assignments da
              JOIN users u ON u.id = da.user_id
              WHERE da.duty_day_id = :day_id
@@ -843,6 +843,8 @@ final class DutyService
                 'full_name' => $assignment['full_name'],
                 'status' => $assignment['status'],
                 'assignment_type' => $assignment['assignment_type'],
+                'role' => $assignment['role'],
+                'sanitaeter_since' => $assignment['sanitaeter_since'],
                 'assigned_at' => $assignment['assigned_at'],
                 'cancelled_at' => $assignment['cancelled_at'],
                 'sick_reported_at' => $assignment['sick_reported_at'],

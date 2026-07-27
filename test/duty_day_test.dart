@@ -54,6 +54,8 @@ void main() {
           'full_name': 'Test Sani',
           'status': 'planned',
           'assignment_type': 'self',
+          'role': 'sanitaeter',
+          'sanitaeter_since': '2026-09-01',
           'assigned_at': '2026-10-01T08:00:00Z',
         },
       ],
@@ -61,5 +63,26 @@ void main() {
 
     expect(parse(), parse());
     expect(parse().hashCode, parse().hashCode);
+  });
+
+  test('duty assignment uses the same 150-day beginner period', () {
+    final assignment = DutyAssignment.fromJson({
+      'id': 11,
+      'user_id': 21,
+      'full_name': 'Neue Sani',
+      'status': 'planned',
+      'assignment_type': 'self',
+      'role': 'sanitaeter',
+      'sanitaeter_since': '2026-01-01',
+    });
+
+    expect(
+      assignment.isBeginnerSanitaeter(onDate: DateTime(2026, 5, 30)),
+      isTrue,
+    );
+    expect(
+      assignment.isBeginnerSanitaeter(onDate: DateTime(2026, 6, 1)),
+      isFalse,
+    );
   });
 }

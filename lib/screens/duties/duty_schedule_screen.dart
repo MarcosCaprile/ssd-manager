@@ -730,7 +730,11 @@ class _AssignmentRow extends StatelessWidget {
           Icon(
             assignment.isSick ? Icons.healing_outlined : Icons.person_outline,
             size: 18,
-            color: assignment.isSick ? AppColors.error : AppColors.primaryBlue,
+            color: assignment.isSick
+                ? AppColors.error
+                : assignment.isBeginnerSanitaeter()
+                ? AppColors.warning
+                : AppColors.primaryBlue,
           ),
           const SizedBox(width: 7),
           Expanded(
@@ -903,10 +907,22 @@ class _SaniPickerState extends State<_SaniPicker> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final user = filtered[index];
+                        final color = user.isBeginnerSanitaeter()
+                            ? AppColors.warning
+                            : user.role == UserRole.saniLeitung
+                            ? AppColors.success
+                            : AppColors.primaryBlue;
                         return ListTile(
-                          leading: const Icon(Icons.person_add_alt_1_outlined),
+                          leading: Icon(
+                            Icons.person_add_alt_1_outlined,
+                            color: color,
+                          ),
                           title: Text(user.fullName),
-                          subtitle: Text(user.role.label),
+                          subtitle: Text(
+                            user.isBeginnerSanitaeter()
+                                ? '${user.role.label} · Anfänger'
+                                : user.role.label,
+                          ),
                           onTap: () => Navigator.of(context).pop(user),
                         );
                       },
