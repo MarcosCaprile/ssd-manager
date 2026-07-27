@@ -255,6 +255,9 @@ Verified on the MacBook through 2026-07-23:
 - Login now resolves credentials across all active manually provisioned school
   environments. A successful password must identify exactly one account, and
   the created session retains that account's `school_id` for all tenant checks.
+  GitHub `main` commit `5e2b6ca` is live on `ssd-api` through Railway
+  deployment `dd3e3784-5345-450a-996e-4636e44ed3a6`; the Demo-Schule teacher
+  login returned HTTP 200 with the expected `teacher` role.
 - Main navigation panels are loaded lazily and retained after their first
   visit. Full loading indicators are delayed for two seconds, existing content
   remains visible during refreshes, and successful mutations are no longer
