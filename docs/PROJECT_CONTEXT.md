@@ -429,6 +429,11 @@ Important backend rules already exist server-side:
   revalidation on the physical device.
 - Transactional sanitary-account bulk validation and application with audit
   logging and session revocation.
+- The create-only seven-column bulk import has an editable in-app mapping
+  table. Its final status column marks invalid rows red and exposes the exact
+  errors; a changed row must be checked again before account creation. Empty
+  sanitary dates for teacher supervision and secretariat are stored as SQL
+  NULL, preventing strict MySQL DATE errors during a mixed-role import.
 - Typed system announcements created atomically with successful sick reports.
 
 ## Documentation Already Present

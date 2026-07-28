@@ -25,6 +25,8 @@ $suffix = bin2hex(random_bytes(5));
 $username = 'bulk_test_' . $suffix;
 $updatedUsername = $username . '_updated';
 $email = $username . '@example.test';
+$staffUsername = $username . '_teacher';
+$staffEmail = $staffUsername . '@example.test';
 $updatedEmail = $updatedUsername . '@example.test';
 $password = 'LocalBulkPassword!2026';
 $futureSince = (new DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d');
@@ -133,7 +135,7 @@ function bulk_row(
     ];
 }
 
-function bulk_cleanup(PDO $pdo, ?int $userId, string $username, string $updatedUsername): void
+function bulk_cleanup(PDO $pdo, ?int $userId, string $username, string $updatedUsername, string $staffUsername): void
 {
     if ($userId === null) {
         $find = $pdo->prepare('SELECT id FROM users WHERE username IN (:username, :updated_username) LIMIT 1');
@@ -148,6 +150,17 @@ function bulk_cleanup(PDO $pdo, ?int $userId, string $username, string $updatedU
             'DELETE FROM audit_logs WHERE actor_user_id = :actor_id OR target_user_id = :target_id'
         )->execute(['actor_id' => $userId, 'target_id' => $userId]);
         $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $userId]);
+    }
+    $findStaff = $pdo->prepare('SELECT id FROM users WHERE username = :username LIMIT 1');
+    $findStaff->execute(['username' => $staffUsername]);
+    $staffId = $findStaff->fetchColumn();
+    if ($staffId !== false) {
+        $staffId = (int) $staffId;
+        $pdo->prepare('DELETE FROM notification_logs WHERE user_id = :id')->execute(['id' => $staffId]);
+        $pdo->prepare('DELETE FROM user_devices WHERE user_id = :id')->execute(['id' => $staffId]);
+        $pdo->prepare('DELETE FROM audit_logs WHERE actor_user_id = :actor_id OR target_user_id = :target_id')
+            ->execute(['actor_id' => $staffId, 'target_id' => $staffId]);
+        $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $staffId]);
     }
     $pdo->prepare('DELETE FROM user_devices WHERE device_name = :name')
         ->execute(['name' => 'Backend API bulk smoke test']);
@@ -166,6 +179,16 @@ try {
             password: $password,
             role: 'sanitaeter',
             sanitaeterSince: $futureSince
+        ),
+        bulk_row(
+            10,
+            'create',
+            firstName: 'Bulk',
+            lastName: 'Lehrer',
+            username: $staffUsername,
+            email: $staffEmail,
+            password: $password,
+            role: 'teacher'
         ),
     ];
     $validated = bulk_expect(
@@ -194,7 +217,7 @@ try {
     );
     if (
         ($applied['body']['data']['applied'] ?? null) !== true
-        || (int) ($applied['body']['data']['applied_count'] ?? 0) !== 1
+        || (int) ($applied['body']['data']['applied_count'] ?? 0) !== 2
     ) {
         throw new RuntimeException('Valid bulk create was not applied.');
     }
@@ -209,6 +232,15 @@ try {
         throw new RuntimeException('Bulk-created user or future start date is missing.');
     }
     echo '[OK] bulk create persists future first-aider start date' . PHP_EOL;
+
+    $findStaff = $pdo->prepare(
+        'SELECT sanitaeter_since FROM users WHERE school_id = 1 AND username = :username'
+    );
+    $findStaff->execute(['username' => $staffUsername]);
+    if (($findStaff->fetchColumn()) !== null) {
+        throw new RuntimeException('Bulk-created teacher retained a sanitary start date.');
+    }
+    echo '[OK] bulk create stores an empty sanitary date as NULL for teacher accounts' . PHP_EOL;
 
     $invalidUsername = 'bulk_invalid_' . $suffix;
     $invalidRows = [
@@ -345,7 +377,7 @@ try {
     $failure = $exception;
 } finally {
     try {
-        bulk_cleanup($pdo, $userId, $username, $updatedUsername);
+        bulk_cleanup($pdo, $userId, $username, $updatedUsername, $staffUsername);
         echo '[OK] local bulk-test data cleaned up' . PHP_EOL;
     } catch (Throwable $cleanupException) {
         $failure ??= $cleanupException;

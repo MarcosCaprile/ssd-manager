@@ -104,7 +104,27 @@ class BulkUserSpreadsheetService {
     if (rows.isEmpty) {
       throw const FormatException('Die Excel-Datei enthält keine Accounts.');
     }
-    return _appendDuplicateErrors(rows);
+    return revalidate(rows);
+  }
+
+  /// Re-applies client-side spreadsheet rules after a mapped row was edited.
+  List<UserBulkRow> revalidate(List<UserBulkRow> rows) {
+    final checkedRows = [
+      for (final row in rows)
+        row.copyWith(
+          localErrors: _localErrors(
+            firstName: row.firstName,
+            lastName: row.lastName,
+            username: row.username,
+            email: row.email,
+            temporaryPassword: row.temporaryPassword,
+            role: row.role,
+            rawStartDate: row.startDateForDisplay,
+            sanitaeterSince: row.sanitaeterSince,
+          ),
+        ),
+    ];
+    return _appendDuplicateErrors(checkedRows);
   }
 
   Future<File> _writeFile(String name, Uint8List bytes) async {

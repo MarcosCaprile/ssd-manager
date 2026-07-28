@@ -266,7 +266,9 @@ final class UserBulkService
                 'email' => $row['email'],
                 'password_hash' => PasswordHasher::hash((string) $row['temporary_password']),
                 'role' => $row['role'],
-                'sanitaeter_since' => $row['sanitaeter_since'],
+                // MySQL strict mode rejects an empty string for a DATE column.
+                // Non-sanitary roles deliberately have no sanitary start date.
+                'sanitaeter_since' => $row['sanitaeter_since'] === '' ? null : $row['sanitaeter_since'],
             ]);
             $newId = (int) $this->pdo->lastInsertId();
             $this->audit->log($auth->schoolId(), $auth->userId(), 'user.bulk_created', $newId, 'user', null, [

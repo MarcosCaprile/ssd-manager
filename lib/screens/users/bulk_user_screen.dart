@@ -18,6 +18,7 @@ class BulkUserScreen extends ConsumerStatefulWidget {
 class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
   List<UserBulkRow> _rows = [];
   UserBulkValidation? _validation;
+  final Set<int> _pendingRows = {};
   String? _selectedFileName;
   bool _working = false;
 
@@ -48,20 +49,47 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
       final rows = ref
           .read(bulkUserSpreadsheetServiceProvider)
           .parse(await file.readAsBytes());
-      final server = await ref.read(userRepositoryProvider).validateBulk(rows);
-      final merged = _mergeLocalErrors(server, rows);
-      if (!mounted) return;
-      setState(() {
-        _rows = rows;
-        _validation = merged;
-        _selectedFileName = file.name;
-      });
+      await _validateRows(rows, fileName: file.name);
+    });
+  }
+
+  Future<void> _recheckImport() async {
+    await _run(() => _validateRows(_rows));
+  }
+
+  Future<void> _validateRows(List<UserBulkRow> rows, {String? fileName}) async {
+    final checked = ref
+        .read(bulkUserSpreadsheetServiceProvider)
+        .revalidate(rows);
+    final server = await ref.read(userRepositoryProvider).validateBulk(checked);
+    final merged = _mergeLocalErrors(server, checked);
+    if (!mounted) return;
+    setState(() {
+      _rows = checked;
+      _validation = merged;
+      _pendingRows.clear();
+      if (fileName != null) _selectedFileName = fileName;
+    });
+  }
+
+  void _updateRow(int rowNumber, UserBulkRow Function(UserBulkRow row) update) {
+    setState(() {
+      _rows = [
+        for (final row in _rows)
+          if (row.rowNumber == rowNumber) update(row) else row,
+      ];
+      _pendingRows.add(rowNumber);
     });
   }
 
   Future<void> _applyImport() async {
     final validation = _validation;
-    if (validation == null || !validation.valid || _rows.isEmpty) return;
+    if (validation == null ||
+        !validation.valid ||
+        _rows.isEmpty ||
+        _pendingRows.isNotEmpty) {
+      return;
+    }
     final confirmed = await showConfirmDialog(
       context,
       title: '${_rows.length} Accounts erstellen?',
@@ -107,6 +135,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final validation = _validation;
     return Scaffold(
       appBar: AppBar(title: const Text('Accounts per Excel importieren')),
       body: ListView(
@@ -144,12 +173,12 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    '2. Import und Prüfung',
+                    '2. Import, Mapping und Prüfung',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Jede ausgefüllte Zeile erstellt einen neuen Account. Startdatum wird für Sanitäter und Sani-Leitung als DD/MM/YYYY angegeben, bei Lehreraufsicht und Sekretariat als N/A. Die Datei wird vollständig geprüft; Teilimporte sind ausgeschlossen.',
+                    'Nach dem Hochladen kannst du jede Angabe direkt in der Tabelle korrigieren. Geänderte Zeilen müssen vor dem Erstellen erneut geprüft werden. Fehlerhafte Zeilen sind rot markiert.',
                   ),
                   const SizedBox(height: 12),
                   FilledButton.icon(
@@ -164,15 +193,34 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
-                  if (_validation != null) ...[
+                  if (validation != null) ...[
                     const SizedBox(height: 14),
-                    _ValidationSummary(validation: _validation!),
+                    _ValidationSummary(
+                      validation: validation,
+                      pendingCount: _pendingRows.length,
+                    ),
+                    const SizedBox(height: 12),
+                    _MappedAccountTable(
+                      rows: _rows,
+                      validation: validation,
+                      pendingRows: _pendingRows,
+                      enabled: !_working,
+                      onChanged: _updateRow,
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _working ? null : _recheckImport,
+                      icon: const Icon(Icons.refresh_outlined),
+                      label: Text(
+                        _pendingRows.isEmpty
+                            ? 'Prüfung erneut durchführen'
+                            : 'Änderungen prüfen',
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    for (final row in _validation!.rows)
-                      _ValidationRowTile(row: row),
-                    const SizedBox(height: 10),
                     FilledButton.icon(
-                      onPressed: !_working && _validation!.valid
+                      onPressed:
+                          !_working && validation.valid && _pendingRows.isEmpty
                           ? _applyImport
                           : null,
                       icon: const Icon(Icons.fact_check_outlined),
@@ -231,29 +279,41 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
 }
 
 class _ValidationSummary extends StatelessWidget {
-  const _ValidationSummary({required this.validation});
+  const _ValidationSummary({
+    required this.validation,
+    required this.pendingCount,
+  });
 
   final UserBulkValidation validation;
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
     final validCount = validation.rows.where((row) => row.valid).length;
     final scheme = Theme.of(context).colorScheme;
+    final needsReview = pendingCount > 0;
+    final valid = validation.valid && !needsReview;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: validation.valid
+        color: valid
             ? scheme.primaryContainer
+            : needsReview
+            ? scheme.tertiaryContainer
             : scheme.errorContainer,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(
-        validation.valid
+        needsReview
+            ? '$pendingCount geänderte Zeile(n) müssen noch geprüft werden.'
+            : validation.valid
             ? 'Alle $validCount Zeilen sind gültig.'
             : '$validCount von ${validation.rows.length} Zeilen sind gültig. Fehlerhafte Zeilen werden nicht angewendet.',
         style: TextStyle(
-          color: validation.valid
+          color: valid
               ? scheme.onPrimaryContainer
+              : needsReview
+              ? scheme.onTertiaryContainer
               : scheme.onErrorContainer,
           fontWeight: FontWeight.w600,
         ),
@@ -262,45 +322,251 @@ class _ValidationSummary extends StatelessWidget {
   }
 }
 
-class _ValidationRowTile extends StatelessWidget {
-  const _ValidationRowTile({required this.row});
+class _MappedAccountTable extends StatelessWidget {
+  const _MappedAccountTable({
+    required this.rows,
+    required this.validation,
+    required this.pendingRows,
+    required this.enabled,
+    required this.onChanged,
+  });
 
-  final UserBulkValidationRow row;
+  final List<UserBulkRow> rows;
+  final UserBulkValidation validation;
+  final Set<int> pendingRows;
+  final bool enabled;
+  final void Function(int rowNumber, UserBulkRow Function(UserBulkRow row))
+  onChanged;
 
   @override
   Widget build(BuildContext context) {
+    final resultByNumber = {
+      for (final result in validation.rows) result.rowNumber: result,
+    };
+    return Scrollbar(
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 12,
+          horizontalMargin: 8,
+          headingRowColor: WidgetStatePropertyAll(
+            Theme.of(context).colorScheme.surfaceContainerHighest,
+          ),
+          columns: const [
+            DataColumn(label: Text('Zeile')),
+            DataColumn(label: Text('Vorname')),
+            DataColumn(label: Text('Nachname')),
+            DataColumn(label: Text('Benutzername')),
+            DataColumn(label: Text('Schul-E-Mail')),
+            DataColumn(label: Text('Startpasswort')),
+            DataColumn(label: Text('Rolle')),
+            DataColumn(label: Text('Startdatum')),
+            DataColumn(label: Text('Prüfung')),
+          ],
+          rows: [
+            for (final row in rows)
+              _dataRow(context, row, resultByNumber[row.rowNumber]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  DataRow _dataRow(
+    BuildContext context,
+    UserBulkRow row,
+    UserBulkValidationRow? result,
+  ) {
+    final pending = pendingRows.contains(row.rowNumber);
+    final invalid = result != null && !result.valid && !pending;
     final scheme = Theme.of(context).colorScheme;
-    return ExpansionTile(
-      tilePadding: EdgeInsets.zero,
-      leading: Icon(
-        row.valid ? Icons.check_circle_outline : Icons.error_outline,
-        color: row.valid ? Colors.green : scheme.error,
+    return DataRow(
+      color: WidgetStatePropertyAll(
+        invalid
+            ? scheme.errorContainer.withValues(alpha: 0.72)
+            : pending
+            ? scheme.tertiaryContainer.withValues(alpha: 0.55)
+            : null,
       ),
-      title: Text('Zeile ${row.rowNumber}: Neuer Account'),
-      subtitle: Text(
-        row.displayName.isEmpty ? 'Keine Person erkannt' : row.displayName,
+      cells: [
+        DataCell(Text('${row.rowNumber}')),
+        DataCell(_textField(row, row.firstName, 'firstName')),
+        DataCell(_textField(row, row.lastName, 'lastName')),
+        DataCell(_textField(row, row.username, 'username')),
+        DataCell(_textField(row, row.email, 'email')),
+        DataCell(
+          _textField(
+            row,
+            row.temporaryPassword,
+            'temporaryPassword',
+            obscureText: true,
+          ),
+        ),
+        DataCell(_roleField(row)),
+        DataCell(_startDateField(row)),
+        DataCell(_status(context, result, pending)),
+      ],
+    );
+  }
+
+  Widget _textField(
+    UserBulkRow row,
+    String value,
+    String field, {
+    bool obscureText = false,
+  }) {
+    return SizedBox(
+      width: field == 'email' ? 210 : 145,
+      child: TextFormField(
+        key: ValueKey('${row.rowNumber}-$field'),
+        initialValue: value,
+        enabled: enabled,
+        obscureText: obscureText,
+        enableSuggestions: !obscureText,
+        autocorrect: false,
+        decoration: const InputDecoration(
+          isDense: true,
+          border: OutlineInputBorder(),
+        ),
+        onChanged: (newValue) => onChanged(
+          row.rowNumber,
+          (current) => switch (field) {
+            'firstName' => current.copyWith(firstName: newValue.trim()),
+            'lastName' => current.copyWith(lastName: newValue.trim()),
+            'username' => current.copyWith(username: newValue.trim()),
+            'email' => current.copyWith(email: newValue.trim().toLowerCase()),
+            _ => current.copyWith(temporaryPassword: newValue),
+          },
+        ),
       ),
-      childrenPadding: const EdgeInsets.only(left: 40, bottom: 10),
-      children: row.errors.isEmpty
-          ? const [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Alle Angaben sind plausibel.'),
-              ),
-            ]
-          : [
-              for (final error in row.errors)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '• $error',
-                      style: TextStyle(color: scheme.error),
-                    ),
+    );
+  }
+
+  Widget _roleField(UserBulkRow row) {
+    return SizedBox(
+      width: 160,
+      child: DropdownButtonFormField<String>(
+        initialValue:
+            const {
+              'sanitaeter',
+              'sani_leitung',
+              'teacher',
+              'sekretariat',
+            }.contains(row.role)
+            ? row.role
+            : null,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          isDense: true,
+          border: OutlineInputBorder(),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'sanitaeter', child: Text('Sanitäter')),
+          DropdownMenuItem(value: 'sani_leitung', child: Text('Sani-Leitung')),
+          DropdownMenuItem(value: 'teacher', child: Text('Lehreraufsicht')),
+          DropdownMenuItem(value: 'sekretariat', child: Text('Sekretariat')),
+        ],
+        onChanged: !enabled
+            ? null
+            : (role) {
+                if (role == null) return;
+                onChanged(
+                  row.rowNumber,
+                  (current) => current.copyWith(
+                    role: role,
+                    sanitaeterSince: role == 'teacher' || role == 'sekretariat'
+                        ? ''
+                        : current.sanitaeterSince,
                   ),
-                ),
+                );
+              },
+      ),
+    );
+  }
+
+  Widget _startDateField(UserBulkRow row) {
+    return SizedBox(
+      width: 135,
+      child: TextFormField(
+        key: ValueKey('${row.rowNumber}-startDate'),
+        initialValue: row.startDateForDisplay,
+        enabled: enabled,
+        decoration: const InputDecoration(
+          isDense: true,
+          border: OutlineInputBorder(),
+          hintText: 'DD/MM/YYYY',
+        ),
+        onChanged: (value) => onChanged(row.rowNumber, (current) {
+          if (current.role == 'teacher' || current.role == 'sekretariat') {
+            return current.copyWith(sanitaeterSince: '');
+          }
+          final match = RegExp(
+            r'^(\d{2})/(\d{2})/(\d{4})$',
+          ).firstMatch(value.trim());
+          return current.copyWith(
+            sanitaeterSince: match == null
+                ? value.trim()
+                : '${match.group(3)}-${match.group(2)}-${match.group(1)}',
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _status(
+    BuildContext context,
+    UserBulkValidationRow? result,
+    bool pending,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    if (pending) {
+      return SizedBox(
+        width: 260,
+        child: Text(
+          'Änderung noch nicht geprüft',
+          style: TextStyle(color: scheme.onTertiaryContainer),
+        ),
+      );
+    }
+    if (result == null) {
+      return const SizedBox(width: 260, child: Text('Nicht geprüft'));
+    }
+    if (result.valid) {
+      return const SizedBox(
+        width: 260,
+        child: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green),
+            SizedBox(width: 6),
+            Text('Alle Angaben passen'),
+          ],
+        ),
+      );
+    }
+    return SizedBox(
+      width: 260,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.error_outline, color: scheme.error),
+              const SizedBox(width: 6),
+              const Text('Angaben prüfen'),
             ],
+          ),
+          for (final error in result.errors)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                error,
+                style: TextStyle(color: scheme.error, fontSize: 12),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

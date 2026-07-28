@@ -92,6 +92,42 @@ class UserBulkRow {
     return id == null ? 'Unbekannte Person' : 'Account #$id';
   }
 
+  String get startDateForDisplay {
+    if (role != 'sanitaeter' && role != 'sani_leitung') return 'N/A';
+    final match = RegExp(
+      r'^(\d{4})-(\d{2})-(\d{2})$',
+    ).firstMatch(sanitaeterSince);
+    return match == null
+        ? sanitaeterSince
+        : '${match.group(3)}/${match.group(2)}/${match.group(1)}';
+  }
+
+  UserBulkRow copyWith({
+    String? firstName,
+    String? lastName,
+    String? username,
+    String? email,
+    String? temporaryPassword,
+    String? role,
+    String? sanitaeterSince,
+    List<String>? localErrors,
+  }) {
+    return UserBulkRow(
+      rowNumber: rowNumber,
+      action: action,
+      rawAction: rawAction,
+      id: id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      temporaryPassword: temporaryPassword ?? this.temporaryPassword,
+      role: role ?? this.role,
+      sanitaeterSince: sanitaeterSince ?? this.sanitaeterSince,
+      localErrors: localErrors ?? this.localErrors,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'row_number': rowNumber,
     'action': action?.apiValue ?? rawAction,

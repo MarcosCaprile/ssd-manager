@@ -315,6 +315,17 @@ Reason: A simple create-only roster is understandable to schools and avoids
 mixing destructive account administration with initial cohort import. The
 server still validates every row and applies the file transactionally.
 
+### Review and correct bulk imports in the app before creation
+
+Decision: After an XLSX file is mapped, the app shows every imported account
+in an editable table with a status column. Invalid rows are red and list their
+specific errors; edited rows must be rechecked before the transaction can be
+applied. Non-sanitary roles persist an absent sanitary start date as SQL NULL.
+
+Reason: Schools can fix a typo without rebuilding a spreadsheet, while the
+server keeps the final all-or-nothing validation. Binding NULL avoids a strict
+MySQL DATE conversion error for teacher supervision and secretariat accounts.
+
 ### Group announcement pushes as one conversation
 
 Decision: Android receives data pushes that the app renders into one inbox-style
