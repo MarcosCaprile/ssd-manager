@@ -740,3 +740,9 @@ contains generated output only and is not committed.
   workbook is selected, preventing old values from being displayed after a
   replacement import. Its horizontal scrollbar no longer asserts on desktop
   and iOS builds.
+- Android Play signing is configured through the Git-ignored
+  `android/key.properties` and a local upload key under `local-secrets/`.
+  The first signed release bundle was built on 2026-08-05 as version 1.0.0
+  (version code 1), targets the Railway HTTPS API, contains the retained
+  notification icon, and has SHA-256
+  `222c32aed358754af591b2e41ffa8952ff7754b4235b645229611886396a43f0`.

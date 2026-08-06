@@ -664,6 +664,18 @@ versions and the iOS channel was not registered on the engine used by this app,
 so tapping the prompt could appear to do nothing. Rebuilding form cells avoids
 misleading stale values after replacing an import file.
 
+## 2026-08-05: Dedicated Android upload key for Play releases
+
+Decision: Android release builds require an explicitly configured local upload
+key. The key and its passwords are kept only in Git-ignored local files; the
+release Gradle configuration fails instead of silently falling back to the
+debug key when that configuration is absent.
+
+Reason: Google Play must receive a consistently signed App Bundle, while a
+debug-signed "release" artifact would be unsuitable for store distribution.
+Failing closed prevents accidental publication with an insecure or changing
+signature.
+
 ## 2026-07-26: Public SSD Manager website paths
 
 Decision: The canonical product origin is `https://ssd-manager.minutmate.com`.
