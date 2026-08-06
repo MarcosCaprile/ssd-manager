@@ -1,6 +1,7 @@
 package com.minutmate.ssdmanager
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -17,11 +18,26 @@ class MainActivity : FlutterActivity() {
                 result.notImplemented()
                 return@setMethodCallHandler
             }
-            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+            val notificationIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
                 putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             }
-            startActivity(intent)
-            result.success(null)
+            val fallbackIntent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:$packageName")
+            }
+            runOnUiThread {
+                try {
+                    startActivity(notificationIntent)
+                    result.success(null)
+                } catch (_: Exception) {
+                    try {
+                        startActivity(fallbackIntent)
+                        result.success(null)
+                    } catch (_: Exception) {
+                        result.error("settings_unavailable", "App-Einstellungen konnten nicht geöffnet werden.", null)
+                    }
+                }
+            }
         }
     }
 }

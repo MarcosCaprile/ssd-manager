@@ -649,6 +649,21 @@ Reason: School scope, support needs, pilot structure, responsible authority,
 and commercial framework can differ materially. A fixed reusable default would
 create avoidable contradictions with individually negotiated agreements.
 
+## 2026-08-05: Direct notification settings and stable bulk-review remount
+
+Decision: The first-run notification reminder routes through a shared native
+method channel. Android targets the package-specific notification page with a
+safe fallback to the app details page; iOS registers the channel on the
+implicit Flutter engine and uses Apple's direct notification settings URL on
+iOS 16 and later. The bulk review table increments a revision key whenever a
+new workbook is validated so its `TextFormField` values are rebuilt from the
+new mapping.
+
+Reason: The former Android intent was not sufficiently targeted across device
+versions and the iOS channel was not registered on the engine used by this app,
+so tapping the prompt could appear to do nothing. Rebuilding form cells avoids
+misleading stale values after replacing an import file.
+
 ## 2026-07-26: Public SSD Manager website paths
 
 Decision: The canonical product origin is `https://ssd-manager.minutmate.com`.

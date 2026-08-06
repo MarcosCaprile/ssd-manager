@@ -731,3 +731,12 @@ contains generated output only and is not committed.
   provider-account evidence review.
 - The All-Inkl notification address was confirmed by the owner after setup;
   backup failure e-mails are therefore active.
+- The in-app prompt for disabled notifications now opens the system's
+  app-specific notification settings on iOS and Android. Android uses the
+  notification-settings intent with a package URI and falls back to the app
+  details screen; iOS registers the channel on the implicit Flutter engine and
+  uses the direct notification-settings URL on iOS 16+.
+- The bulk-import mapping table now remounts its editable cells when a new
+  workbook is selected, preventing old values from being displayed after a
+  replacement import. Its horizontal scrollbar no longer asserts on desktop
+  and iOS builds.

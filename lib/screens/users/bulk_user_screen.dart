@@ -21,6 +21,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
   final Set<int> _pendingRows = {};
   String? _selectedFileName;
   bool _working = false;
+  int _mappingRevision = 0;
 
   Future<void> _downloadTemplate() async {
     await _run(() async {
@@ -68,6 +69,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
       _rows = checked;
       _validation = merged;
       _pendingRows.clear();
+      _mappingRevision++;
       if (fileName != null) _selectedFileName = fileName;
     });
   }
@@ -205,6 +207,7 @@ class _BulkUserScreenState extends ConsumerState<BulkUserScreen> {
                       validation: validation,
                       pendingRows: _pendingRows,
                       enabled: !_working,
+                      mappingRevision: _mappingRevision,
                       onChanged: _updateRow,
                     ),
                     const SizedBox(height: 12),
@@ -328,6 +331,7 @@ class _MappedAccountTable extends StatelessWidget {
     required this.validation,
     required this.pendingRows,
     required this.enabled,
+    required this.mappingRevision,
     required this.onChanged,
   });
 
@@ -335,6 +339,7 @@ class _MappedAccountTable extends StatelessWidget {
   final UserBulkValidation validation;
   final Set<int> pendingRows;
   final bool enabled;
+  final int mappingRevision;
   final void Function(int rowNumber, UserBulkRow Function(UserBulkRow row))
   onChanged;
 
@@ -344,7 +349,6 @@ class _MappedAccountTable extends StatelessWidget {
       for (final result in validation.rows) result.rowNumber: result,
     };
     return Scrollbar(
-      thumbVisibility: true,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
@@ -419,7 +423,7 @@ class _MappedAccountTable extends StatelessWidget {
     return SizedBox(
       width: field == 'email' ? 210 : 145,
       child: TextFormField(
-        key: ValueKey('${row.rowNumber}-$field'),
+        key: ValueKey('$mappingRevision-${row.rowNumber}-$field'),
         initialValue: value,
         enabled: enabled,
         obscureText: obscureText,
@@ -489,7 +493,7 @@ class _MappedAccountTable extends StatelessWidget {
     return SizedBox(
       width: 135,
       child: TextFormField(
-        key: ValueKey('${row.rowNumber}-startDate'),
+        key: ValueKey('$mappingRevision-${row.rowNumber}-startDate'),
         initialValue: row.startDateForDisplay,
         enabled: enabled,
         decoration: const InputDecoration(
