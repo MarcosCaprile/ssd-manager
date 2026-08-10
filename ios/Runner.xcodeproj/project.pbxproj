@@ -99,6 +99,9 @@
 		A10000000000000000000009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A1000000000000000000000A /* MainInterface.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
 		A10000000000000000000016 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
+		A20000000000000000000001 /* ShareExtensionDebug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtensionDebug.xcconfig; path = Flutter/ShareExtensionDebug.xcconfig; sourceTree = "<group>"; };
+		A20000000000000000000002 /* ShareExtensionRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtensionRelease.xcconfig; path = Flutter/ShareExtensionRelease.xcconfig; sourceTree = "<group>"; };
+		A20000000000000000000003 /* ShareExtensionProfile.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = ShareExtensionProfile.xcconfig; path = Flutter/ShareExtensionProfile.xcconfig; sourceTree = "<group>"; };
 		A13425A8EA2680FA5C19E45C /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A75BF885F8EFD8DCFFF9865F /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		AFF67F1AAF7745515CB3A692 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -176,6 +179,9 @@
 				3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */,
 				9740EEB21CF90195004384FC /* Debug.xcconfig */,
 				7AFA3C8E1D35360C0083082E /* Release.xcconfig */,
+				A20000000000000000000001 /* ShareExtensionDebug.xcconfig */,
+				A20000000000000000000002 /* ShareExtensionRelease.xcconfig */,
+				A20000000000000000000003 /* ShareExtensionProfile.xcconfig */,
 				9740EEB31CF90195004384FC /* Generated.xcconfig */,
 			);
 			name = Flutter;
@@ -843,7 +849,7 @@
 		};
 		A10000000000000000000012 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 0E31563027295E77E64AB400 /* Pods-ShareExtension.debug.xcconfig */;
+			baseConfigurationReference = A20000000000000000000001 /* ShareExtensionDebug.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -851,8 +857,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 9S56LUSP54;
-				FLUTTER_BUILD_NAME = 1.0.0;
-				FLUTTER_BUILD_NUMBER = 1;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -873,7 +877,7 @@
 		};
 		A10000000000000000000013 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 90EB5671BF1FEF15949BD504 /* Pods-ShareExtension.release.xcconfig */;
+			baseConfigurationReference = A20000000000000000000002 /* ShareExtensionRelease.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -881,8 +885,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 9S56LUSP54;
-				FLUTTER_BUILD_NAME = 1.0.0;
-				FLUTTER_BUILD_NUMBER = 1;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -901,7 +903,7 @@
 		};
 		A10000000000000000000014 /* Profile */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5D736C710076606131BF7969 /* Pods-ShareExtension.profile.xcconfig */;
+			baseConfigurationReference = A20000000000000000000003 /* ShareExtensionProfile.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_MODULES = YES;
@@ -909,8 +911,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = 9S56LUSP54;
-				FLUTTER_BUILD_NAME = 1.0.0;
-				FLUTTER_BUILD_NUMBER = 1;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
