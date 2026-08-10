@@ -780,6 +780,8 @@ contains generated output only and is not committed.
   `ITSAppUsesNonExemptEncryption=false`: SSD Manager implements no proprietary
   or additional cryptography and relies only on exempt operating-system
   services such as HTTPS/TLS and Keychain. This avoids the same export-
-  compliance questionnaire for later builds; build 3 still requires its
-  one-time App Store Connect declaration because it was uploaded before the
-  property-list declaration was added.
+  compliance questionnaire for later builds. Build 3's one-time declaration
+  was completed in App Store Connect as “none of the above algorithms”, its
+  status changed to ready for submission, and it was selected and saved for
+  iOS App Store version 1.0. The version is ready to be added to App Review but
+  has not yet been submitted for review.
