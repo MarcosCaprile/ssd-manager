@@ -783,5 +783,11 @@ contains generated output only and is not committed.
   compliance questionnaire for later builds. Build 3's one-time declaration
   was completed in App Store Connect as “none of the above algorithms”, its
   status changed to ready for submission, and it was selected and saved for
-  iOS App Store version 1.0. The version is ready to be added to App Review but
-  has not yet been submitted for review.
+  iOS App Store version 1.0. The public store listing uses the primary category
+  Education and secondary category Productivity, age rating 4+, a free download
+  price with Germany as the base region, and manual release after approval.
+  Content rights, the public privacy-policy and account-deletion URLs, and the
+  App Privacy label were completed. The label declares the 11 collected data
+  types used for app functionality as linked to the user and declares no
+  tracking. Version 1.0/build 3 was submitted to Apple App Review on 2026-08-10;
+  App Store Connect confirmed the submission and now shows `Warten auf Prüfung`.
