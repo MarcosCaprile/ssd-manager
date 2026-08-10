@@ -589,7 +589,9 @@ Technical gaps:
   deployment `7b328e37-6729-4734-99b2-8890647826ec`. The public
   database-backed healthcheck returned HTTP 200 with the separate
   sick-report-push backend active.
-- Android release signing is not set up.
+- Android release signing is configured with the dedicated, locally protected
+  Google Play upload key. Release builds fail closed when the ignored signing
+  configuration is unavailable.
 - Development signing and physical iPhone installation are operational. App
   Store distribution, archive validation, and TestFlight remain outstanding.
 - Centralized log/alert handling still needs a final production review. The
@@ -746,3 +748,11 @@ contains generated output only and is not committed.
   (version code 1), targets the Railway HTTPS API, contains the retained
   notification icon, and has SHA-256
   `222c32aed358754af591b2e41ffa8952ff7754b4235b645229611886396a43f0`.
+- Google Play detected broad media permissions inherited from `open_filex` in
+  version code 1. SSD Manager does not need them: attachments use Android's
+  system pickers and downloaded files are written to app-private storage.
+  Version 1.0.0 (version code 2) explicitly removes
+  `READ_EXTERNAL_STORAGE` and all `READ_MEDIA_*` permissions during manifest
+  merging. The signed replacement AAB contains no broad media permission and
+  has SHA-256
+  `e5d6717f81ceac8c42aec5db9e1a6064f259862ee2e45fa9b5b87a421045fee6`.

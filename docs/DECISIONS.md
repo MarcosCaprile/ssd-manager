@@ -676,6 +676,18 @@ debug-signed "release" artifact would be unsuitable for store distribution.
 Failing closed prevents accidental publication with an insecure or changing
 signature.
 
+## 2026-08-09: Remove inherited broad Android media permissions
+
+Decision: The application manifest removes `READ_EXTERNAL_STORAGE`,
+`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO`, and `READ_MEDIA_AUDIO` declarations
+inherited from `open_filex`. Users continue selecting individual photos and
+files through Android's system pickers; downloaded attachments remain in
+app-private storage before being opened through the existing file provider.
+
+Reason: SSD Manager has no core need for persistent or broad access to the
+device media library. Removing the permissions minimizes access and avoids an
+inapplicable Google Play photo/video permission declaration.
+
 ## 2026-07-26: Public SSD Manager website paths
 
 Decision: The canonical product origin is `https://ssd-manager.minutmate.com`.

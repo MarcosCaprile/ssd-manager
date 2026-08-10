@@ -214,6 +214,10 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
   its runtime resource name. Keep `ic_stat_ssd_manager` referenced through
   Firebase's `default_notification_icon` manifest metadata, and verify the
   resource inside every release APK before device acceptance.
+- `open_filex` declares broad Android storage/media permissions that SSD
+  Manager does not need. Keep the main-manifest removal directives for
+  `READ_EXTERNAL_STORAGE` and every `READ_MEDIA_*` permission, and verify that
+  none is present in every release AAB's merged manifest before Play upload.
 - Push deduplication is per user and distinct Firebase token. Multiple active
   sessions may contain stale tokens after reinstallations; a failed stale
   token must never suppress delivery to a current token of the same user.
