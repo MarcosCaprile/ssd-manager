@@ -776,4 +776,10 @@ contains generated output only and is not committed.
   `e56f8489dc74d6e80061d523f51dbdce2f71abacd606a07f6acc769981a88902`.
   `flutter analyze` passed, all 45 Flutter tests passed, and Apple's upload
   completed without warnings. The IPA is a local release artifact and must not
-  be committed.
+  be committed. The Runner and ShareExtension property lists declare
+  `ITSAppUsesNonExemptEncryption=false`: SSD Manager implements no proprietary
+  or additional cryptography and relies only on exempt operating-system
+  services such as HTTPS/TLS and Keychain. This avoids the same export-
+  compliance questionnaire for later builds; build 3 still requires its
+  one-time App Store Connect declaration because it was uploaded before the
+  property-list declaration was added.

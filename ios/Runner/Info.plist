@@ -39,6 +39,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Fotos können als Anhang in Ankündigungen ausgewählt werden.</string>
 	<key>UIApplicationSceneManifest</key>
