@@ -764,3 +764,12 @@ contains generated output only and is not committed.
   URLs returned HTTPS 200 on 2026-08-10. A dedicated fictional production
   teacher account was verified for App Review with no forced password change;
   its credentials are stored only in the Git-ignored `local-secrets/` folder.
+- The Apple App Store IPA was exported on 2026-08-10 as version 1.0.0
+  (build 2) with Xcode's cloud-managed Apple Distribution signing and Store
+  provisioning profiles for the Runner and ShareExtension targets. It points
+  to the Railway production API, includes production push and shared app-group
+  entitlements, and is available locally at
+  `outputs/app-store/SSD_Manager_iOS_1.0.0_build_2_AppStore.ipa` with SHA-256
+  `948859138c08db4798bce8ccb40eabf61a853f7789bb5ebe376a278526565337`.
+  Before export, `flutter analyze` passed and all 45 Flutter tests passed. The
+  IPA is a local release artifact and must not be committed.
