@@ -1,6 +1,6 @@
 # SSD Manager Project Context
 
-Stand: 2026-07-25
+Stand: 2026-08-10
 
 This document preserves important project context from earlier local Codex chats. Those chats existed only on the original Windows PC, so this file should travel with the repository through GitHub and be used as durable context on the MacBook or in future Codex chats.
 
@@ -756,3 +756,11 @@ contains generated output only and is not committed.
   merging. The signed replacement AAB contains no broad media permission and
   has SHA-256
   `e5d6717f81ceac8c42aec5db9e1a6064f259862ee2e45fa9b5b87a421045fee6`.
+- Native Apple App Store screenshots are prepared under
+  `docs/store-assets/apple-app-store/`: four iPhone 6.5-inch images at
+  1242 × 2688 and four iPad 13-inch images at 2064 × 2752, all using only the
+  local fictional demo school. The same folder contains the finalized German
+  App Store metadata and review notes. The live marketing, support, and privacy
+  URLs returned HTTPS 200 on 2026-08-10. A dedicated fictional production
+  teacher account was verified for App Review with no forced password change;
+  its credentials are stored only in the Git-ignored `local-secrets/` folder.
