@@ -809,5 +809,12 @@ contains generated output only and is not committed.
   verified deployments are `ac9b6c8c-098e-47b9-a01d-adb866acad6c` for `ssd-api`
   and `789bf70f-32c5-4adc-9ee8-2191aeeb9d13` for `ssd-cron`; both succeeded. The
   public healthcheck returned HTTP 200, and both new moderation routes returned
-  the expected HTTP 401 without authentication. No replacement App Store build
-  has been created yet.
+  the expected HTTP 401 without authentication. A signed Railway-connected iOS
+  release build `1.0.0+4` was then created in the external `/private/tmp` build
+  directory, installed by cable on the physical iPhone 11 running iOS 18.7.2,
+  and launched successfully. Xcode confirmed bundle identifier
+  `com.minutmate.ssdmanager` and installed build number 4. This older-OS device
+  is suitable for an additional compatibility check, but not for Apple's
+  requested recording on the latest operating system; use the paired iPhone 11
+  named `Pil`, currently on iOS 26.5.2, for that recording. Build 4 has not yet
+  been archived or uploaded to App Store Connect.
