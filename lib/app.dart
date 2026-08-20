@@ -14,6 +14,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_shell.dart';
 import 'screens/splash_screen.dart';
 import 'themes/app_theme.dart';
+import 'widgets/keyboard_dismiss_region.dart';
 
 class SsdManagerApp extends ConsumerWidget {
   const SsdManagerApp({super.key});
@@ -29,6 +30,11 @@ class SsdManagerApp extends ConsumerWidget {
       themeMode: themeMode,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       supportedLocales: const [Locale('de', 'DE')],
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      ),
+      builder: (context, child) =>
+          KeyboardDismissRegion(child: child ?? const SizedBox.shrink()),
       home: const _AuthGate(),
     );
   }

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/push/push_service.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/deep_link_provider.dart';
+import '../../widgets/keyboard_dismiss_region.dart';
 import '../announcements/announcements_screen.dart';
 import '../duties/duty_schedule_screen.dart';
 import '../profile/profile_screen.dart';
@@ -108,6 +109,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
         onTap: (index) {
+          KeyboardDismissRegion.dismiss();
           setState(() {
             _index = index;
             _visited.add(index);

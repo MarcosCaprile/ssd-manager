@@ -830,8 +830,9 @@ contains generated output only and is not committed.
   by cable and launched successfully on the physical iPhone 11 named `iPhone
   von Marcos`, running iOS 26.6.1, on 2026-08-20. Device Services confirmed
   bundle identifier `com.minutmate.ssdmanager`, version `1.0.0`, and build
-  number 5. Build 5 has not been archived or uploaded to App Store Connect; it
-  is the physical-device candidate for the requested App Review recording.
+  number 5. Build 5 was superseded before the final recording by the keyboard
+  dismissal correction described below and was not uploaded to App Store
+  Connect.
 - Railway production cost optimization was applied on 2026-08-20. The MySQL
   start command now uses `--innodb-buffer-pool-size=128M` instead of `1G`.
   The live database contains 13 tables and about 6.36 MB of table/index data;
@@ -843,3 +844,17 @@ contains generated output only and is not committed.
   metrics demonstrate a need. The Railway workspace has an 8 USD soft usage
   alert and deliberately has no hard limit, so cost control cannot take the
   production apps offline.
+- Software-keyboard dismissal is now consistent across the Flutter app. A
+  pointer press outside the focused editable area removes focus without
+  competing with other gestures, every inherited scroll view dismisses the
+  keyboard on drag, bottom navigation explicitly clears focus, and the
+  multiline announcement composer exposes a visible `Tastatur schließen`
+  action while focused. Widget tests cover outside/inside focus behavior and
+  the chat action. `flutter analyze` and all 52 executable Flutter tests passed;
+  only the spreadsheet test tied to the separately user-deleted demo XLSX was
+  excluded. The production-connected signed iOS release candidate `1.0.0+6`
+  was built, installed by cable, and launched on the physical iPhone 11 named
+  `iPhone von Marcos` running iOS 26.6.1 on 2026-08-20. Device Services
+  confirmed bundle identifier `com.minutmate.ssdmanager`, version `1.0.0`, and
+  build number 6. Build 6 has not yet been archived or uploaded to App Store
+  Connect.

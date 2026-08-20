@@ -110,6 +110,43 @@ void main() {
     expect(find.text('Diese Nachricht wurde gelöscht.'), findsOneWidget);
   });
 
+  testWidgets('chat composer offers an explicit keyboard close action', (
+    tester,
+  ) async {
+    final repository = _FakeAnnouncementRepository([
+      _announcement(5, 'Nachricht für den Tastaturtest'),
+    ]);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          announcementRepositoryProvider.overrideWithValue(repository),
+          authControllerProvider.overrideWith(
+            () => _AuthenticatedController(_user(99)),
+          ),
+        ],
+        child: const MaterialApp(home: AnnouncementsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final composer = find.widgetWithText(TextField, 'Nachricht');
+    expect(
+      tester.widget<ListView>(find.byType(ListView)).keyboardDismissBehavior,
+      ScrollViewKeyboardDismissBehavior.onDrag,
+    );
+    expect(find.byTooltip('Tastatur schließen'), findsNothing);
+
+    await tester.tap(composer);
+    await tester.pump();
+    final composerWidget = tester.widget<TextField>(composer);
+    expect(find.byTooltip('Tastatur schließen'), findsOneWidget);
+    expect(composerWidget.focusNode?.hasFocus, isTrue);
+
+    await tester.tap(find.byTooltip('Tastatur schließen'));
+    await tester.pump();
+    expect(composerWidget.focusNode?.hasFocus, isFalse);
+  });
+
   test('equivalent live feeds do not emit redundant state updates', () {
     final container = ProviderContainer();
     var notifications = 0;

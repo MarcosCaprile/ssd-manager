@@ -16,6 +16,7 @@ import '../../themes/app_colors.dart';
 import '../../utils/date_formatters.dart';
 import '../../utils/user_error_message.dart';
 import '../../widgets/confirm_dialog.dart';
+import '../../widgets/keyboard_dismiss_region.dart';
 import '../../widgets/status_views.dart';
 import 'announcement_attachment_views.dart';
 import 'announcement_moderation_screen.dart';
@@ -36,6 +37,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
 
   late Future<List<Announcement>> _future;
   final _controller = TextEditingController();
+  final _composerFocusNode = FocusNode();
   final _scrollController = ScrollController();
   final _imagePicker = ImagePicker();
   final List<_PendingAttachment> _pending = [];
@@ -49,14 +51,21 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   @override
   void initState() {
     super.initState();
+    _composerFocusNode.addListener(_handleComposerFocusChanged);
     _future = _load();
   }
 
   @override
   void dispose() {
+    _composerFocusNode.removeListener(_handleComposerFocusChanged);
+    _composerFocusNode.dispose();
     _controller.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleComposerFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -302,6 +311,8 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
                   child: ListView.builder(
                     controller: _scrollController,
                     reverse: true,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
                     itemCount: announcements.length,
                     itemBuilder: (context, index) {
@@ -358,15 +369,27 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
                         Expanded(
                           child: TextField(
                             controller: _controller,
+                            focusNode: _composerFocusNode,
                             enabled: !_sending,
                             minLines: 1,
                             maxLines: 4,
                             maxLength: AppConfig.maxAnnouncementLength,
                             textCapitalization: TextCapitalization.sentences,
+                            onTapOutside: (_) =>
+                                KeyboardDismissRegion.dismiss(),
                             onChanged: (_) => setState(() {}),
                             decoration: InputDecoration(
                               hintText: 'Nachricht',
                               counterText: '',
+                              suffixIcon: _composerFocusNode.hasFocus
+                                  ? IconButton(
+                                      tooltip: 'Tastatur schließen',
+                                      onPressed: KeyboardDismissRegion.dismiss,
+                                      icon: const Icon(
+                                        Icons.keyboard_hide_outlined,
+                                      ),
+                                    )
+                                  : null,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 10,
@@ -424,6 +447,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
   }
 
   Future<void> _chooseAttachment() async {
+    KeyboardDismissRegion.dismiss();
     final source = await showModalBottomSheet<_AttachmentSource>(
       context: context,
       showDragHandle: true,

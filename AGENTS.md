@@ -197,6 +197,9 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - A successful mutation must not be reported as failed only because its
   follow-up refresh failed. Keep already loaded panel content cached, refresh it
   explicitly when needed, and delay full loading indicators for two seconds.
+- Text input must never trap navigation behind the software keyboard. Keep the
+  app-wide tap-outside and scroll-drag dismissal active, and retain the chat
+  composer's explicit keyboard-close action for multiline input on iOS.
 - Foreground polling must compare semantically equal payloads and publish UI
   state only when data actually changed. Never replace already visible content
   with a new `Future`; preserved `FutureBuilder` updates write into the
