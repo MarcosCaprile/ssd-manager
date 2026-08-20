@@ -815,6 +815,8 @@ contains generated output only and is not committed.
   and launched successfully. Xcode confirmed bundle identifier
   `com.minutmate.ssdmanager` and installed build number 4. This older-OS device
   is suitable for an additional compatibility check, but not for Apple's
-  requested recording on the latest operating system; use the paired iPhone 11
-  named `Pil`, currently on iOS 26.5.2, for that recording. Build 4 has not yet
-  been archived or uploaded to App Store Connect.
+  requested recording on the latest operating system. The same build was also
+  installed and launched successfully by cable on the physical iPhone 11 named
+  `Pil`, running iOS 26.5.2. Device Services confirmed version `1.0.0`, build 4,
+  so `Pil` is ready for the required App Review screen recording. Build 4 has
+  not yet been archived or uploaded to App Store Connect.
