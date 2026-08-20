@@ -800,11 +800,14 @@ contains generated output only and is not committed.
   details in App Review Information. The exact physical iPhone model and OS used
   for the recording must be supplied by the owner and must not be inferred from
   simulator testing. The school-only announcement channel contains user-generated
-  text and attachments. The Apple content-safety gap is implemented on branch
-  `codex/apple-content-moderation`: server-side filtering, one report per user and
+  text and attachments. The Apple content-safety implementation is on GitHub
+  `main` at commit `0822fc9`: server-side filtering, one report per user and
   announcement, a manager-only school moderation queue, content/attachment
   tombstones, optional sender deactivation with immediate session revocation,
-  audit events, and 12-month cleanup for resolved reports. Migration
-  `009_announcement_moderation.sql` and the full API write smoke test passed only
-  against the local development database. The branch is not deployed to Railway
-  and no replacement App Store build has been created yet.
+  audit events, and 12-month cleanup for resolved reports. Railway production
+  applied `009_announcement_moderation.sql` successfully on 2026-08-20. The
+  verified deployments are `ac9b6c8c-098e-47b9-a01d-adb866acad6c` for `ssd-api`
+  and `789bf70f-32c5-4adc-9ee8-2191aeeb9d13` for `ssd-cron`; both succeeded. The
+  public healthcheck returned HTTP 200, and both new moderation routes returned
+  the expected HTTP 401 without authentication. No replacement App Store build
+  has been created yet.
