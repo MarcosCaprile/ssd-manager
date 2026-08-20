@@ -856,5 +856,14 @@ contains generated output only and is not committed.
   was built, installed by cable, and launched on the physical iPhone 11 named
   `iPhone von Marcos` running iOS 26.6.1 on 2026-08-20. Device Services
   confirmed bundle identifier `com.minutmate.ssdmanager`, version `1.0.0`, and
-  build number 6. Build 6 has not yet been archived or uploaded to App Store
-  Connect.
+  build number 6. Build 6 was then archived, exported with App Store signing,
+  and uploaded successfully through Xcode on 2026-08-20. App Store Connect
+  completed processing and reports the build as ready for submission. The
+  exported IPA is `outputs/app-store/SSD_Manager_iOS_1.0.0_build_6_AppStore.ipa`
+  with SHA-256
+  `d96f4880a8f7b58d72df2bac305899dc965a92557ab2d1c6f17d73adb8d94433`.
+  Runner and ShareExtension both verify as version `1.0.0`/build `6`; the IPA
+  embeds the Railway production API, production push entitlement, shared app
+  group, and `ITSAppUsesNonExemptEncryption=false`. Build 6 still needs to
+  replace build 3 in the rejected App Review submission before the saved review
+  reply with its two attached physical-device recordings is sent.
