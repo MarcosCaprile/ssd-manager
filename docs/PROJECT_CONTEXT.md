@@ -826,8 +826,9 @@ contains generated output only and is not committed.
   `Pil`, running iOS 26.5.2. Device Services confirmed version `1.0.0`, build 4,
   but the subsequent review-flow refinement means this binary is no longer the
   final recording candidate. The final signed release candidate `1.0.0+5` was
-  built with the production Railway API explicitly embedded and installed on
-  `Pil` on 2026-08-20. Device Services confirmed bundle identifier
-  `com.minutmate.ssdmanager`, version `1.0.0`, and build number 5. Build 5 has
-  not been archived or uploaded to App Store Connect; it is the physical-device
-  candidate for the requested App Review recording.
+  built with the production Railway API explicitly embedded. It was installed
+  by cable and launched successfully on the physical iPhone 11 named `iPhone
+  von Marcos`, running iOS 26.6.1, on 2026-08-20. Device Services confirmed
+  bundle identifier `com.minutmate.ssdmanager`, version `1.0.0`, and build
+  number 5. Build 5 has not been archived or uploaded to App Store Connect; it
+  is the physical-device candidate for the requested App Review recording.
