@@ -801,16 +801,22 @@ contains generated output only and is not committed.
   for the recording must be supplied by the owner and must not be inferred from
   simulator testing. The school-only announcement channel contains user-generated
   text and attachments. The Apple content-safety implementation is on GitHub
-  `main` at commit `0822fc9`: server-side filtering, one report per user and
-  announcement, a manager-only school moderation queue, content/attachment
-  tombstones, optional sender deactivation with immediate session revocation,
-  audit events, and 12-month cleanup for resolved reports. Railway production
-  applied `009_announcement_moderation.sql` successfully on 2026-08-20. The
-  verified deployments are `ac9b6c8c-098e-47b9-a01d-adb866acad6c` for `ssd-api`
-  and `789bf70f-32c5-4adc-9ee8-2191aeeb9d13` for `ssd-cron`; both succeeded. The
-  public healthcheck returned HTTP 200, and both new moderation routes returned
-  the expected HTTP 401 without authentication. A signed Railway-connected iOS
-  release build `1.0.0+4` was then created in the external `/private/tmp` build
+  `main` at commit `41a2da6`: server-side filtering, one report per user and
+  announcement, a teacher-only school moderation queue, content/attachment
+  tombstones, immediate session revocation after account deactivation, audit
+  events, and 12-month cleanup for resolved reports. Long-press message actions
+  let senders delete their own messages and let other users report messages;
+  teachers then either leave a reviewed message unchanged or delete it while
+  retaining a visible moderation tombstone. Railway production applied
+  `009_announcement_moderation.sql` successfully on 2026-08-20. The initial
+  moderation deployments were `ac9b6c8c-098e-47b9-a01d-adb866acad6c` for
+  `ssd-api` and `789bf70f-32c5-4adc-9ee8-2191aeeb9d13` for `ssd-cron`. GitHub
+  then automatically deployed the final refinement from commit `41a2da6` to
+  `ssd-api` as deployment `53e0f04d-83c3-41ff-9a67-acca616bc0e4`; it completed
+  successfully. The public healthcheck returned HTTP 200, and the protected
+  report-list route returned HTTP 401 without authentication. A signed
+  Railway-connected iOS release build `1.0.0+4` was then created in the
+  external `/private/tmp` build
   directory, installed by cable on the physical iPhone 11 running iOS 18.7.2,
   and launched successfully. Xcode confirmed bundle identifier
   `com.minutmate.ssdmanager` and installed build number 4. This older-OS device
@@ -818,13 +824,10 @@ contains generated output only and is not committed.
   requested recording on the latest operating system. The same build was also
   installed and launched successfully by cable on the physical iPhone 11 named
   `Pil`, running iOS 26.5.2. Device Services confirmed version `1.0.0`, build 4,
-  but the subsequent review-flow refinement means this installed binary is no
-  longer the final recording candidate. The app now opens contextual message
-  actions by long press: senders can delete their own message and other users
-  can report it. Sender deletion retains a visible tombstone and deletes
-  attachment bytes. Only the teacher-supervisor role receives and opens the
-  moderation queue, where a reported message is either left unchanged or
-  deleted with a visible teacher tombstone. These follow-up backend changes
-  require a Railway deployment and a newly numbered iOS build before the final
-  App Review recording. Build 4 has not been archived or uploaded to App Store
-  Connect.
+  but the subsequent review-flow refinement means this binary is no longer the
+  final recording candidate. The final signed release candidate `1.0.0+5` was
+  built with the production Railway API explicitly embedded and installed on
+  `Pil` on 2026-08-20. Device Services confirmed bundle identifier
+  `com.minutmate.ssdmanager`, version `1.0.0`, and build number 5. Build 5 has
+  not been archived or uploaded to App Store Connect; it is the physical-device
+  candidate for the requested App Review recording.
