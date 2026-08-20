@@ -832,3 +832,14 @@ contains generated output only and is not committed.
   bundle identifier `com.minutmate.ssdmanager`, version `1.0.0`, and build
   number 5. Build 5 has not been archived or uploaded to App Store Connect; it
   is the physical-device candidate for the requested App Review recording.
+- Railway production cost optimization was applied on 2026-08-20. The MySQL
+  start command now uses `--innodb-buffer-pool-size=128M` instead of `1G`.
+  The live database contains 13 tables and about 6.36 MB of table/index data;
+  the previous 1 GB pool held only about 32 MB of pages while roughly 992 MB
+  remained free. Deployment `0c613df9-a5eb-4470-b5e7-199cdb2e43f2` is
+  online, the database reports a 128 MB pool, and the public API healthcheck
+  returned HTTP 200 after the restart. Initial Railway memory fell from about
+  0.49 GB to about 0.21 GB. Do not restore the 1 GB setting unless production
+  metrics demonstrate a need. The Railway workspace has an 8 USD soft usage
+  alert and deliberately has no hard limit, so cost control cannot take the
+  production apps offline.
