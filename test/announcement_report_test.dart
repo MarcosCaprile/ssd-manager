@@ -31,9 +31,5 @@ void main() {
   test('serializes moderation actions for the API', () {
     expect(AnnouncementModerationAction.dismiss.toJson(), 'dismiss');
     expect(AnnouncementModerationAction.remove.toJson(), 'remove');
-    expect(
-      AnnouncementModerationAction.removeAndDeactivate.toJson(),
-      'remove_and_deactivate',
-    );
   });
 }

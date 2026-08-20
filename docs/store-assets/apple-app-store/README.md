@@ -74,4 +74,12 @@ Für die Prüfung steht der oben angegebene Lehrer-Testaccount in einer vollstä
 
 Auf dem Startbildschirm sind die vier Hauptbereiche über die untere Navigation erreichbar. Benachrichtigungen sind für die Prüfung der Kernfunktionen nicht erforderlich. Falls beim ersten Start die Systemabfrage für Mitteilungen erscheint, kann sie abgelehnt oder übersprungen werden.
 
+Im Bereich „Ankündigungen“ öffnet ein langer Druck auf eine fremde Nachricht die
+Aktion „Nachricht melden“. Die Meldung erscheint anschließend über das
+Schildsymbol in der ausschließlich für die Lehreraufsicht sichtbaren
+Moderationsliste. Dort kann die Nachricht unverändert stehen gelassen oder
+gelöscht werden. Ein langer Druck auf eine eigene Nachricht bietet stattdessen
+„Nachricht löschen“ an; der Chat behält in beiden Löschfällen einen sichtbaren
+Hinweis, während zugehörige Dateibytes entfernt werden.
+
 Der Demo-Account ist dauerhaft aktiviert, verlangt keinen Passwortwechsel und benötigt weder eine zusätzliche Registrierung noch eine Freigabe während der Prüfung.

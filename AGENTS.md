@@ -179,6 +179,13 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - Deleting a claimed announcement attachment removes its bytes and frees quota,
   but keeps the announcement and attachment tombstone so the conversation shows
   that its content was deleted.
+- Announcement message actions are opened by long press. Senders may delete
+  their own non-system messages, while other users may report them once. Both
+  sender deletion and teacher moderation preserve a visible chat tombstone and
+  remove attachment bytes. An open report blocks sender deletion so its review
+  cannot be bypassed. Only the `teacher` role may open and resolve the content
+  moderation queue, choosing between leaving the message unchanged and deleting
+  it.
 - Treat announcements and attachments as school-scoped user-generated content.
   Keep the server-side severe-content filter, one-report-per-user workflow, and
   manager-only moderation enforcement active. Removing reported content must

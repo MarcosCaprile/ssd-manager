@@ -86,6 +86,7 @@ $router->add('DELETE', 'duties/{date}/assignments/{assignmentId}', [$dutyControl
 
 $router->add('GET', 'announcements', [$announcementController, 'index']);
 $router->add('POST', 'announcements', [$announcementController, 'store']);
+$router->add('DELETE', 'announcements/{id}', [$announcementController, 'deleteOwn']);
 $router->add('POST', 'announcements/attachments', [$announcementController, 'uploadAttachment']);
 $router->add('GET', 'announcements/attachments/{id}', [$announcementController, 'downloadAttachment']);
 $router->add('POST', 'announcements/{id}/reports', [$announcementController, 'report']);

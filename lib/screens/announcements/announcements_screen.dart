@@ -15,6 +15,7 @@ import '../../repositories/announcement_repository.dart';
 import '../../themes/app_colors.dart';
 import '../../utils/date_formatters.dart';
 import '../../utils/user_error_message.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/status_views.dart';
 import 'announcement_attachment_views.dart';
 import 'announcement_moderation_screen.dart';
@@ -144,11 +145,8 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
             mine: currentUser?.id == announcement.senderUserId,
             showSender: showSender,
             repository: ref.read(announcementRepositoryProvider),
-            onReport:
-                currentUser != null &&
-                    currentUser.id != announcement.senderUserId &&
-                    !announcement.isModerated
-                ? () => _reportAnnouncement(announcement)
+            onLongPress: currentUser != null && !announcement.isModerated
+                ? () => _showAnnouncementActions(announcement, currentUser)
                 : null,
           );
     return Column(
@@ -262,7 +260,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
       appBar: AppBar(
         title: const Text('Ankündigungen'),
         actions: [
-          if (currentUser?.role.canManageUsers == true)
+          if (currentUser?.role == UserRole.teacher)
             IconButton(
               tooltip: 'Inhaltsmeldungen verwalten',
               icon: const Icon(Icons.shield_outlined),
@@ -566,6 +564,82 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Future<void> _showAnnouncementActions(
+    Announcement announcement,
+    User currentUser,
+  ) async {
+    final isOwnMessage = announcement.senderUserId == currentUser.id;
+    final action = await showModalBottomSheet<_AnnouncementAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isOwnMessage)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: const Text('Nachricht löschen'),
+                onTap: () =>
+                    Navigator.of(context).pop(_AnnouncementAction.deleteOwn),
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.flag_outlined),
+                title: Text(
+                  announcement.reportedByMe
+                      ? 'Nachricht bereits gemeldet'
+                      : 'Nachricht melden',
+                ),
+                enabled: !announcement.reportedByMe,
+                onTap: announcement.reportedByMe
+                    ? null
+                    : () =>
+                          Navigator.of(context).pop(_AnnouncementAction.report),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    switch (action) {
+      case _AnnouncementAction.deleteOwn:
+        await _deleteOwnAnnouncement(announcement);
+      case _AnnouncementAction.report:
+        await _reportAnnouncement(announcement);
+    }
+  }
+
+  Future<void> _deleteOwnAnnouncement(Announcement announcement) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Nachricht löschen?',
+      message:
+          'Text und Anhänge werden gelöscht. Im Chat bleibt der Hinweis „Diese Nachricht wurde gelöscht.“ sichtbar.',
+      confirmLabel: 'Nachricht löschen',
+      destructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    try {
+      await ref.read(announcementRepositoryProvider).deleteOwn(announcement.id);
+      final deleted = announcement.copyWith(
+        message: 'Diese Nachricht wurde gelöscht.',
+        isModerated: true,
+        attachments: announcement.attachments
+            .map((attachment) => attachment.copyWith(isDeleted: true))
+            .toList(),
+      );
+      final updated = _items
+          .map((item) => item.id == announcement.id ? deleted : item)
+          .toList();
+      setState(() => _items = updated);
+      ref.read(announcementFeedProvider.notifier).replace(updated);
+      _showMessage('Die Nachricht wurde gelöscht.');
+    } catch (error) {
+      if (mounted) _showMessage(userErrorMessage(error));
+    }
+  }
+
   Future<void> _reportAnnouncement(Announcement announcement) async {
     if (announcement.reportedByMe) {
       _showMessage('Du hast diesen Inhalt bereits gemeldet.');
@@ -593,7 +667,7 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
           .toList();
       setState(() => _items = updated);
       ref.read(announcementFeedProvider.notifier).replace(updated);
-      _showMessage('Danke. Der Inhalt wurde der Schulmoderation gemeldet.');
+      _showMessage('Danke. Die Nachricht wurde der Lehreraufsicht gemeldet.');
     } catch (error) {
       if (mounted) _showMessage(userErrorMessage(error));
     }
@@ -733,123 +807,100 @@ class _AnnouncementBubble extends StatelessWidget {
     required this.mine,
     required this.showSender,
     required this.repository,
-    required this.onReport,
+    required this.onLongPress,
   });
 
   final Announcement announcement;
   final bool mine;
   final bool showSender;
   final AnnouncementRepository repository;
-  final VoidCallback? onReport;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-        ),
-        margin: EdgeInsets.only(
-          top: showSender ? 7 : 2,
-          bottom: 1,
-          left: mine ? 40 : 0,
-          right: mine ? 0 : 40,
-        ),
-        padding: const EdgeInsets.fromLTRB(9, 7, 9, 5),
-        decoration: BoxDecoration(
-          color: mine
-              ? scheme.primaryContainer
-              : scheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (showSender) ...[
-              Text(
-                announcement.senderName,
-                style: TextStyle(
-                  color: _senderColor(scheme, announcement.senderUserId),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text(
-                UserRole.fromJson(announcement.senderRole).label,
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 10.5,
-                ),
-              ),
-              const SizedBox(height: 4),
-            ],
-            for (
-              var index = 0;
-              index < announcement.attachments.length;
-              index++
-            ) ...[
-              AnnouncementAttachmentView(
-                key: ValueKey(announcement.attachments[index].id),
-                attachment: announcement.attachments[index],
-                repository: repository,
-              ),
-              if (index < announcement.attachments.length - 1)
-                const SizedBox(height: 5),
-            ],
-            if (announcement.attachments.isNotEmpty &&
-                announcement.message.isNotEmpty)
-              const SizedBox(height: 5),
-            if (announcement.message.isNotEmpty)
-              Text(announcement.message, style: const TextStyle(fontSize: 14)),
-            const SizedBox(height: 2),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (onReport != null)
-                  SizedBox(
-                    width: 32,
-                    height: 28,
-                    child: PopupMenuButton<String>(
-                      tooltip: announcement.reportedByMe
-                          ? 'Bereits gemeldet'
-                          : 'Nachrichtenoptionen',
-                      padding: EdgeInsets.zero,
-                      iconSize: 17,
-                      onSelected: (_) => onReport?.call(),
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'report',
-                          enabled: !announcement.reportedByMe,
-                          child: Row(
-                            children: [
-                              const Icon(Icons.flag_outlined, size: 19),
-                              const SizedBox(width: 9),
-                              Text(
-                                announcement.reportedByMe
-                                    ? 'Bereits gemeldet'
-                                    : 'Inhalt melden',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onLongPress: onLongPress,
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+          ),
+          margin: EdgeInsets.only(
+            top: showSender ? 7 : 2,
+            bottom: 1,
+            left: mine ? 40 : 0,
+            right: mine ? 0 : 40,
+          ),
+          padding: const EdgeInsets.fromLTRB(9, 7, 9, 5),
+          decoration: BoxDecoration(
+            color: mine
+                ? scheme.primaryContainer
+                : scheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showSender) ...[
                 Text(
-                  DateFormatters.chatTimestamp(announcement.createdAt),
+                  announcement.senderName,
+                  style: TextStyle(
+                    color: _senderColor(scheme, announcement.senderUserId),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  UserRole.fromJson(announcement.senderRole).label,
                   style: TextStyle(
                     color: scheme.onSurfaceVariant,
                     fontSize: 10.5,
                   ),
                 ),
+                const SizedBox(height: 4),
               ],
-            ),
-          ],
+              for (
+                var index = 0;
+                index < announcement.attachments.length;
+                index++
+              ) ...[
+                AnnouncementAttachmentView(
+                  key: ValueKey(announcement.attachments[index].id),
+                  attachment: announcement.attachments[index],
+                  repository: repository,
+                ),
+                if (index < announcement.attachments.length - 1)
+                  const SizedBox(height: 5),
+              ],
+              if (announcement.attachments.isNotEmpty &&
+                  announcement.message.isNotEmpty)
+                const SizedBox(height: 5),
+              if (announcement.message.isNotEmpty)
+                Text(
+                  announcement.message,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              const SizedBox(height: 2),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    DateFormatters.chatTimestamp(announcement.createdAt),
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 10.5,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -865,6 +916,8 @@ class _AnnouncementBubble extends StatelessWidget {
     return colors[id.abs() % colors.length];
   }
 }
+
+enum _AnnouncementAction { deleteOwn, report }
 
 class _AnnouncementReportInput {
   const _AnnouncementReportInput({required this.reason, this.details});
@@ -896,7 +949,7 @@ class _ReportAnnouncementDialogState extends State<_ReportAnnouncementDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Inhalt melden'),
+      title: const Text('Nachricht melden'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -904,7 +957,7 @@ class _ReportAnnouncementDialogState extends State<_ReportAnnouncementDialog> {
           children: [
             Text(
               'Du meldest eine Ankündigung von ${widget.announcement.senderName}. '
-              'Die Meldung wird ausschließlich an Sani-Leitung und Lehreraufsicht deiner Schule gesendet.',
+              'Die Meldung wird ausschließlich an die Lehreraufsicht deiner Schule gesendet.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 12),

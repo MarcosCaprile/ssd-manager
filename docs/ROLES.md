@@ -10,7 +10,8 @@
 | Ferien/Ausfalltage eintragen/aufheben | Nein | Ja | Ja | Nein |
 | Ankündigungen inkl. Anhänge lesen/senden | Ja | Ja | Ja | Ja |
 | Fremde Ankündigung melden | Ja | Ja | Ja | Ja |
-| Inhaltsmeldungen prüfen/abschließen | Nein | Ja | Ja | Nein |
+| Eigene Ankündigung löschen | Ja | Ja | Ja | Ja |
+| Inhaltsmeldungen prüfen/abschließen | Nein | Nein | Ja | Nein |
 | Sani- und Schulpersonal-Liste sehen | Ja | Ja | Ja | Ja |
 | Fremde Detailprofile öffnen | Nein | Ja | Ja | Nein |
 | Dienststatistik im eigenen Profil | Ja | Ja | Nein | Nein |
@@ -38,10 +39,14 @@ Serverseitige Regeln:
   `Sanitäter seit`-Datum.
 - Ausfalltage können nicht belegt werden. Bereits belegte Tage müssen vor dem Schließen geleert werden.
 - Ankündigungsanhänge sind nur mit gültiger Sitzung innerhalb der eigenen Schule abrufbar.
-- Eigene Inhalte und Systemnachrichten können nicht gemeldet werden. Meldungen
-  bleiben auf die eigene Schule begrenzt; nur Sani-Leitung und Lehreraufsicht
-  können sie als unbedenklich schließen, Inhalte entfernen oder Inhalt und
-  Absenderaccount gemeinsam sperren.
+- Ein langer Druck auf eine eigene Ankündigung bietet die Löschung an; Text und
+  Anhangsbytes werden dabei durch dauerhafte Tombstones ersetzt. Ein langer
+  Druck auf fremde Nutzerinhalte öffnet den Meldeweg. Eigene Inhalte und
+  Systemnachrichten können nicht gemeldet werden. Meldungen bleiben auf die
+  eigene Schule begrenzt; ausschließlich die Lehreraufsicht kann eine Meldung
+  prüfen und die Nachricht entweder unverändert stehen lassen oder löschen.
+  Solange eine Meldung offen ist, kann der Absender die Lehrerprüfung nicht
+  durch eine eigene Löschung umgehen.
 - Eigene Anhänge unterliegen einer serverseitigen 100-MB-Quote und können nur
   vom Uploader in dessen Speicherverwaltung gelöscht werden.
 - Aktive Schulsanitäter werden blau und aktive Sani-Leitung grün markiert.

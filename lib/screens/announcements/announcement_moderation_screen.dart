@@ -103,21 +103,15 @@ class _AnnouncementModerationScreenState
   ) async {
     final (title, message, confirmLabel, destructive) = switch (action) {
       AnnouncementModerationAction.dismiss => (
-        'Meldung schließen?',
-        'Der Inhalt bleibt sichtbar und die Meldung wird als unbedenklich geschlossen.',
-        'Schließen',
+        'Nachricht stehen lassen?',
+        'Die Nachricht bleibt unverändert im Chat sichtbar und die Prüfung wird abgeschlossen.',
+        'Stehen lassen',
         false,
       ),
       AnnouncementModerationAction.remove => (
-        'Inhalt entfernen?',
-        'Text und Anhänge werden für alle Personen entfernt. Im Chat bleibt ein Moderationshinweis sichtbar.',
-        'Entfernen',
-        true,
-      ),
-      AnnouncementModerationAction.removeAndDeactivate => (
-        'Inhalt entfernen und Account sperren?',
-        '${report.senderName} kann sich danach nicht mehr anmelden. Alle aktiven Sitzungen werden widerrufen.',
-        'Entfernen und sperren',
+        'Nachricht löschen?',
+        'Text und Anhänge werden für alle Personen gelöscht. Im Chat bleibt ein Hinweis der Lehreraufsicht sichtbar.',
+        'Nachricht löschen',
         true,
       ),
     };
@@ -140,8 +134,8 @@ class _AnnouncementModerationScreenState
           SnackBar(
             content: Text(
               action == AnnouncementModerationAction.dismiss
-                  ? 'Die Meldung wurde geschlossen.'
-                  : 'Der gemeldete Inhalt wurde entfernt.',
+                  ? 'Die Nachricht bleibt unverändert sichtbar.'
+                  : 'Die gemeldete Nachricht wurde gelöscht.',
             ),
           ),
         );
@@ -279,7 +273,7 @@ class _ReportCard extends StatelessWidget {
                           : () =>
                                 onAction!(AnnouncementModerationAction.dismiss),
                       icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Unbedenklich'),
+                      label: const Text('Stehen lassen'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -287,7 +281,8 @@ class _ReportCard extends StatelessWidget {
                     child: FilledButton.icon(
                       onPressed: working
                           ? null
-                          : () => _showRemovalOptions(context),
+                          : () =>
+                                onAction!(AnnouncementModerationAction.remove),
                       icon: working
                           ? const SizedBox(
                               width: 17,
@@ -298,7 +293,7 @@ class _ReportCard extends StatelessWidget {
                               ),
                             )
                           : const Icon(Icons.delete_outline),
-                      label: const Text('Entfernen'),
+                      label: const Text('Nachricht löschen'),
                     ),
                   ),
                 ],
@@ -308,36 +303,5 @@ class _ReportCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _showRemovalOptions(BuildContext context) async {
-    final action = await showModalBottomSheet<AnnouncementModerationAction>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('Nur Inhalt entfernen'),
-              subtitle: const Text('Text und Anhänge werden im Chat ersetzt.'),
-              onTap: () => Navigator.of(
-                context,
-              ).pop(AnnouncementModerationAction.remove),
-            ),
-            ListTile(
-              leading: const Icon(Icons.block_outlined),
-              title: const Text('Entfernen und Account sperren'),
-              subtitle: Text('${report.senderName} wird sofort abgemeldet.'),
-              onTap: () => Navigator.of(
-                context,
-              ).pop(AnnouncementModerationAction.removeAndDeactivate),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (action != null) onAction?.call(action);
   }
 }

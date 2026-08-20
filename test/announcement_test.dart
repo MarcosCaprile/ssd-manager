@@ -108,7 +108,7 @@ void main() {
       'sender_user_id': 8,
       'sender_name': 'Rita Rettich',
       'sender_role': 'sanitaeter',
-      'message': 'Dieser Inhalt wurde von der Schulmoderation entfernt.',
+      'message': 'Diese Nachricht wurde von der Lehreraufsicht gelöscht.',
       'message_type': 'user',
       'is_moderated': true,
       'reported_by_me': true,

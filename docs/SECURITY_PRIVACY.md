@@ -65,12 +65,12 @@ medizinische Falldaten enthalten. Die Schule muss dafür eine Aufbewahrungs- und
 Moderationsregel festlegen.
 
 Nutzer können fremde, nicht systemseitige Ankündigungen mit einem kategorisierten
-Grund und optionalen Zusatzangaben melden. Nur Sani-Leitung und Lehreraufsicht
-der jeweiligen Schule sehen diese Angaben. Sie können eine Meldung schließen,
-den Inhalt entfernen oder zusätzlich den Absender deaktivieren. Entfernte Texte
-werden für alle Nutzer durch einen Moderationshinweis ersetzt; zugehörige
-Anhangsbytes werden gelöscht. Meldung, Entscheidung und eine eventuelle Sperre
-werden serverseitig und schulbezogen protokolliert. Ein Filter blockiert vor dem
+Grund und optionalen Zusatzangaben melden. Nur die Lehreraufsicht der jeweiligen
+Schule sieht diese Angaben. Sie kann die Nachricht unverändert stehen lassen
+oder löschen. Nutzer können außerdem ihre eigenen Nachrichten löschen.
+Gelöschte Texte werden für alle Nutzer durch einen Hinweis ersetzt; zugehörige
+Anhangsbytes werden gelöscht. Meldung und Entscheidung werden serverseitig und
+schulbezogen protokolliert. Ein Filter blockiert vor dem
 Versand eindeutig schwere Beleidigungen, sexuelle Inhalte und direkte Drohungen;
 er ersetzt nicht die menschliche Prüfung von Grenzfällen.
 

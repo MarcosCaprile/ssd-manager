@@ -12,7 +12,7 @@ import 'package:ssd_manager/repositories/announcement_repository.dart';
 import 'package:ssd_manager/screens/announcements/announcement_moderation_screen.dart';
 
 void main() {
-  testWidgets('moderator can close an open report as harmless', (tester) async {
+  testWidgets('teacher can leave a reported message unchanged', (tester) async {
     final repository = _ModerationRepository();
     await tester.pumpWidget(
       ProviderScope(
@@ -27,15 +27,39 @@ void main() {
 
     expect(find.text('Beleidigung oder Mobbing'), findsOneWidget);
     expect(find.text('Offen'), findsOneWidget);
-    expect(find.text('Unbedenklich'), findsOneWidget);
+    expect(find.text('Stehen lassen'), findsOneWidget);
 
-    await tester.tap(find.text('Unbedenklich'));
+    await tester.tap(find.text('Stehen lassen'));
     await tester.pumpAndSettle();
-    expect(find.text('Meldung schließen?'), findsOneWidget);
-    await tester.tap(find.widgetWithText(FilledButton, 'Schließen'));
+    expect(find.text('Nachricht stehen lassen?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Stehen lassen'));
     await tester.pumpAndSettle();
 
     expect(repository.lastAction, AnnouncementModerationAction.dismiss);
+  });
+
+  testWidgets('teacher can delete a reported message', (tester) async {
+    final repository = _ModerationRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          announcementRepositoryProvider.overrideWithValue(repository),
+          authControllerProvider.overrideWith(() => _AuthenticatedController()),
+        ],
+        child: const MaterialApp(home: AnnouncementModerationScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Nachricht löschen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nachricht löschen?'), findsOneWidget);
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Nachricht löschen').last,
+    );
+    await tester.pumpAndSettle();
+
+    expect(repository.lastAction, AnnouncementModerationAction.remove);
   });
 }
 
@@ -97,6 +121,9 @@ class _ModerationRepository implements AnnouncementRepository {
     required AnnouncementReportReason reason,
     String? details,
   }) async {}
+
+  @override
+  Future<void> deleteOwn(int announcementId) async {}
 
   @override
   Future<Announcement> send({

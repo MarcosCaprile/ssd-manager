@@ -29,6 +29,7 @@ $testPassword = 'LocalSmokePassword!2026';
 $changedPassword = 'ChangedSmokePassword!2026';
 $testUserId = null;
 $announcementId = null;
+$selfDeletedAnnouncementId = null;
 $systemAnnouncementId = null;
 $loginAttemptBaseline = (int) $pdo->query('SELECT COALESCE(MAX(id), 0) FROM login_attempts')->fetchColumn();
 
@@ -176,12 +177,13 @@ function cleanup(
     PDO $pdo,
     ?int $testUserId,
     ?int $announcementId,
+    ?int $selfDeletedAnnouncementId,
     ?int $systemAnnouncementId,
     int $loginAttemptBaseline,
     string $testUsername
 ): void
 {
-    foreach (array_filter([$announcementId, $systemAnnouncementId]) as $id) {
+    foreach (array_filter([$announcementId, $selfDeletedAnnouncementId, $systemAnnouncementId]) as $id) {
         $pdo->prepare('DELETE FROM notification_logs WHERE announcement_id = :id')->execute(['id' => $id]);
         $pdo->prepare('DELETE FROM announcements WHERE id = :id')->execute(['id' => $id]);
     }
@@ -433,10 +435,15 @@ try {
         403,
         'ordinary first-aider cannot open moderation queue'
     );
-    $reportList = expect_status(
+    expect_status(
         api_request('GET', 'announcement-reports', accessToken: $lead['access_token']),
+        403,
+        'lead cannot open the teacher moderation queue'
+    );
+    $reportList = expect_status(
+        api_request('GET', 'announcement-reports', accessToken: $teacher['access_token']),
         200,
-        'lead opens school moderation queue'
+        'teacher opens school moderation queue'
     );
     $reportId = 0;
     foreach (($reportList['body']['data'] ?? []) as $reportItem) {
@@ -449,19 +456,34 @@ try {
         throw new RuntimeException('Reported announcement is missing from the moderation queue.');
     }
     expect_status(
+        api_request('DELETE', "announcements/{$announcementId}", accessToken: $sanitaeter['access_token']),
+        409,
+        'sender cannot bypass an open teacher review by deleting the message'
+    );
+    expect_status(
         api_request(
             'PATCH',
             "announcement-reports/{$reportId}",
-            ['action' => 'remove_and_deactivate'],
+            ['action' => 'remove'],
             $lead['access_token']
         ),
+        403,
+        'lead cannot delete a reported message'
+    );
+    expect_status(
+        api_request(
+            'PATCH',
+            "announcement-reports/{$reportId}",
+            ['action' => 'remove'],
+            $teacher['access_token']
+        ),
         200,
-        'lead removes reported content and deactivates sender'
+        'teacher deletes reported content'
     );
     expect_status(
         api_request('GET', 'auth/session', accessToken: $sanitaeter['access_token']),
-        401,
-        'moderation deactivation revokes sender session'
+        200,
+        'message deletion keeps the sender account active'
     );
     $moderatedAnnouncements = expect_status(
         api_request('GET', 'announcements', accessToken: $teacher['access_token']),
@@ -478,17 +500,47 @@ try {
     if (
         !is_array($moderatedItem)
         || ($moderatedItem['is_moderated'] ?? false) !== true
-        || !str_contains((string) ($moderatedItem['message'] ?? ''), 'Schulmoderation entfernt')
+        || !str_contains((string) ($moderatedItem['message'] ?? ''), 'Lehreraufsicht gelöscht')
     ) {
         throw new RuntimeException('Removed announcement did not become a moderation tombstone.');
     }
     echo '[OK] removed announcement remains as a moderation tombstone' . PHP_EOL;
-    expect_status(
-        api_request('POST', "users/{$testUserId}/reactivate", accessToken: $teacher['access_token']),
-        200,
-        'teacher reactivates sender after moderation test'
+    $selfDeleted = expect_status(
+        api_request('POST', 'announcements', ['message' => 'Wird vom Absender gelöscht'], $sanitaeter['access_token']),
+        201,
+        'first-aider sends a message for sender deletion'
     );
-    $sanitaeter = api_login($testUsername, $changedPassword, 'after-moderation');
+    $selfDeletedAnnouncementId = (int) ($selfDeleted['body']['data']['id'] ?? 0);
+    expect_status(
+        api_request('DELETE', "announcements/{$selfDeletedAnnouncementId}", accessToken: $teacher['access_token']),
+        403,
+        'teacher cannot use sender deletion for another users message'
+    );
+    expect_status(
+        api_request('DELETE', "announcements/{$selfDeletedAnnouncementId}", accessToken: $sanitaeter['access_token']),
+        200,
+        'sender deletes own message'
+    );
+    $afterSenderDeletion = expect_status(
+        api_request('GET', 'announcements', accessToken: $teacher['access_token']),
+        200,
+        'announcement list after sender deletion'
+    );
+    $senderDeletedItem = null;
+    foreach (($afterSenderDeletion['body']['data'] ?? []) as $item) {
+        if ((int) ($item['id'] ?? 0) === $selfDeletedAnnouncementId) {
+            $senderDeletedItem = $item;
+            break;
+        }
+    }
+    if (
+        !is_array($senderDeletedItem)
+        || ($senderDeletedItem['is_moderated'] ?? false) !== true
+        || (string) ($senderDeletedItem['message'] ?? '') !== 'Diese Nachricht wurde gelöscht.'
+    ) {
+        throw new RuntimeException('Sender-deleted message did not become a visible tombstone.');
+    }
+    echo '[OK] sender-deleted message remains as a tombstone' . PHP_EOL;
 
     expect_status(
         api_request('POST', "duties/{$regularDate}/self", accessToken: $sanitaeter['access_token']),
@@ -728,6 +780,7 @@ try {
             $pdo,
             $testUserId,
             $announcementId,
+            $selfDeletedAnnouncementId,
             $systemAnnouncementId,
             $loginAttemptBaseline,
             $testUsername

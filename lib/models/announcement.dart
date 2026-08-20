@@ -45,6 +45,17 @@ class AnnouncementAttachment {
       isDeleted: json['is_deleted'] == true || json['is_deleted'] == 1,
     );
   }
+
+  AnnouncementAttachment copyWith({bool? isDeleted}) {
+    return AnnouncementAttachment(
+      id: id,
+      fileName: fileName,
+      mimeType: mimeType,
+      sizeBytes: sizeBytes,
+      isImage: isImage,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
 }
 
 class Announcement {
@@ -130,19 +141,24 @@ class Announcement {
     );
   }
 
-  Announcement copyWith({bool? reportedByMe}) {
+  Announcement copyWith({
+    String? message,
+    bool? isModerated,
+    bool? reportedByMe,
+    List<AnnouncementAttachment>? attachments,
+  }) {
     return Announcement(
       id: id,
       senderUserId: senderUserId,
       senderName: senderName,
       senderRole: senderRole,
-      message: message,
+      message: message ?? this.message,
       messageType: messageType,
       systemType: systemType,
-      isModerated: isModerated,
+      isModerated: isModerated ?? this.isModerated,
       reportedByMe: reportedByMe ?? this.reportedByMe,
       createdAt: createdAt,
-      attachments: attachments,
+      attachments: attachments ?? this.attachments,
     );
   }
 }

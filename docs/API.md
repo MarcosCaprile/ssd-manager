@@ -134,11 +134,12 @@ Werktagen bleiben erhalten. `/duties/closures/reset` erhält
 | --- | --- | --- |
 | GET | `/announcements` | Neueste Nachrichten |
 | POST | `/announcements` | Nachricht senden |
+| DELETE | `/announcements/{id}` | Eigene Nachricht durch einen Tombstone ersetzen |
 | POST | `/announcements/attachments` | Foto oder Datei vor dem Versand hochladen |
 | GET | `/announcements/attachments/{id}` | Anhang authentifiziert öffnen |
 | POST | `/announcements/{id}/reports` | Fremden Nutzerinhalt innerhalb der eigenen Schule melden |
-| GET | `/announcement-reports` | Sani-Leitung/Lehreraufsicht: Meldungen prüfen |
-| PATCH | `/announcement-reports/{id}` | Sani-Leitung/Lehreraufsicht: Meldung abschließen |
+| GET | `/announcement-reports` | Lehreraufsicht: Meldungen prüfen |
+| PATCH | `/announcement-reports/{id}` | Lehreraufsicht: Nachricht stehen lassen oder löschen |
 
 Nachrichten werden serverseitig dem aktuellen Nutzer zugeordnet. Eine
 Client-Absender-ID wird ignoriert. Der Body kann Text, bis zu vier zuvor
@@ -185,13 +186,15 @@ und Ankündigung ist genau eine Meldung möglich. Zulässige Gründe sind
 }
 ```
 
-Nur `sani_leitung` und `teacher` dürfen die schulbezogene Meldeliste öffnen.
-Eine Meldung wird mit `dismiss`, `remove` oder `remove_and_deactivate`
-abgeschlossen. Beim Entfernen wird der Text durch einen dauerhaften
-Moderationshinweis ersetzt; vorhandene Anhangsbytes werden gelöscht und bleiben
-als nicht verfügbare Tombstones sichtbar. Die letzte Aktion deaktiviert
-zusätzlich den Absender und widerruft dessen aktive Sitzungen. Sämtliche
-Aktionen werden im Auditprotokoll erfasst.
+Nur `teacher` darf die schulbezogene Meldeliste öffnen. Eine Meldung wird mit
+`dismiss` abgeschlossen und unverändert stehen gelassen oder mit `remove`
+gelöscht. Beim Löschen wird der Text durch einen dauerhaften Hinweis der
+Lehreraufsicht ersetzt; vorhandene Anhangsbytes werden gelöscht und bleiben als
+nicht verfügbare Tombstones sichtbar. Sämtliche Aktionen werden im
+Auditprotokoll erfasst. Der Absender kann die eigene Nutzer-Nachricht über
+`DELETE /announcements/{id}` löschen; fremde und Systemnachrichten sind über
+diesen Endpunkt nicht löschbar. Solange eine offene Meldung zur Nachricht
+vorliegt, entscheidet ausschließlich die Lehreraufsicht über ihren Verbleib.
 
 ## Nutzerverwaltung
 

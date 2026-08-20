@@ -28,13 +28,11 @@ enum AnnouncementReportReason {
 
 enum AnnouncementModerationAction {
   dismiss,
-  remove,
-  removeAndDeactivate;
+  remove;
 
   String toJson() => switch (this) {
     AnnouncementModerationAction.dismiss => 'dismiss',
     AnnouncementModerationAction.remove => 'remove',
-    AnnouncementModerationAction.removeAndDeactivate => 'remove_and_deactivate',
   };
 }
 
@@ -82,8 +80,8 @@ class AnnouncementReport {
   bool get isOpen => status == 'open';
 
   String get statusLabel => switch (status) {
-    'resolved' => 'Inhalt entfernt',
-    'dismissed' => 'Als unbedenklich geschlossen',
+    'resolved' => 'Nachricht gelöscht',
+    'dismissed' => 'Stehen gelassen',
     _ => 'Offen',
   };
 

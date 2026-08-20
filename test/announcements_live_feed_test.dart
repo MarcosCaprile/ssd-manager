@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ssd_manager/models/announcement.dart';
 import 'package:ssd_manager/models/announcement_report.dart';
+import 'package:ssd_manager/models/user.dart';
 import 'package:ssd_manager/providers/api_providers.dart';
+import 'package:ssd_manager/providers/auth_provider.dart';
 import 'package:ssd_manager/repositories/announcement_repository.dart';
 import 'package:ssd_manager/screens/announcements/announcements_screen.dart';
 import 'package:ssd_manager/widgets/status_views.dart';
@@ -42,6 +44,72 @@ void main() {
     expect(find.byType(DelayedLoadingView), findsNothing);
   });
 
+  testWidgets('long press on another users message opens reporting flow', (
+    tester,
+  ) async {
+    final announcement = _announcement(3, 'Bitte diese Nachricht prüfen');
+    final repository = _FakeAnnouncementRepository([announcement]);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          announcementRepositoryProvider.overrideWithValue(repository),
+          authControllerProvider.overrideWith(
+            () => _AuthenticatedController(_user(99)),
+          ),
+        ],
+        child: const MaterialApp(home: AnnouncementsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Bitte diese Nachricht prüfen'));
+    await tester.pumpAndSettle();
+    expect(find.text('Nachricht melden'), findsOneWidget);
+
+    await tester.tap(find.text('Nachricht melden'));
+    await tester.pumpAndSettle();
+    expect(find.text('Meldegrund'), findsOneWidget);
+    await tester.tap(
+      find.byType(DropdownButtonFormField<AnnouncementReportReason>),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Spam oder sachfremder Inhalt').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Melden'));
+    await tester.pumpAndSettle();
+
+    expect(repository.reportedAnnouncementId, announcement.id);
+  });
+
+  testWidgets('long press lets the sender delete an own message', (
+    tester,
+  ) async {
+    final announcement = _announcement(4, 'Eigene Testnachricht');
+    final repository = _FakeAnnouncementRepository([announcement]);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          announcementRepositoryProvider.overrideWithValue(repository),
+          authControllerProvider.overrideWith(
+            () => _AuthenticatedController(_user(announcement.senderUserId)),
+          ),
+        ],
+        child: const MaterialApp(home: AnnouncementsScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.longPress(find.text('Eigene Testnachricht'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Nachricht löschen'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Nachricht löschen'));
+    await tester.pumpAndSettle();
+
+    expect(repository.deletedAnnouncementId, announcement.id);
+    expect(find.text('Diese Nachricht wurde gelöscht.'), findsOneWidget);
+  });
+
   test('equivalent live feeds do not emit redundant state updates', () {
     final container = ProviderContainer();
     var notifications = 0;
@@ -76,10 +144,32 @@ Announcement _announcement(int id, String message) {
   );
 }
 
+User _user(int id) => User(
+  id: id,
+  firstName: 'Demo',
+  lastName: 'Person',
+  username: 'demo.person$id',
+  email: 'demo.person$id@example.test',
+  role: UserRole.sanitaeter,
+  status: 'active',
+  mustChangePassword: false,
+);
+
+class _AuthenticatedController extends AuthController {
+  _AuthenticatedController(this.user);
+
+  final User user;
+
+  @override
+  AuthState build() => AuthState.authenticated(user);
+}
+
 class _FakeAnnouncementRepository implements AnnouncementRepository {
   _FakeAnnouncementRepository(this.announcements);
 
   final List<Announcement> announcements;
+  int? reportedAnnouncementId;
+  int? deletedAnnouncementId;
 
   @override
   Future<List<Announcement>> latest() async => announcements;
@@ -105,8 +195,13 @@ class _FakeAnnouncementRepository implements AnnouncementRepository {
     required int announcementId,
     required AnnouncementReportReason reason,
     String? details,
-  }) {
-    throw UnimplementedError();
+  }) async {
+    reportedAnnouncementId = announcementId;
+  }
+
+  @override
+  Future<void> deleteOwn(int announcementId) async {
+    deletedAnnouncementId = announcementId;
   }
 
   @override

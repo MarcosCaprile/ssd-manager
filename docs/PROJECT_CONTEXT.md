@@ -818,5 +818,13 @@ contains generated output only and is not committed.
   requested recording on the latest operating system. The same build was also
   installed and launched successfully by cable on the physical iPhone 11 named
   `Pil`, running iOS 26.5.2. Device Services confirmed version `1.0.0`, build 4,
-  so `Pil` is ready for the required App Review screen recording. Build 4 has
-  not yet been archived or uploaded to App Store Connect.
+  but the subsequent review-flow refinement means this installed binary is no
+  longer the final recording candidate. The app now opens contextual message
+  actions by long press: senders can delete their own message and other users
+  can report it. Sender deletion retains a visible tombstone and deletes
+  attachment bytes. Only the teacher-supervisor role receives and opens the
+  moderation queue, where a reported message is either left unchanged or
+  deleted with a visible teacher tombstone. These follow-up backend changes
+  require a Railway deployment and a newly numbered iOS build before the final
+  App Review recording. Build 4 has not been archived or uploaded to App Store
+  Connect.

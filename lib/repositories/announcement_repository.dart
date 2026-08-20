@@ -60,6 +60,10 @@ class AnnouncementRepository {
     );
   }
 
+  Future<void> deleteOwn(int announcementId) async {
+    await _api.delete('announcements/$announcementId');
+  }
+
   Future<List<AnnouncementReport>> reports() async {
     final data = await _api.get('announcement-reports') as List<dynamic>;
     return data

@@ -9,13 +9,14 @@ use PDO;
 
 final class AnnouncementModerationService
 {
-    private const REMOVED_MESSAGE = 'Dieser Inhalt wurde von der Schulmoderation entfernt.';
+    private const REMOVED_MESSAGE = 'Diese Nachricht wurde von der Lehreraufsicht gelöscht.';
+    private const SENDER_DELETED_MESSAGE = 'Diese Nachricht wurde gelöscht.';
 
     /** @var array<int,string> */
     private const REASONS = ['bullying', 'inappropriate', 'privacy', 'spam', 'other'];
 
     /** @var array<int,string> */
-    private const ACTIONS = ['dismiss', 'remove', 'remove_and_deactivate'];
+    private const ACTIONS = ['dismiss', 'remove'];
 
     private AuditLogger $audit;
 
@@ -49,7 +50,7 @@ final class AnnouncementModerationService
             Response::error('Eigene Inhalte können nicht gemeldet werden.', 422);
         }
         if ($announcement['moderated_at'] !== null) {
-            Response::error('Dieser Inhalt wurde bereits von der Schulmoderation bearbeitet.', 409);
+            Response::error('Diese Nachricht wurde bereits von der Lehreraufsicht bearbeitet.', 409);
         }
 
         $this->pdo->beginTransaction();
@@ -94,7 +95,7 @@ final class AnnouncementModerationService
         try {
             $this->notifications->notifyUsersByRole(
                 $auth->schoolId(),
-                ['sani_leitung', 'teacher'],
+                ['teacher'],
                 'announcement_reported',
                 'Inhalt gemeldet',
                 'Eine Ankündigung wartet auf Prüfung.',
@@ -112,7 +113,7 @@ final class AnnouncementModerationService
     /** @return array<int,array<string,mixed>> */
     public function list(AuthContext $auth): array
     {
-        $this->requireModerator($auth);
+        $this->requireTeacherModerator($auth);
         $statement = $this->pdo->prepare(
             'SELECT ar.id, ar.announcement_id, ar.reason, ar.details, ar.status,
                     ar.resolution_action, ar.created_at, ar.resolved_at,
@@ -166,7 +167,7 @@ final class AnnouncementModerationService
     /** @param array<string,mixed> $data */
     public function moderate(AuthContext $auth, int $reportId, array $data): void
     {
-        $this->requireModerator($auth);
+        $this->requireTeacherModerator($auth);
         if ($reportId < 1) {
             Response::error('Meldung wurde nicht gefunden.', 404);
         }
@@ -241,26 +242,6 @@ final class AnnouncementModerationService
                     'announcement_id' => $announcementId,
                     'school_id' => $auth->schoolId(),
                 ]);
-
-                if ($action === 'remove_and_deactivate') {
-                    $this->pdo->prepare(
-                        'UPDATE users
-                         SET status = "inactive", deactivated_at = UTC_TIMESTAMP(), updated_at = UTC_TIMESTAMP()
-                         WHERE id = :id AND school_id = :school_id AND deleted_at IS NULL
-                           AND status <> "pending_deletion"'
-                    )->execute(['id' => $senderUserId, 'school_id' => $auth->schoolId()]);
-                    $this->pdo->prepare(
-                        'UPDATE user_devices SET revoked_at = UTC_TIMESTAMP(), firebase_token = NULL
-                         WHERE user_id = :user_id AND revoked_at IS NULL'
-                    )->execute(['user_id' => $senderUserId]);
-                    $this->audit->log(
-                        $auth->schoolId(),
-                        $auth->userId(),
-                        'user.deactivated_for_content',
-                        $senderUserId,
-                        'user'
-                    );
-                }
             }
 
             $this->audit->log(
@@ -271,6 +252,86 @@ final class AnnouncementModerationService
                 'announcement',
                 $announcementId,
                 ['report_id' => $reportId, 'action' => $action]
+            );
+            $this->pdo->commit();
+        } catch (\Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function deleteOwn(AuthContext $auth, int $announcementId): void
+    {
+        if ($announcementId < 1) {
+            Response::error('Nachricht wurde nicht gefunden.', 404);
+        }
+        $announcement = $this->findAnnouncement($auth->schoolId(), $announcementId);
+        if ((string) $announcement['message_type'] !== 'user') {
+            Response::error('Systemnachrichten können nicht gelöscht werden.', 422);
+        }
+        if ((int) $announcement['sender_user_id'] !== $auth->userId()) {
+            Response::error('Du kannst nur deine eigenen Nachrichten löschen.', 403);
+        }
+        if ($announcement['moderated_at'] !== null) {
+            Response::error('Diese Nachricht wurde bereits gelöscht oder bearbeitet.', 409);
+        }
+        $openReport = $this->pdo->prepare(
+            'SELECT 1 FROM announcement_reports
+             WHERE announcement_id = :announcement_id AND school_id = :school_id AND status = "open"
+             LIMIT 1'
+        );
+        $openReport->execute([
+            'announcement_id' => $announcementId,
+            'school_id' => $auth->schoolId(),
+        ]);
+        if ($openReport->fetchColumn() !== false) {
+            Response::error(
+                'Diese Nachricht wurde gemeldet und kann nur von der Lehreraufsicht geprüft werden.',
+                409
+            );
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $this->pdo->prepare(
+                'UPDATE announcements
+                 SET message = :message, moderated_at = UTC_TIMESTAMP(),
+                     moderated_by_user_id = :user_id, moderation_reason = "sender_deleted",
+                     updated_at = UTC_TIMESTAMP()
+                 WHERE id = :id AND school_id = :school_id AND moderated_at IS NULL'
+            )->execute([
+                'message' => self::SENDER_DELETED_MESSAGE,
+                'user_id' => $auth->userId(),
+                'id' => $announcementId,
+                'school_id' => $auth->schoolId(),
+            ]);
+            $this->pdo->prepare(
+                'UPDATE announcement_attachments
+                 SET content = NULL, deleted_at = COALESCE(deleted_at, UTC_TIMESTAMP())
+                 WHERE announcement_id = :announcement_id AND school_id = :school_id'
+            )->execute([
+                'announcement_id' => $announcementId,
+                'school_id' => $auth->schoolId(),
+            ]);
+            $this->pdo->prepare(
+                'UPDATE announcement_reports
+                 SET status = "resolved", resolution_action = "sender_delete",
+                     resolved_by_user_id = :resolver, resolved_at = UTC_TIMESTAMP()
+                 WHERE announcement_id = :announcement_id AND school_id = :school_id AND status = "open"'
+            )->execute([
+                'resolver' => $auth->userId(),
+                'announcement_id' => $announcementId,
+                'school_id' => $auth->schoolId(),
+            ]);
+            $this->audit->log(
+                $auth->schoolId(),
+                $auth->userId(),
+                'announcement.deleted_by_sender',
+                $auth->userId(),
+                'announcement',
+                $announcementId
             );
             $this->pdo->commit();
         } catch (\Throwable $exception) {
@@ -298,10 +359,10 @@ final class AnnouncementModerationService
         return $announcement;
     }
 
-    private function requireModerator(AuthContext $auth): void
+    private function requireTeacherModerator(AuthContext $auth): void
     {
-        if (!$auth->canManageUsers()) {
-            Response::error('Nur Sani-Leitung und Lehreraufsicht dürfen Inhaltsmeldungen bearbeiten.', 403);
+        if ($auth->role() !== 'teacher') {
+            Response::error('Nur die Lehreraufsicht darf Inhaltsmeldungen bearbeiten.', 403);
         }
     }
 

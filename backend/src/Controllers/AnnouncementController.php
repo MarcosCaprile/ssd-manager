@@ -190,6 +190,15 @@ final class AnnouncementController
     /**
      * @param array<string,string> $params
      */
+    public function deleteOwn(Request $request, array $params, AuthContext $auth): never
+    {
+        $this->moderation->deleteOwn($auth, (int) ($params['id'] ?? 0));
+        Response::json(['deleted' => true]);
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
     public function reports(Request $request, array $params, AuthContext $auth): never
     {
         Response::json($this->moderation->list($auth));

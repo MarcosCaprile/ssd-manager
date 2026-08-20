@@ -702,16 +702,18 @@ need durable, product-specific URLs before release submission.
 ## 2026-08-20: School-scoped announcement moderation
 
 Decision: Every authenticated user may report another user's non-system
-announcement once, using a categorized reason and optional details. Only
-teacher supervisors and lead first-aiders in the same school may review reports.
-They can dismiss a report, replace the reported text and attachments with
-tombstones, or additionally deactivate the sender and revoke active sessions.
+announcement once, using a categorized reason and optional details. A long
+press on a foreign message opens this report flow; a long press on an own
+message allows its sender to delete it. Only teacher supervisors in the same
+school may review reports. They can leave the message unchanged or replace its
+text and attachments with tombstones. Sender deletion uses the same tombstone
+principle so the chronological conversation remains understandable.
 An unambiguous server-side text and filename filter blocks severe insults,
 sexual content, and direct threats before posting. Every report and resolution
 is audited; resolved report rows expire after 12 months.
 
 Reason: The school channel contains user-generated text and attachments. The
-combination of preventive filtering, user reporting, school moderation,
-account blocking, published support contact, and tenant isolation addresses
-Apple's user-generated-content safeguards without introducing public or
-anonymous communication.
+combination of preventive filtering, discoverable user reporting, teacher
+moderation, separate account administration, published support contact, and
+tenant isolation addresses Apple's user-generated-content safeguards without
+introducing public or anonymous communication.
