@@ -157,10 +157,15 @@ final class UserDeletionService
         $audit = $this->pdo->exec(
             'DELETE FROM audit_logs WHERE created_at < (UTC_TIMESTAMP() - INTERVAL 12 MONTH)'
         );
+        $moderationReports = $this->pdo->exec(
+            'DELETE FROM announcement_reports
+             WHERE status <> "open" AND resolved_at < (UTC_TIMESTAMP() - INTERVAL 12 MONTH)'
+        );
         return [
             'login_attempts' => (int) $login,
             'notification_logs' => (int) $notifications,
             'audit_logs' => (int) $audit,
+            'announcement_reports' => (int) $moderationReports,
         ];
     }
 }

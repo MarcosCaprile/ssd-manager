@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_config.dart';
 import '../../models/announcement.dart';
+import '../../models/announcement_report.dart';
 import '../../models/user.dart';
 import '../../providers/api_providers.dart';
 import '../../providers/auth_provider.dart';
@@ -16,6 +17,7 @@ import '../../utils/date_formatters.dart';
 import '../../utils/user_error_message.dart';
 import '../../widgets/status_views.dart';
 import 'announcement_attachment_views.dart';
+import 'announcement_moderation_screen.dart';
 
 class AnnouncementsScreen extends ConsumerStatefulWidget {
   const AnnouncementsScreen({super.key, this.active = true});
@@ -142,6 +144,12 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
             mine: currentUser?.id == announcement.senderUserId,
             showSender: showSender,
             repository: ref.read(announcementRepositoryProvider),
+            onReport:
+                currentUser != null &&
+                    currentUser.id != announcement.senderUserId &&
+                    !announcement.isModerated
+                ? () => _reportAnnouncement(announcement)
+                : null,
           );
     return Column(
       key: ValueKey(announcement.id),
@@ -251,7 +259,21 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
         (_controller.text.trim().isNotEmpty || _pending.isNotEmpty);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Ankündigungen')),
+      appBar: AppBar(
+        title: const Text('Ankündigungen'),
+        actions: [
+          if (currentUser?.role.canManageUsers == true)
+            IconButton(
+              tooltip: 'Inhaltsmeldungen verwalten',
+              icon: const Icon(Icons.shield_outlined),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AnnouncementModerationScreen(),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
@@ -543,6 +565,39 @@ class _AnnouncementsScreenState extends ConsumerState<AnnouncementsScreen> {
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
+
+  Future<void> _reportAnnouncement(Announcement announcement) async {
+    if (announcement.reportedByMe) {
+      _showMessage('Du hast diesen Inhalt bereits gemeldet.');
+      return;
+    }
+    final report = await showDialog<_AnnouncementReportInput>(
+      context: context,
+      builder: (_) => _ReportAnnouncementDialog(announcement: announcement),
+    );
+    if (report == null || !mounted) return;
+    try {
+      await ref
+          .read(announcementRepositoryProvider)
+          .report(
+            announcementId: announcement.id,
+            reason: report.reason,
+            details: report.details,
+          );
+      final updated = _items
+          .map(
+            (item) => item.id == announcement.id
+                ? item.copyWith(reportedByMe: true)
+                : item,
+          )
+          .toList();
+      setState(() => _items = updated);
+      ref.read(announcementFeedProvider.notifier).replace(updated);
+      _showMessage('Danke. Der Inhalt wurde der Schulmoderation gemeldet.');
+    } catch (error) {
+      if (mounted) _showMessage(userErrorMessage(error));
+    }
+  }
 }
 
 class _ChatDayDivider extends StatelessWidget {
@@ -678,12 +733,14 @@ class _AnnouncementBubble extends StatelessWidget {
     required this.mine,
     required this.showSender,
     required this.repository,
+    required this.onReport,
   });
 
   final Announcement announcement;
   final bool mine;
   final bool showSender;
   final AnnouncementRepository repository;
+  final VoidCallback? onReport;
 
   @override
   Widget build(BuildContext context) {
@@ -753,6 +810,36 @@ class _AnnouncementBubble extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (onReport != null)
+                  SizedBox(
+                    width: 32,
+                    height: 28,
+                    child: PopupMenuButton<String>(
+                      tooltip: announcement.reportedByMe
+                          ? 'Bereits gemeldet'
+                          : 'Nachrichtenoptionen',
+                      padding: EdgeInsets.zero,
+                      iconSize: 17,
+                      onSelected: (_) => onReport?.call(),
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'report',
+                          enabled: !announcement.reportedByMe,
+                          child: Row(
+                            children: [
+                              const Icon(Icons.flag_outlined, size: 19),
+                              const SizedBox(width: 9),
+                              Text(
+                                announcement.reportedByMe
+                                    ? 'Bereits gemeldet'
+                                    : 'Inhalt melden',
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 Text(
                   DateFormatters.chatTimestamp(announcement.createdAt),
                   style: TextStyle(
@@ -776,6 +863,99 @@ class _AnnouncementBubble extends StatelessWidget {
       scheme.error,
     ];
     return colors[id.abs() % colors.length];
+  }
+}
+
+class _AnnouncementReportInput {
+  const _AnnouncementReportInput({required this.reason, this.details});
+
+  final AnnouncementReportReason reason;
+  final String? details;
+}
+
+class _ReportAnnouncementDialog extends StatefulWidget {
+  const _ReportAnnouncementDialog({required this.announcement});
+
+  final Announcement announcement;
+
+  @override
+  State<_ReportAnnouncementDialog> createState() =>
+      _ReportAnnouncementDialogState();
+}
+
+class _ReportAnnouncementDialogState extends State<_ReportAnnouncementDialog> {
+  AnnouncementReportReason? _reason;
+  final _detailsController = TextEditingController();
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Inhalt melden'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Du meldest eine Ankündigung von ${widget.announcement.senderName}. '
+              'Die Meldung wird ausschließlich an Sani-Leitung und Lehreraufsicht deiner Schule gesendet.',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<AnnouncementReportReason>(
+              initialValue: _reason,
+              decoration: const InputDecoration(labelText: 'Meldegrund'),
+              items: AnnouncementReportReason.values
+                  .map(
+                    (reason) => DropdownMenuItem(
+                      value: reason,
+                      child: Text(reason.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() => _reason = value),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _detailsController,
+              maxLength: 500,
+              minLines: 2,
+              maxLines: 5,
+              decoration: const InputDecoration(
+                labelText: 'Zusätzliche Angaben (optional)',
+                alignLabelWithHint: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton.icon(
+          onPressed: _reason == null
+              ? null
+              : () => Navigator.of(context).pop(
+                  _AnnouncementReportInput(
+                    reason: _reason!,
+                    details: _detailsController.text.trim().isEmpty
+                        ? null
+                        : _detailsController.text.trim(),
+                  ),
+                ),
+          icon: const Icon(Icons.flag_outlined),
+          label: const Text('Melden'),
+        ),
+      ],
+    );
   }
 }
 

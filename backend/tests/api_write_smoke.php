@@ -394,6 +394,103 @@ try {
     }
 
     expect_status(
+        api_request('POST', 'announcements', ['message' => 'Du bist ein Arschloch.'], $sanitaeter['access_token']),
+        422,
+        'objectionable announcement text is blocked before posting'
+    );
+    expect_status(
+        api_request(
+            'POST',
+            "announcements/{$announcementId}/reports",
+            ['reason' => 'other'],
+            $sanitaeter['access_token']
+        ),
+        422,
+        'sender cannot report own announcement'
+    );
+    expect_status(
+        api_request(
+            'POST',
+            "announcements/{$announcementId}/reports",
+            ['reason' => 'bullying', 'details' => 'Automatischer Moderationstest'],
+            $teacher['access_token']
+        ),
+        201,
+        'teacher reports another users announcement'
+    );
+    expect_status(
+        api_request(
+            'POST',
+            "announcements/{$announcementId}/reports",
+            ['reason' => 'bullying'],
+            $teacher['access_token']
+        ),
+        409,
+        'duplicate announcement report is rejected'
+    );
+    expect_status(
+        api_request('GET', 'announcement-reports', accessToken: $sanitaeter['access_token']),
+        403,
+        'ordinary first-aider cannot open moderation queue'
+    );
+    $reportList = expect_status(
+        api_request('GET', 'announcement-reports', accessToken: $lead['access_token']),
+        200,
+        'lead opens school moderation queue'
+    );
+    $reportId = 0;
+    foreach (($reportList['body']['data'] ?? []) as $reportItem) {
+        if ((int) ($reportItem['announcement_id'] ?? 0) === $announcementId) {
+            $reportId = (int) ($reportItem['id'] ?? 0);
+            break;
+        }
+    }
+    if ($reportId < 1) {
+        throw new RuntimeException('Reported announcement is missing from the moderation queue.');
+    }
+    expect_status(
+        api_request(
+            'PATCH',
+            "announcement-reports/{$reportId}",
+            ['action' => 'remove_and_deactivate'],
+            $lead['access_token']
+        ),
+        200,
+        'lead removes reported content and deactivates sender'
+    );
+    expect_status(
+        api_request('GET', 'auth/session', accessToken: $sanitaeter['access_token']),
+        401,
+        'moderation deactivation revokes sender session'
+    );
+    $moderatedAnnouncements = expect_status(
+        api_request('GET', 'announcements', accessToken: $teacher['access_token']),
+        200,
+        'moderated announcement list'
+    );
+    $moderatedItem = null;
+    foreach (($moderatedAnnouncements['body']['data'] ?? []) as $item) {
+        if ((int) ($item['id'] ?? 0) === $announcementId) {
+            $moderatedItem = $item;
+            break;
+        }
+    }
+    if (
+        !is_array($moderatedItem)
+        || ($moderatedItem['is_moderated'] ?? false) !== true
+        || !str_contains((string) ($moderatedItem['message'] ?? ''), 'Schulmoderation entfernt')
+    ) {
+        throw new RuntimeException('Removed announcement did not become a moderation tombstone.');
+    }
+    echo '[OK] removed announcement remains as a moderation tombstone' . PHP_EOL;
+    expect_status(
+        api_request('POST', "users/{$testUserId}/reactivate", accessToken: $teacher['access_token']),
+        200,
+        'teacher reactivates sender after moderation test'
+    );
+    $sanitaeter = api_login($testUsername, $changedPassword, 'after-moderation');
+
+    expect_status(
         api_request('POST', "duties/{$regularDate}/self", accessToken: $sanitaeter['access_token']),
         201,
         'first-aider self-assigns to duty'

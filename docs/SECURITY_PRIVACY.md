@@ -51,6 +51,7 @@ Gespeicherte personenbezogene Daten:
 | Audit-Logs | Nachvollziehbarkeit administrativer Aktionen | Aufbewahrung nach Schulvorgabe begrenzen |
 | Login-Versuche | Brute-Force-Schutz | Regelmäßig bereinigen |
 | Ankündigungstexte und -anhänge | Schulweite organisatorische Kommunikation | Nach schulischer Lösch- und Aufbewahrungsregel; verwaiste Uploads nach einem Tag; gelöschte versendete Dateien hinterlassen einen Metadaten-Tombstone |
+| Inhaltsmeldungen | Schulische Moderation, Schutz vor Missbrauch | Offene Meldungen bis zur Bearbeitung; abgeschlossene Meldungen nach 12 Monaten löschen |
 
 Nicht erhoben:
 
@@ -62,6 +63,16 @@ Nicht erhoben:
 Ankündigungen und ihre Anhänge dürfen keine Patientendokumentation oder andere
 medizinische Falldaten enthalten. Die Schule muss dafür eine Aufbewahrungs- und
 Moderationsregel festlegen.
+
+Nutzer können fremde, nicht systemseitige Ankündigungen mit einem kategorisierten
+Grund und optionalen Zusatzangaben melden. Nur Sani-Leitung und Lehreraufsicht
+der jeweiligen Schule sehen diese Angaben. Sie können eine Meldung schließen,
+den Inhalt entfernen oder zusätzlich den Absender deaktivieren. Entfernte Texte
+werden für alle Nutzer durch einen Moderationshinweis ersetzt; zugehörige
+Anhangsbytes werden gelöscht. Meldung, Entscheidung und eine eventuelle Sperre
+werden serverseitig und schulbezogen protokolliert. Ein Filter blockiert vor dem
+Versand eindeutig schwere Beleidigungen, sexuelle Inhalte und direkte Drohungen;
+er ersetzt nicht die menschliche Prüfung von Grenzfällen.
 
 ## Löschkonzept
 

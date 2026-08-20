@@ -101,4 +101,23 @@ void main() {
     expect(announcement.isSystem, isTrue);
     expect(announcement.systemType, 'duty_sick_reported');
   });
+
+  test('parses moderation and personal report markers', () {
+    final announcement = Announcement.fromJson({
+      'id': 46,
+      'sender_user_id': 8,
+      'sender_name': 'Rita Rettich',
+      'sender_role': 'sanitaeter',
+      'message': 'Dieser Inhalt wurde von der Schulmoderation entfernt.',
+      'message_type': 'user',
+      'is_moderated': true,
+      'reported_by_me': true,
+      'created_at': '2026-07-23 17:05:00',
+      'attachments': <dynamic>[],
+    });
+
+    expect(announcement.isModerated, isTrue);
+    expect(announcement.reportedByMe, isTrue);
+    expect(announcement.copyWith(reportedByMe: false).reportedByMe, isFalse);
+  });
 }

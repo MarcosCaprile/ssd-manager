@@ -136,6 +136,9 @@ Werktagen bleiben erhalten. `/duties/closures/reset` erhält
 | POST | `/announcements` | Nachricht senden |
 | POST | `/announcements/attachments` | Foto oder Datei vor dem Versand hochladen |
 | GET | `/announcements/attachments/{id}` | Anhang authentifiziert öffnen |
+| POST | `/announcements/{id}/reports` | Fremden Nutzerinhalt innerhalb der eigenen Schule melden |
+| GET | `/announcement-reports` | Sani-Leitung/Lehreraufsicht: Meldungen prüfen |
+| PATCH | `/announcement-reports/{id}` | Sani-Leitung/Lehreraufsicht: Meldung abschließen |
 
 Nachrichten werden serverseitig dem aktuellen Nutzer zugeordnet. Eine
 Client-Absender-ID wird ignoriert. Der Body kann Text, bis zu vier zuvor
@@ -156,6 +159,11 @@ Nicht zugeordnete Uploads werden nach einem Tag durch den Wartungsjob entfernt.
 Downloads benötigen immer eine gültige Sitzung und werden auf die eigene Schule
 begrenzt.
 
+Nachrichtentext und Dateiname durchlaufen vor dem Speichern einen
+serverseitigen Filter für eindeutig schwere Beleidigungen, sexuelle Inhalte
+und direkte Drohungen. Grenzfälle werden nicht automatisch verworfen, sondern
+können über den Meldeweg geprüft werden.
+
 Gelöschte versendete Anhänge bleiben in der Nachricht als Metadatensatz mit
 `is_deleted: true` erhalten. Ihr Download liefert keinen Dateiinhalt mehr; die
 App zeigt stattdessen `Dieser Inhalt wurde gelöscht.` an.
@@ -165,6 +173,25 @@ Jede Nachricht enthält `message_type` (`user` oder `system`) und optional
 `system_type=duty_sick_reported`; der Text nennt Benutzername, Datum und Anzahl
 der noch geplanten Sanis. Diese Nachricht wird serverseitig erzeugt und nicht
 als frei wählbarer Client-Absender akzeptiert.
+
+Eigene Inhalte und Systemnachrichten können nicht gemeldet werden. Pro Person
+und Ankündigung ist genau eine Meldung möglich. Zulässige Gründe sind
+`bullying`, `inappropriate`, `privacy`, `spam` und `other`:
+
+```json
+{
+  "reason": "privacy",
+  "details": "Die Nachricht enthält persönliche Daten."
+}
+```
+
+Nur `sani_leitung` und `teacher` dürfen die schulbezogene Meldeliste öffnen.
+Eine Meldung wird mit `dismiss`, `remove` oder `remove_and_deactivate`
+abgeschlossen. Beim Entfernen wird der Text durch einen dauerhaften
+Moderationshinweis ersetzt; vorhandene Anhangsbytes werden gelöscht und bleiben
+als nicht verfügbare Tombstones sichtbar. Die letzte Aktion deaktiviert
+zusätzlich den Absender und widerruft dessen aktive Sitzungen. Sämtliche
+Aktionen werden im Auditprotokoll erfasst.
 
 ## Nutzerverwaltung
 

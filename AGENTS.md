@@ -179,6 +179,11 @@ Railway CLI SSH maintenance requires a registered public SSH key. For one-off pr
 - Deleting a claimed announcement attachment removes its bytes and frees quota,
   but keeps the announcement and attachment tombstone so the conversation shows
   that its content was deleted.
+- Treat announcements and attachments as school-scoped user-generated content.
+  Keep the server-side severe-content filter, one-report-per-user workflow, and
+  manager-only moderation enforcement active. Removing reported content must
+  replace text and attachments with tombstones; removing and blocking must also
+  revoke every active sender session. Resolved reports expire after 12 months.
 - `device_install_id` is a random installation identifier persisted outside the
   login session. It must survive logout and is used to replace stale active
   sessions from the same app installation.

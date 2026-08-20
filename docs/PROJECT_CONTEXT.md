@@ -790,4 +790,21 @@ contains generated output only and is not committed.
   App Privacy label were completed. The label declares the 11 collected data
   types used for app functionality as linked to the user and declares no
   tracking. Version 1.0/build 3 was submitted to Apple App Review on 2026-08-10;
-  App Store Connect confirmed the submission and now shows `Warten auf Prüfung`.
+  App Store Connect confirmed the submission. Apple paused the new-app review
+  under Guideline 2.1 on 2026-08-20 and requested additional review information:
+  a current physical-device screen recording, the tested device/OS list, a
+  fuller product and access description, external-service and regional notes,
+  and clarification regarding regulated content. This is an information request,
+  not a reported binary defect; build 3 can remain selected unless Apple later
+  identifies a technical issue. Future submissions must keep the same complete
+  details in App Review Information. The exact physical iPhone model and OS used
+  for the recording must be supplied by the owner and must not be inferred from
+  simulator testing. The school-only announcement channel contains user-generated
+  text and attachments. The Apple content-safety gap is implemented on branch
+  `codex/apple-content-moderation`: server-side filtering, one report per user and
+  announcement, a manager-only school moderation queue, content/attachment
+  tombstones, optional sender deactivation with immediate session revocation,
+  audit events, and 12-month cleanup for resolved reports. Migration
+  `009_announcement_moderation.sql` and the full API write smoke test passed only
+  against the local development database. The branch is not deployed to Railway
+  and no replacement App Store build has been created yet.

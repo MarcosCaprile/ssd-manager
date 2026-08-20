@@ -14,6 +14,7 @@ use App\Core\Database;
 use App\Core\Response;
 use App\Core\Router;
 use App\Services\AnnouncementAttachmentService;
+use App\Services\AnnouncementModerationService;
 use App\Services\AuthService;
 use App\Services\DatabaseBackupService;
 use App\Services\FtpsBackupStorage;
@@ -32,11 +33,17 @@ $dutyService = new DutyService($pdo, $notifications);
 $userService = new UserService($pdo);
 $userBulkService = new UserBulkService($pdo);
 $attachmentService = new AnnouncementAttachmentService($pdo);
+$announcementModerationService = new AnnouncementModerationService($pdo, $notifications);
 
 $authController = new AuthController($authService);
 $meController = new MeController($userService, $authService, $attachmentService);
 $dutyController = new DutyController($dutyService);
-$announcementController = new AnnouncementController($pdo, $notifications, $attachmentService);
+$announcementController = new AnnouncementController(
+    $pdo,
+    $notifications,
+    $attachmentService,
+    $announcementModerationService
+);
 $userController = new UserController($userService, $authService, $userBulkService);
 $backupController = new BackupController($pdo, new DatabaseBackupService($pdo, new FtpsBackupStorage()));
 
@@ -81,6 +88,9 @@ $router->add('GET', 'announcements', [$announcementController, 'index']);
 $router->add('POST', 'announcements', [$announcementController, 'store']);
 $router->add('POST', 'announcements/attachments', [$announcementController, 'uploadAttachment']);
 $router->add('GET', 'announcements/attachments/{id}', [$announcementController, 'downloadAttachment']);
+$router->add('POST', 'announcements/{id}/reports', [$announcementController, 'report']);
+$router->add('GET', 'announcement-reports', [$announcementController, 'reports']);
+$router->add('PATCH', 'announcement-reports/{id}', [$announcementController, 'moderateReport']);
 
 $router->add('GET', 'users', [$userController, 'index']);
 $router->add('POST', 'users', [$userController, 'store']);

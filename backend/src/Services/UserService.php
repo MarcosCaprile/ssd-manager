@@ -180,6 +180,25 @@ final class UserService
         );
         $attachments->execute(['user_id' => $userId, 'school_id' => $auth->schoolId()]);
 
+        $submittedReports = $this->pdo->prepare(
+            'SELECT announcement_id, reason, details, status, resolution_action,
+                    created_at, resolved_at
+             FROM announcement_reports
+             WHERE reporter_user_id = :user_id AND school_id = :school_id
+             ORDER BY created_at, id'
+        );
+        $submittedReports->execute(['user_id' => $userId, 'school_id' => $auth->schoolId()]);
+
+        $reportsAboutContent = $this->pdo->prepare(
+            'SELECT ar.announcement_id, ar.reason, ar.details, ar.status,
+                    ar.resolution_action, ar.created_at, ar.resolved_at
+             FROM announcement_reports ar
+             JOIN announcements a ON a.id = ar.announcement_id AND a.school_id = ar.school_id
+             WHERE a.sender_user_id = :user_id AND ar.school_id = :school_id
+             ORDER BY ar.created_at, ar.id'
+        );
+        $reportsAboutContent->execute(['user_id' => $userId, 'school_id' => $auth->schoolId()]);
+
         $devices = $this->pdo->prepare(
             'SELECT device_name, platform, device_model, app_version, created_at,
                     last_active_at, revoked_at, expires_at
@@ -221,6 +240,8 @@ final class UserService
             'duty_assignments' => $duties->fetchAll(),
             'announcements' => $announcements->fetchAll(),
             'attachment_metadata' => $attachments->fetchAll(),
+            'content_reports_submitted' => $submittedReports->fetchAll(),
+            'content_reports_about_own_announcements' => $reportsAboutContent->fetchAll(),
             'attachment_files_in_archive' => true,
             'device_metadata' => $devices->fetchAll(),
             'relevant_audit_events' => $audits->fetchAll(),

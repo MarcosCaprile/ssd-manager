@@ -61,6 +61,7 @@ final class AnnouncementAttachmentService
         }
 
         $fileName = $this->safeFileName($file['name']);
+        ObjectionableContentFilter::assertAllowed($fileName);
         $extension = strtolower((string) pathinfo($fileName, PATHINFO_EXTENSION));
         $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']) ?: 'application/octet-stream';
         if (

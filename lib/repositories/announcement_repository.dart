@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../core/api/api_client.dart';
 import '../models/announcement.dart';
+import '../models/announcement_report.dart';
 
 class AnnouncementRepository {
   AnnouncementRepository(this._api);
@@ -42,6 +43,40 @@ class AnnouncementRepository {
             )
             as Map<String, dynamic>;
     return Announcement.fromJson(data);
+  }
+
+  Future<void> report({
+    required int announcementId,
+    required AnnouncementReportReason reason,
+    String? details,
+  }) async {
+    await _api.post(
+      'announcements/$announcementId/reports',
+      body: {
+        'reason': reason.toJson(),
+        if (details != null && details.trim().isNotEmpty)
+          'details': details.trim(),
+      },
+    );
+  }
+
+  Future<List<AnnouncementReport>> reports() async {
+    final data = await _api.get('announcement-reports') as List<dynamic>;
+    return data
+        .map(
+          (item) => AnnouncementReport.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  Future<void> moderateReport({
+    required int reportId,
+    required AnnouncementModerationAction action,
+  }) async {
+    await _api.patch(
+      'announcement-reports/$reportId',
+      body: {'action': action.toJson()},
+    );
   }
 
   Future<Uint8List> attachmentBytes(int attachmentId) async {

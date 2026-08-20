@@ -8,6 +8,7 @@ use App\Services\DutyRules;
 use App\Services\BackupCrypto;
 use App\Services\FirebaseMessagingService;
 use App\Services\NotificationService;
+use App\Services\ObjectionableContentFilter;
 
 $tests = [];
 
@@ -32,6 +33,17 @@ function assert_false(bool $value, string $message = 'Expected false'): void
 }
 
 $rules = new DutyRules('Europe/Berlin');
+
+test_case('announcement moderation filter accepts normal school communication', function (): void {
+    assert_false(ObjectionableContentFilter::containsBlockedContent(
+        'Der Dienstplan für Freitag wurde aktualisiert. Bitte bringt eure Erste-Hilfe-Taschen mit.'
+    ));
+});
+
+test_case('announcement moderation filter blocks severe insults and obfuscation', function (): void {
+    assert_true(ObjectionableContentFilter::containsBlockedContent('Du bist ein Arschloch.'));
+    assert_true(ObjectionableContentFilter::containsBlockedContent('Huren$0hn.txt'));
+});
 
 test_case('weekends are blocked', function () use ($rules): void {
     assert_true($rules->isWeekend('2026-07-18'));

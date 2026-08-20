@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ssd_manager/models/announcement.dart';
+import 'package:ssd_manager/models/announcement_report.dart';
 import 'package:ssd_manager/providers/api_providers.dart';
 import 'package:ssd_manager/repositories/announcement_repository.dart';
 import 'package:ssd_manager/screens/announcements/announcements_screen.dart';
@@ -95,6 +96,26 @@ class _FakeAnnouncementRepository implements AnnouncementRepository {
   Future<Announcement> send({
     required String message,
     List<int> attachmentIds = const [],
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> report({
+    required int announcementId,
+    required AnnouncementReportReason reason,
+    String? details,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<List<AnnouncementReport>> reports() async => const [];
+
+  @override
+  Future<void> moderateReport({
+    required int reportId,
+    required AnnouncementModerationAction action,
   }) {
     throw UnimplementedError();
   }

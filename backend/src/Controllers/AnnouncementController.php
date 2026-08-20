@@ -7,8 +7,10 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Services\AnnouncementAttachmentService;
+use App\Services\AnnouncementModerationService;
 use App\Services\AuthContext;
 use App\Services\NotificationService;
+use App\Services\ObjectionableContentFilter;
 use PDO;
 
 final class AnnouncementController
@@ -17,6 +19,7 @@ final class AnnouncementController
         private readonly PDO $pdo,
         private readonly NotificationService $notifications,
         private readonly AnnouncementAttachmentService $attachments,
+        private readonly AnnouncementModerationService $moderation,
     ) {
     }
 
@@ -27,6 +30,11 @@ final class AnnouncementController
     {
         $statement = $this->pdo->prepare(
             'SELECT a.id, a.sender_user_id, a.message, a.message_type, a.system_type, a.created_at,
+                    CASE WHEN a.moderated_at IS NULL THEN 0 ELSE 1 END AS is_moderated,
+                    EXISTS(
+                        SELECT 1 FROM announcement_reports ar
+                        WHERE ar.announcement_id = a.id AND ar.reporter_user_id = :viewer_user_id
+                    ) AS reported_by_me,
                     CONCAT(u.first_name, " ", u.last_name) AS sender_name, u.role AS sender_role
              FROM announcements a
              JOIN users u ON u.id = a.sender_user_id
@@ -34,7 +42,10 @@ final class AnnouncementController
              ORDER BY a.created_at DESC, a.id DESC
              LIMIT 100'
         );
-        $statement->execute(['school_id' => $auth->schoolId()]);
+        $statement->execute([
+            'viewer_user_id' => $auth->userId(),
+            'school_id' => $auth->schoolId(),
+        ]);
         $rows = array_reverse($statement->fetchAll());
         $attachmentGroups = $this->attachments->groupedForAnnouncements(
             $auth->schoolId(),
@@ -105,6 +116,7 @@ final class AnnouncementController
         if ($message === '' && $attachmentIds === []) {
             Response::error('Nachricht oder Anhang fehlt.', 422);
         }
+        ObjectionableContentFilter::assertAllowed($message);
 
         $this->pdo->beginTransaction();
         try {
@@ -159,9 +171,37 @@ final class AnnouncementController
             'message' => $message,
             'message_type' => 'user',
             'system_type' => null,
+            'is_moderated' => false,
+            'reported_by_me' => false,
             'created_at' => gmdate('Y-m-d H:i:s'),
             'attachments' => $claimedAttachments,
         ], 201);
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
+    public function report(Request $request, array $params, AuthContext $auth): never
+    {
+        $this->moderation->report($auth, (int) ($params['id'] ?? 0), $request->json());
+        Response::json(['reported' => true], 201);
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
+    public function reports(Request $request, array $params, AuthContext $auth): never
+    {
+        Response::json($this->moderation->list($auth));
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
+    public function moderateReport(Request $request, array $params, AuthContext $auth): never
+    {
+        $this->moderation->moderate($auth, (int) ($params['id'] ?? 0), $request->json());
+        Response::json(['updated' => true]);
     }
 
     /**
@@ -179,6 +219,8 @@ final class AnnouncementController
             'message' => $row['message'],
             'message_type' => $row['message_type'],
             'system_type' => $row['system_type'],
+            'is_moderated' => (int) ($row['is_moderated'] ?? 0) === 1,
+            'reported_by_me' => (int) ($row['reported_by_me'] ?? 0) === 1,
             'created_at' => $row['created_at'],
             'attachments' => $attachments,
         ];

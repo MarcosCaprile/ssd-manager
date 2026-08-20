@@ -56,6 +56,8 @@ class Announcement {
     required this.message,
     required this.messageType,
     this.systemType,
+    this.isModerated = false,
+    this.reportedByMe = false,
     required this.createdAt,
     required this.attachments,
   });
@@ -67,6 +69,8 @@ class Announcement {
   final String message;
   final String messageType;
   final String? systemType;
+  final bool isModerated;
+  final bool reportedByMe;
   final DateTime createdAt;
   final List<AnnouncementAttachment> attachments;
 
@@ -83,6 +87,8 @@ class Announcement {
             message == other.message &&
             messageType == other.messageType &&
             systemType == other.systemType &&
+            isModerated == other.isModerated &&
+            reportedByMe == other.reportedByMe &&
             createdAt == other.createdAt &&
             listEquals(attachments, other.attachments);
   }
@@ -96,6 +102,8 @@ class Announcement {
     message,
     messageType,
     systemType,
+    isModerated,
+    reportedByMe,
     createdAt,
     Object.hashAll(attachments),
   );
@@ -109,6 +117,9 @@ class Announcement {
       message: (json['message'] ?? '') as String,
       messageType: (json['message_type'] ?? 'user') as String,
       systemType: json['system_type'] as String?,
+      isModerated: json['is_moderated'] == true || json['is_moderated'] == 1,
+      reportedByMe:
+          json['reported_by_me'] == true || json['reported_by_me'] == 1,
       createdAt: parseUtcDateTime(json['created_at'] as String),
       attachments: ((json['attachments'] ?? []) as List<dynamic>)
           .map(
@@ -116,6 +127,22 @@ class Announcement {
                 AnnouncementAttachment.fromJson(item as Map<String, dynamic>),
           )
           .toList(),
+    );
+  }
+
+  Announcement copyWith({bool? reportedByMe}) {
+    return Announcement(
+      id: id,
+      senderUserId: senderUserId,
+      senderName: senderName,
+      senderRole: senderRole,
+      message: message,
+      messageType: messageType,
+      systemType: systemType,
+      isModerated: isModerated,
+      reportedByMe: reportedByMe ?? this.reportedByMe,
+      createdAt: createdAt,
+      attachments: attachments,
     );
   }
 }

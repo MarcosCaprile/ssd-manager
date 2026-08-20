@@ -74,6 +74,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
       }
       if (path == 'announcements' ||
           path.startsWith('announcements/') ||
+          path == 'announcement-reports' ||
+          path.startsWith('announcement-reports/') ||
           path.startsWith('me/attachments')) {
         ref.read(announcementRevisionProvider.notifier).bump();
       }
