@@ -867,3 +867,18 @@ contains generated output only and is not committed.
   group, and `ITSAppUsesNonExemptEncryption=false`. Build 6 still needs to
   replace build 3 in the rejected App Review submission before the saved review
   reply with its two attached physical-device recordings is sent.
+- The current Android production candidate was built on 2026-08-21 as version
+  `1.0.0` with version code `6`, package `com.minutmate.ssdmanager`, minimum
+  SDK 24, and target SDK 36. It is signed with the dedicated Google Play upload
+  key, embeds the Railway production API, and its merged manifest contains
+  `INTERNET` and `POST_NOTIFICATIONS` but none of the removed broad
+  `READ_EXTERNAL_STORAGE` or `READ_MEDIA_*` permissions. The local AAB is
+  `outputs/google-play/SSD_Manager_Android_1.0.0_versionCode_6.aab` with SHA-256
+  `ca6e004251deb68eff7f41448c3ae62a19a4b65ebf60faabf46b54f2c44334dd`.
+  It was uploaded to Google Play on 2026-08-21, attached to production release
+  `6 (1.0.0)`, given German release notes, configured for a complete rollout in
+  all target countries, and saved under Publishing overview as one change not
+  yet submitted for review. Google Play reports the release as ready to publish
+  and is running its quick pre-review checks. The owner must explicitly send the
+  pending change for Google review; do not create another bundle merely because
+  the release remains pending.
